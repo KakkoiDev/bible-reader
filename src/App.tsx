@@ -214,7 +214,14 @@ export default function App() {
           const ch = chOf.get(v) ?? pos.chapter
           setSpeaking({ ch, v, lang })
           clearWordHighlight()
-          document.getElementById(verseElId(ch, v, lang))?.scrollIntoView({ block: 'center' })
+          const el = document.getElementById(verseElId(ch, v, lang))
+          if (el) {
+            // Only glide when the active verse leaves a comfortable band, so it
+            // doesn't re-center (jitter) on every verse.
+            const r = el.getBoundingClientRect()
+            const vh = window.innerHeight || document.documentElement.clientHeight
+            if (r.top < vh * 0.2 || r.bottom > vh * 0.72) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          }
         },
         onWord: (v, s, e) => {
           if (gen !== genRef.current) return
