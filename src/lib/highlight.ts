@@ -1,9 +1,7 @@
-// Partial-verse highlighting via the CSS Custom Highlight API.
-// Offsets are measured over the verse's BASE text nodes only (furigana <rt> is
-// skipped), so a highlight stays put whether or not furigana is displayed.
+// Selection → base-text offsets (for persistent highlights, rendered as DOM
+// spans in format.tsx) and the transient audio word-highlight (CSS Custom
+// Highlight API — used only for EN/FR, which have no <ruby>).
 import type { Lang } from './types'
-import type { HColor, HRange } from './annotations'
-import { COLORS } from './annotations'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const cssAny = (): any => (typeof CSS !== 'undefined' ? (CSS as any) : undefined)
@@ -78,31 +76,6 @@ function rangesFromOffsets(vt: Element, start: number, end: number): Range[] {
     if (acc >= end) break
   }
   return ranges
-}
-
-const NAME: Record<HColor, string> = {
-  yellow: 'hl-yellow',
-  green: 'hl-green',
-  blue: 'hl-blue',
-  pink: 'hl-pink',
-  purple: 'hl-purple',
-}
-
-/** Rebuild every CSS highlight for the verses currently on screen. */
-export function rebuildHighlights(items: { el: Element; h: HRange }[]) {
-  const css = cssAny()
-  if (!css || !supportsHighlight()) return
-  for (const name of Object.values(NAME)) css.highlights.delete(name)
-  const byColor: Partial<Record<HColor, Range[]>> = {}
-  for (const { el, h } of items) {
-    const rs = rangesFromOffsets(el, h.start, h.end)
-    if (rs.length) (byColor[h.color] ||= []).push(...rs)
-  }
-  const Ctor = (globalThis as any).Highlight
-  for (const color of COLORS) {
-    const ranges = byColor[color]
-    if (ranges && ranges.length) css.highlights.set(NAME[color], new Ctor(...ranges))
-  }
 }
 
 /** Highlight the word currently being spoken (ephemeral, its own layer). */

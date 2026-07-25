@@ -3,7 +3,7 @@ import type { BookData, IndexItem, Lang } from './lib/types'
 import { LANG_META, RING } from './lib/types'
 import { VerseText } from './lib/format'
 import { useAnnotations, vref, parseRef, type HColor } from './lib/annotations'
-import { rebuildHighlights, selectionContext, setWordHighlight, clearWordHighlight } from './lib/highlight'
+import { selectionContext, setWordHighlight, clearWordHighlight } from './lib/highlight'
 import { ttsSupported, primeVoices, speakVerses, stopSpeaking, type Gender } from './lib/tts'
 import {
   Toolbar,
@@ -232,23 +232,6 @@ export default function App() {
       clearTimeout(t)
     }
   }, [flashVerse, data, pos.chapter, pos.lang, wide])
-
-  // rebuild CSS highlights for the visible chapter
-  useEffect(() => {
-    const items: { el: Element; h: import('./lib/annotations').HRange }[] = []
-    if (chapter) {
-      for (const v of chapter.verses) {
-        const ann = store[vref(pos.slug, pos.chapter, v.v)]
-        if (!ann?.highlights) continue
-        for (const h of ann.highlights) {
-          if (!langsToShow.includes(h.lang)) continue
-          const el = document.getElementById(`v-${h.lang}-${v.v}`)?.querySelector('.vt')
-          if (el) items.push({ el, h })
-        }
-      }
-    }
-    rebuildHighlights(items)
-  }, [store, chapter, pos.slug, pos.chapter, pos.lang, wide, prefs.furigana])
 
   // remember the top-visible verse for resume-on-reopen
   useEffect(() => {
@@ -542,7 +525,12 @@ export default function App() {
                           </button>
                         )}
                         <span className="vt">
-                          <VerseText text={v[l]} lang={l} showFurigana={prefs.furigana} />
+                          <VerseText
+                            text={v[l]}
+                            lang={l}
+                            showFurigana={prefs.furigana}
+                            highlights={ann?.highlights?.filter((h) => h.lang === l)}
+                          />
                         </span>
                       </li>
                     )

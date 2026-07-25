@@ -144,7 +144,7 @@ body {
   user-select: none;
 }
 :lang(ja).col .verse { line-height: 2.1; }
-.supplied { color: var(--supplied); font-style: italic; }
+.supplied { font-style: italic; }
 .missing { color: var(--muted); }
 ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-serif; }
 
@@ -282,12 +282,13 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
 }
 ::highlight(hl-speaking) { background: rgba(99, 102, 241, 0.5); color: inherit; }
 
-/* ---------- highlights (CSS Custom Highlight API) ---------- */
-::highlight(hl-yellow) { background: rgba(250, 204, 21, 0.4); }
-::highlight(hl-green) { background: rgba(52, 211, 153, 0.38); }
-::highlight(hl-blue) { background: rgba(96, 165, 250, 0.38); }
-::highlight(hl-pink) { background: rgba(244, 114, 182, 0.38); }
-::highlight(hl-purple) { background: rgba(167, 139, 250, 0.44); }
+/* ---------- persistent highlights: DOM spans (paint over <ruby> everywhere) ---------- */
+.hl { border-radius: 3px; }
+.hl-yellow { background: rgba(250, 204, 21, 0.45); }
+.hl-green { background: rgba(52, 211, 153, 0.42); }
+.hl-blue { background: rgba(96, 165, 250, 0.42); }
+.hl-pink { background: rgba(244, 114, 182, 0.42); }
+.hl-purple { background: rgba(167, 139, 250, 0.48); }
 
 /* ---------- header tool buttons ---------- */
 .tools { display: flex; gap: 2px; }
