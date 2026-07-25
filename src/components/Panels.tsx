@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
 import { COLORS, type HColor } from '../lib/annotations'
+import type { Lang } from '../lib/types'
+import { LANG_META } from '../lib/types'
 
 export type Theme = 'system' | 'light' | 'dark'
 export type Size = 'sm' | 'md' | 'lg'
+const ALL_LANGS: Lang[] = ['en', 'ja', 'fr']
 
 const COLOR_LABEL: Record<HColor, string> = {
   yellow: 'Yellow',
@@ -67,6 +70,7 @@ export function Settings({
   voice,
   swipe,
   flow,
+  columns,
   ttsOn,
   onTheme,
   onSize,
@@ -75,6 +79,7 @@ export function Settings({
   onVoice,
   onSwipe,
   onFlow,
+  onColumns,
   onExport,
   onImport,
   onClose,
@@ -87,6 +92,7 @@ export function Settings({
   voice: 'male' | 'female'
   swipe: boolean
   flow: boolean
+  columns: Lang[]
   ttsOn: boolean
   onTheme: (t: Theme) => void
   onSize: (s: Size) => void
@@ -95,11 +101,20 @@ export function Settings({
   onVoice: (g: 'male' | 'female') => void
   onSwipe: (v: boolean) => void
   onFlow: (v: boolean) => void
+  onColumns: (c: Lang[]) => void
   onExport: () => void
   onImport: (file: File) => void
   onClose: () => void
 }) {
   if (!open) return null
+  const moveCol = (l: Lang, d: number) => {
+    const i = columns.indexOf(l)
+    const j = i + d
+    if (j < 0 || j >= columns.length) return
+    const c = [...columns]
+    ;[c[i], c[j]] = [c[j], c[i]]
+    onColumns(c)
+  }
   return (
     <div className="sheet-backdrop" onClick={onClose}>
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
@@ -139,6 +154,34 @@ export function Settings({
           <span>Swipe to change language (mobile)</span>
           <input type="checkbox" checked={swipe} onChange={(e) => onSwipe(e.target.checked)} />
         </label>
+        <div className="srow">
+          <span>Languages &amp; columns</span>
+          <button className="mini" onClick={() => onColumns(['en', 'ja', 'fr'])}>Reset</button>
+        </div>
+        <div className="collist">
+          {columns.map((l, i) => (
+            <div className="colrow" key={l}>
+              <span className="collabel" lang={LANG_META[l].htmlLang}>
+                {LANG_META[l].label} <small>{LANG_META[l].edition}</small>
+              </span>
+              <div className="colctl">
+                <button className="mini" disabled={i === 0} onClick={() => moveCol(l, -1)} aria-label="Move up">↑</button>
+                <button className="mini" disabled={i === columns.length - 1} onClick={() => moveCol(l, 1)} aria-label="Move down">↓</button>
+                <button className="mini" disabled={columns.length <= 1} onClick={() => onColumns(columns.filter((x) => x !== l))}>
+                  Hide
+                </button>
+              </div>
+            </div>
+          ))}
+          {ALL_LANGS.filter((l) => !columns.includes(l)).map((l) => (
+            <div className="colrow off" key={l}>
+              <span className="collabel" lang={LANG_META[l].htmlLang}>
+                {LANG_META[l].label} <small>{LANG_META[l].edition}</small>
+              </span>
+              <button className="mini" onClick={() => onColumns([...columns, l])}>Show</button>
+            </div>
+          ))}
+        </div>
         <div className="srow">
           <span>Notes &amp; highlights</span>
           <div className="databtns">

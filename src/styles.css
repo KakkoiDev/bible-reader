@@ -461,12 +461,24 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
   height: 52px;
   border-radius: 50%;
   border: 0;
-  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  line-height: 1;
   color: #fff;
   background: var(--accent);
   cursor: pointer;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
 }
+.collist { display: flex; flex-direction: column; gap: 6px; padding: 4px 0 8px; }
+.colrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; }
+.colrow.off { opacity: 0.55; }
+.collabel { font-family: system-ui, sans-serif; font-size: 14px; }
+.collabel small { color: var(--muted); font-size: 11px; margin-left: 4px; }
+.colctl { display: inline-flex; gap: 4px; }
+.colrow .mini { padding: 4px 9px; font-size: 12px; }
+.colrow .mini:disabled { opacity: 0.4; cursor: default; }
 
 /* ---------- verse compare sheet ---------- */
 .compare { display: flex; flex-direction: column; gap: 14px; margin-bottom: 14px; }

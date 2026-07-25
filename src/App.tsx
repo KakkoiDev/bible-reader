@@ -32,6 +32,7 @@ interface Prefs {
   voice: Gender
   swipe: boolean
   flow: boolean
+  columns: Lang[]
 }
 type Paragraphs = Record<string, Record<string, number[]>>
 
@@ -56,9 +57,12 @@ const buildHash = (slug: string, chapter: number, lang: Lang, verse?: number) =>
   `#/${slug}/${chapter}/${lang}` + (verse ? `/${verse}` : '')
 
 const loadPrefs = (): Prefs => {
-  const d: Prefs = { theme: 'system', size: 'md', furigana: true, rate: 1, voice: 'male', swipe: false, flow: false }
+  const d: Prefs = { theme: 'system', size: 'md', furigana: true, rate: 1, voice: 'male', swipe: false, flow: false, columns: ['en', 'ja', 'fr'] }
   try {
-    return { ...d, ...JSON.parse(localStorage.getItem('prefs') || '{}') }
+    const p = { ...d, ...JSON.parse(localStorage.getItem('prefs') || '{}') }
+    const valid = [...new Set((p.columns || []).filter((l: Lang) => (RING as string[]).includes(l)))] as Lang[]
+    p.columns = valid.length ? valid : ['en', 'ja', 'fr']
+    return p
   } catch {
     return d
   }
@@ -176,7 +180,11 @@ export default function App() {
     () => data?.chapters.find((c) => c.n === pos.chapter) ?? data?.chapters[0],
     [data, pos.chapter],
   )
-  const langsToShow: Lang[] = flow || !wide ? [pos.lang] : RING
+  const langsToShow: Lang[] = flow || !wide ? [pos.lang] : prefs.columns
+  // keep the current language among the enabled columns
+  useEffect(() => {
+    if (prefs.columns.length && !prefs.columns.includes(pos.lang)) navigate({ lang: prefs.columns[0] })
+  }, [prefs.columns, pos.lang, navigate])
 
   // ---- audio (Web Speech) ----
   useEffect(() => {
@@ -380,10 +388,11 @@ export default function App() {
   )
   const cycleLang = useCallback(
     (dir: 1 | -1) => {
-      const i = RING.indexOf(pos.lang)
-      go({ lang: RING[(i + dir + RING.length) % RING.length], verse: flashVerse ?? undefined })
+      const ring = prefs.columns
+      const i = Math.max(0, ring.indexOf(pos.lang))
+      go({ lang: ring[(i + dir + ring.length) % ring.length], verse: flashVerse ?? undefined })
     },
-    [pos.lang, flashVerse, go],
+    [pos.lang, flashVerse, go, prefs.columns],
   )
 
   // Copy a shareable link to a verse (does not move you or stop audio).
@@ -553,9 +562,9 @@ export default function App() {
         </div>
       </header>
 
-      {(!wide || flow) && (
+      {(!wide || flow) && prefs.columns.length > 1 && (
         <div className="langring" role="tablist" aria-label="Language">
-          {RING.map((l) => (
+          {prefs.columns.map((l) => (
             <button
               key={l}
               role="tab"
@@ -719,7 +728,9 @@ export default function App() {
         voice={prefs.voice}
         swipe={prefs.swipe}
         flow={prefs.flow}
+        columns={prefs.columns}
         ttsOn={canTTS}
+        onColumns={(c) => setPref({ columns: c })}
         onTheme={(t) => setPref({ theme: t })}
         onSize={(s) => setPref({ size: s })}
         onFurigana={(f) => setPref({ furigana: f })}

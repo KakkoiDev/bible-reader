@@ -64,28 +64,53 @@ export function speakVerses(
   },
 ) {
   if (!ttsSupported() || items.length === 0) return
+  const myGen = ++genToken
   speechSynthesis.cancel()
   const voice = pickVoice(lang, gender)
-  items.forEach((it, i) => {
+  // Sequential: speak one verse, and on its end speak the next. Queuing everything
+  // up front is unreliable — many browsers only fire `onstart` for the first
+  // utterance, so the highlight would stick on the first verse.
+  let i = 0
+  const speakNext = () => {
+    if (myGen !== genToken) return
+    if (i >= items.length) {
+      hooks.onDone()
+      return
+    }
+    const it = items[i]
     const spoken = speechText(it.text, lang)
     const u = new SpeechSynthesisUtterance(spoken)
     u.lang = LANG_TAG[lang]
     if (voice) u.voice = voice
     u.rate = rate
-    u.onstart = () => hooks.onVerse(it.v)
+    u.onstart = () => {
+      if (myGen === genToken) hooks.onVerse(it.v)
+    }
     if (hooks.onWord && lang !== 'ja') {
       u.onboundary = (e) => {
-        if (e.name && e.name !== 'word') return
+        if (myGen !== genToken || (e.name && e.name !== 'word')) return
         const ci = e.charIndex
         const len = e.charLength || spoken.slice(ci).match(/^\S+/)?.[0].length || 0
         if (len) hooks.onWord!(it.v, ci, ci + len)
       }
     }
-    if (i === items.length - 1) u.onend = () => hooks.onDone()
+    u.onend = () => {
+      if (myGen !== genToken) return
+      i++
+      speakNext()
+    }
+    u.onerror = () => {
+      if (myGen !== genToken) return
+      i++
+      speakNext()
+    }
     speechSynthesis.speak(u)
-  })
+  }
+  speakNext()
 }
 
+let genToken = 0
 export function stopSpeaking() {
+  genToken++
   if (ttsSupported()) speechSynthesis.cancel()
 }
