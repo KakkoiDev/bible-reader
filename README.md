@@ -92,8 +92,98 @@ available offline from then on.
 
 ## Deploy
 
-Static — deploy `dist/` to any host. For a subpath (e.g. GitHub Pages), set
+**Live: <https://kakkoidev.github.io/bible-reader/>**
+
+### How it works
+
+Deployment is automatic. **Pushing to `main` deploys.** There is no separate
+release step, no `gh-pages` branch, and nothing to run by hand.
+
+`.github/workflows/deploy.yml` does the whole thing:
+
+1. `actions/checkout` — checks out the repo
+2. `actions/setup-node` (Node 20) + `npm ci`
+3. `npm run build` — which is `npm run data && tsc --noEmit && vite build`
+4. `actions/upload-pages-artifact` with `dist/`
+5. `actions/deploy-pages` — publishes to GitHub Pages
+
+You can also trigger it by hand from the Actions tab (the workflow declares
+`workflow_dispatch`), which is the way to redeploy without a code change.
+
+Two details that matter:
+
+- **`BASE_PATH` is set by the workflow**, to `/${{ github.event.repository.name }}/`
+  — i.e. `/bible-reader/`. Project Pages sites are served from a subpath, and Vite
+  needs `base` to match or every asset 404s. You never set this manually for CI.
+- **CI runs `npm run build`, not `npm run fetch`.** The build only reads
+  `data-src/*.md`, so **the source Markdown must be committed**. This is why those
+  files are in git despite being ~50 MB: it keeps the build reproducible and offline,
+  and means a deploy never depends on eBible.org or getbible.net being up.
+
+### Checking a deploy
+
+```bash
+gh run list --limit 3                 # find the run
+gh run watch <run-id> --exit-status   # follow it (build ~30s, deploy ~10s)
+```
+
+Then confirm the live site is really serving the new build — a green run only means
+the artifact uploaded:
+
+```bash
+U=https://kakkoidev.github.io/bible-reader/
+curl -s -o /dev/null -w '%{http_code}\n' $U
+curl -s -o /dev/null -w '%{http_code}\n' ${U}data/index.json
+curl -s -o /dev/null -w '%{http_code}\n' ${U}data/ar/matthew.json   # an opt-in edition
+```
+
+### Before you push
+
+The subpath build is the one that ships, and it is *not* what `npm run build`
+produces locally. Test it the way CI will:
+
+```bash
+BASE_PATH=/bible-reader/ npm run build
+grep -o 'href="[^"]*favicon[^"]*"' dist/index.html   # expect /bible-reader/favicon.svg
+```
+
+Worth a glance at the build output too — `precache N entries (M KiB)` should stay
+around **215 entries / ~18 MB**. If it jumps toward 55 MB, `workbox.globPatterns` in
+`vite.config.ts` has started sweeping in the opt-in editions, which would force every
+translation onto each install. Individual files must also stay under
+`maximumFileSizeToCacheInBytes` (6 MB) or they are silently dropped from the precache.
+
+### Deploying to something other than GitHub Pages
+
+The output is plain static files. `dist/` can go to any host. Serve it from the
+domain root and no `BASE_PATH` is needed; from a subpath, build with
 `BASE_PATH=/your-subpath/ npm run build`.
+
+One requirement: **missing files must return 404, not a fallback page.** The app
+requests `data/<edition>/<book>.json` and treats a failure as "this edition has no
+text here" (which is how Greek shows no Old Testament). A host that answers unknown
+paths with `index.html` at status 200 will get HTML where JSON was expected — the app
+degrades correctly, but the service worker would cache that HTML under a JSON URL.
+GitHub Pages returns a proper 404, so this is fine as configured; `vite preview` does
+*not*, which is a local-only quirk.
+
+### Known warning
+
+The run logs a deprecation notice: `actions/checkout@v4`, `actions/setup-node@v4` and
+`actions/upload-artifact@v4` target Node 20, which GitHub is retiring, so the runner
+forces them onto Node 24. Deploys still succeed. Clearing it means bumping those
+actions to `@v5` and `node-version` to `22`, which is worth doing before GitHub drops
+the compatibility shim.
+
+### Adding an edition later
+
+1. Add an entry to `SOURCES` in `scripts/sources.mjs`.
+2. `npm run fetch -- <id>` then `npm run data`, and skim the summary.
+3. Add its `VersionMeta` to `src/lib/versions.ts` (`defaultOn: false` keeps installs
+   small) and, optionally, a UI string table in `src/lib/i18n.ts`.
+4. Commit `data-src/<id>.md` along with the code, or CI cannot build it.
+5. Push. If the edition should be on by default, also add it to `globPatterns` in
+   `vite.config.ts` so it is precached.
 
 ## Verify
 
