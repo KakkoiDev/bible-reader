@@ -23,24 +23,38 @@ function baseTextNodes(root: Element): Text[] {
   return out
 }
 
-/** Character offsets of the current selection within `vt` (base text), or null. */
-export function offsetsFromSelection(vt: Element): { start: number; end: number } | null {
-  const sel = window.getSelection()
-  if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return null
-  const range = sel.getRangeAt(0)
-  if (!vt.contains(range.startContainer) || !vt.contains(range.endContainer)) return null
-  const nodes = baseTextNodes(vt)
-  let start = -1
-  let end = -1
-  let acc = 0
-  for (const t of nodes) {
-    if (t === range.startContainer) start = acc + range.startOffset
-    if (t === range.endContainer) end = acc + range.endOffset
-    acc += t.length
+// Base-text offset of an arbitrary boundary (container + offset). Works whether
+// the boundary lands on a text node, an element, or inside a furigana <rt> —
+// measured by a Range so first-character and edge selections count correctly.
+function baseOffsetTo(vt: Element, container: Node, offset: number): number {
+  const measure = document.createRange()
+  measure.setStart(vt, 0)
+  try {
+    measure.setEnd(container, offset)
+  } catch {
+    return 0
   }
-  if (start < 0 || end < 0) return null
-  if (start > end) [start, end] = [end, start]
-  return start === end ? null : { start, end }
+  const cmp = (t: Text, k: number) => {
+    try {
+      return measure.comparePoint(t, k)
+    } catch {
+      return 1
+    }
+  }
+  let count = 0
+  for (const t of baseTextNodes(vt)) {
+    if (cmp(t, t.length) <= 0) {
+      count += t.length // whole node is before the boundary
+      continue
+    }
+    if (cmp(t, 0) <= 0) {
+      let k = 0
+      while (k < t.length && cmp(t, k + 1) <= 0) k++ // boundary falls inside this node
+      count += k
+    }
+    break // node is at or after the boundary
+  }
+  return count
 }
 
 // One range PER base text node. A single range spanning a <ruby> boundary makes
@@ -105,6 +119,9 @@ export function clearWordHighlight() {
   if (css && supportsHighlight()) css.highlights.delete('hl-speaking')
 }
 
+const verseOf = (n: Node | null): Element | null =>
+  n ? (n.nodeType === 1 ? (n as Element) : n.parentElement)?.closest('.verse') ?? null : null
+
 /** Which verse/lang does the current selection belong to? Reads `.verse` id `v-<lang>-<n>`. */
 export function selectionContext(reader: Element): {
   vt: Element
@@ -116,18 +133,17 @@ export function selectionContext(reader: Element): {
 } | null {
   const sel = window.getSelection()
   if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return null
-  const anchor = sel.anchorNode
-  const focus = sel.focusNode
-  if (!anchor || !focus) return null
-  const verseEl = (anchor.parentElement || (anchor as Element)).closest?.('.verse')
-  const focusVerse = (focus.parentElement || (focus as Element)).closest?.('.verse')
-  if (!verseEl || verseEl !== focusVerse) return null
+  const range = sel.getRangeAt(0)
+  const verseEl = verseOf(range.commonAncestorContainer) || verseOf(range.startContainer)
+  if (!verseEl || !reader.contains(verseEl)) return null
   const m = /^v-(en|ja|fr)-(\d+)$/.exec(verseEl.id)
   if (!m) return null
   const vt = verseEl.querySelector('.vt')
-  if (!vt || !reader.contains(vt)) return null
-  const offs = offsetsFromSelection(vt)
-  if (!offs) return null
-  const rect = sel.getRangeAt(0).getBoundingClientRect()
-  return { vt, lang: m[1] as Lang, v: Number(m[2]), start: offs.start, end: offs.end, rect }
+  if (!vt) return null
+  const a = baseOffsetTo(vt, range.startContainer, range.startOffset)
+  const b = baseOffsetTo(vt, range.endContainer, range.endOffset)
+  const start = Math.min(a, b)
+  const end = Math.max(a, b)
+  if (start === end) return null
+  return { vt, lang: m[1] as Lang, v: Number(m[2]), start, end, rect: range.getBoundingClientRect() }
 }

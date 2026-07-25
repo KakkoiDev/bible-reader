@@ -56,19 +56,19 @@ interface Seg {
   bs: number
   be: number
 }
-/** For Japanese, build the spoken kana string alongside a map back to the
- *  displayed base-text offsets (kanji), so a spoken word can highlight its kanji. */
+/** For Japanese, build the spoken kana string alongside a chunk map back to the
+ *  displayed base text (kanji). Each chunk is a kanji group ({{…}}) or a run of
+ *  kana between them; a boundary highlights its whole chunk so nothing is skipped. */
 function jaSpeech(text: string): { spoken: string; map: Seg[] } {
   const map: Seg[] = []
   let spoken = ''
   let bpos = 0
   const pushPlain = (chunk: string) => {
-    for (const ch of chunk) {
-      const out = ch === '〔' || ch === '〕' ? ' ' : ch
-      map.push({ ss: spoken.length, se: spoken.length + 1, bs: bpos, be: bpos + 1 })
-      spoken += out
-      bpos += 1
-    }
+    if (!chunk) return
+    const spokenChunk = chunk.replace(/[〔〕]/g, ' ')
+    map.push({ ss: spoken.length, se: spoken.length + spokenChunk.length, bs: bpos, be: bpos + chunk.length })
+    spoken += spokenChunk
+    bpos += chunk.length
   }
   const re = /\{\{([^|}]*)\|([^}]+)\}\}/g
   let i = 0
@@ -83,22 +83,11 @@ function jaSpeech(text: string): { spoken: string; map: Seg[] } {
   if (i < text.length) pushPlain(text.slice(i))
   return { spoken, map }
 }
-function mapJaWord(map: Seg[], cs: number, ce: number): { s: number; e: number } | null {
-  let s = Infinity
-  let e = -Infinity
-  for (const seg of map) {
-    if (seg.ss < ce && seg.se > cs) {
-      if (seg.se - seg.ss === seg.be - seg.bs) {
-        // 1:1 plain run — map the overlapping sub-range precisely
-        s = Math.min(s, seg.bs + (Math.max(cs, seg.ss) - seg.ss))
-        e = Math.max(e, seg.bs + (Math.min(ce, seg.se) - seg.ss))
-      } else {
-        s = Math.min(s, seg.bs) // marker — highlight the whole kanji group
-        e = Math.max(e, seg.be)
-      }
-    }
-  }
-  return e > s ? { s, e } : null
+/** Base range of the chunk the spoken position falls in. */
+function segmentBaseAt(map: Seg[], ci: number): { s: number; e: number } | null {
+  for (const seg of map) if (seg.ss <= ci && ci < seg.se) return { s: seg.bs, e: seg.be }
+  const last = map[map.length - 1]
+  return last ? { s: last.bs, e: last.be } : null
 }
 
 /** Speak a run of verses in order; hooks fire as each verse begins / all finish.
@@ -131,14 +120,15 @@ export function speakVerses(
       u.onboundary = (e) => {
         if (e.name && e.name !== 'word') return
         const ci = e.charIndex
-        const len = e.charLength || (ja ? 1 : spoken.slice(ci).match(/^\S+/)?.[0].length || 0)
-        if (!len) return
-        if (ja && built.map) {
-          const r = mapJaWord(built.map, ci, ci + len)
-          if (r) hooks.onWord!(it.v, r.s, r.e)
-        } else {
-          hooks.onWord!(it.v, ci, ci + len)
+        if (ja) {
+          if (built.map) {
+            const r = segmentBaseAt(built.map, ci)
+            if (r) hooks.onWord!(it.v, r.s, r.e)
+          }
+          return
         }
+        const len = e.charLength || spoken.slice(ci).match(/^\S+/)?.[0].length || 0
+        if (len) hooks.onWord!(it.v, ci, ci + len)
       }
     }
     if (i === items.length - 1) u.onend = () => hooks.onDone()

@@ -488,15 +488,19 @@ export default function App() {
                         <button className="vn" title="Copy link to this verse" onClick={() => linkVerse(l, v.v)}>
                           {v.v}
                         </button>
-                        {canTTS && (
-                          <button
-                            className={`vplay ${speaking?.v === v.v && speaking?.lang === l ? 'on' : ''}`}
-                            title="Play verse"
-                            onClick={() => playVerse(l, v.v, v[l])}
-                          >
-                            ▶
-                          </button>
-                        )}
+                        {canTTS &&
+                          (() => {
+                            const spk = speaking?.v === v.v && speaking?.lang === l
+                            return (
+                              <button
+                                className={`vplay ${spk ? 'on' : ''}`}
+                                title={spk ? 'Stop' : 'Play verse'}
+                                onClick={() => (spk ? stopAudio() : playVerse(l, v.v, v[l]))}
+                              >
+                                {spk ? '⏹' : '▶'}
+                              </button>
+                            )
+                          })()}
                         {ann?.note && (
                           <button className="mk note" title="Note" onClick={() => setNoteRef(ref)}>
                             ✎
