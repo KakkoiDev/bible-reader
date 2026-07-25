@@ -62,7 +62,7 @@ export function Toolbar({
           key={c}
           className={`swatch sw-${c}`}
           title={COLOR_LABEL[c]}
-          aria-label={`${t('highlight')} — ${c}`}
+          aria-label={`${t('highlight')}: ${c}`}
           onClick={() => onColor(c)}
         />
       ))}
@@ -107,8 +107,6 @@ export interface SettingsProps {
   onColumns: (c: Lang[]) => void
   onExport: () => void
   onImport: (file: File) => void
-  onCopyInvite: () => void
-  onLicences: () => void
   onClose: () => void
 }
 
@@ -141,8 +139,6 @@ export function Settings({
   onColumns,
   onExport,
   onImport,
-  onCopyInvite,
-  onLicences,
   onClose,
 }: SettingsProps) {
   if (!open) return null
@@ -305,11 +301,6 @@ export function Settings({
           </>
         )}
 
-        <div className="sgroup">{t('group_about')}</div>
-        <div className="srow about">
-          <button className="mini" onClick={onCopyInvite}>{t('copy_invite')}</button>
-          <button className="mini" onClick={onLicences}>{t('licences')}</button>
-        </div>
       </div>
     </div>
   )

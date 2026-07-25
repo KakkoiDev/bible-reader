@@ -1,12 +1,14 @@
 :root {
   --bg: #faf8f4;
   --fg: #1f2430;
-  --muted: #8a8f9c;
+  /* #8a8f9c measured 3.05:1 on this background — below AA for the note previews,
+     captions and attributions it was used for. #666c7d is 4.6:1 and still recedes. */
+  --muted: #666c7d;
   --line: #e7e2d8;
   --accent: #4338ca;
   --accent-bg: #eceafe;
   --card: #ffffff;
-  --supplied: #9a8f7a;
+  --supplied: #8a7f68;
   font-family: ui-serif, Georgia, 'Times New Roman', 'Yu Mincho', 'Hiragino Mincho ProN', serif;
 }
 @media (prefers-color-scheme: dark) {
@@ -186,8 +188,8 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
 
 /* ---------- theme override (system default via prefers-color-scheme) ---------- */
 :root[data-theme='light'] {
-  --bg: #faf8f4; --fg: #1f2430; --muted: #8a8f9c; --line: #e7e2d8;
-  --accent: #4338ca; --accent-bg: #eceafe; --card: #ffffff; --supplied: #9a8f7a;
+  --bg: #faf8f4; --fg: #1f2430; --muted: #666c7d; --line: #e7e2d8;
+  --accent: #4338ca; --accent-bg: #eceafe; --card: #ffffff; --supplied: #8a7f68;
 }
 :root[data-theme='dark'] {
   --bg: #14131a; --fg: #e9e6df; --muted: #8c8a95; --line: #2a2833;
@@ -718,3 +720,113 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
 
 /* ---------- RTL: the floating toolbar is positioned in raw pixels ---------- */
 [dir='rtl'] .atoolbar.bottom { transform: translateX(50%); }
+
+/* ============================================================================
+   Per-script typography
+   ----------------------------------------------------------------------------
+   Eleven editions span six writing systems, and a single Latin serif stack does
+   not serve them: Arabic and Hebrew fell through to whatever sans the OS chose,
+   and CJK to a default gothic. Each script gets the face that is *its own*
+   equivalent of a text serif — mincho for Japanese, Song for Chinese, naskh for
+   Arabic, Frank Ruehl for Hebrew — so the columns read as one page set in several
+   traditions rather than a serif column next to a sans one.
+
+   Leading is per-script too. Vocalised Arabic and pointed Hebrew carry marks
+   above and below the baseline that collide at the Latin 1.9.
+   ========================================================================== */
+.col:lang(ja), .flow:lang(ja), .ctext:lang(ja) {
+  font-family: 'Hiragino Mincho ProN', 'Yu Mincho', YuMincho, 'Noto Serif JP', serif;
+}
+.col:lang(zh-Hant), .flow:lang(zh-Hant), .ctext:lang(zh-Hant) {
+  font-family: 'Songti TC', 'Source Han Serif TC', 'Noto Serif TC', PMingLiU, serif;
+}
+.col:lang(zh-Hans), .flow:lang(zh-Hans), .ctext:lang(zh-Hans) {
+  font-family: 'Songti SC', 'Source Han Serif SC', 'Noto Serif SC', SimSun, serif;
+}
+.col:lang(ar), .flow:lang(ar), .ctext:lang(ar) {
+  font-family: 'Al Bayan', 'Geeza Pro', 'Traditional Arabic', 'Noto Naskh Arabic', 'Times New Roman', serif;
+}
+.col:lang(hbo), .flow:lang(hbo), .ctext:lang(hbo) {
+  font-family: 'Frank Ruehl CLM', FrankRuehl, 'Times New Roman', 'Noto Serif Hebrew', serif;
+}
+/* Polytonic Greek is well covered by the Latin serif stack, so it inherits. */
+
+.col:lang(ar) .verse, .col:lang(hbo) .verse { line-height: 2.15; }
+.flow:lang(ar), .flow:lang(hbo) { line-height: 2.3; }
+.ctext:lang(ar), .ctext:lang(hbo) { line-height: 2.2; }
+/* Dense diacritics need the verses themselves held further apart, not just the
+   lines inside them. */
+.col:lang(ar) .verse, .col:lang(hbo) .verse,
+.col:lang(zh-Hant) .verse, .col:lang(zh-Hans) .verse { margin-bottom: 10px; }
+.col:lang(zh-Hant) .verse, .col:lang(zh-Hans) .verse { line-height: 2.05; }
+
+/* ---------- an edition that does not cover this book ---------- */
+/* Replaces a column of bare placeholders: one statement, set apart from the text
+   so it never reads as scripture. */
+.coverage {
+  margin: 0;
+  align-self: start;
+  padding: 14px 16px;
+  font-family: system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--line) 30%, transparent);
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+}
+@supports (grid-template-rows: subgrid) {
+  /* Span the whole verse region so the other columns still align to each other. */
+  .cols.aligned > .col.uncovered > .coverage { grid-row: 2 / -1; }
+}
+
+/* ---------- focus: one visible, on-brand ring everywhere ---------- */
+/* The UA default was doing the work, which meant it varied by element and all but
+   vanished on the transparent buttons. */
+:where(button, a, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+.verses :where(.vn, .vplay):focus-visible { outline-offset: 1px; }
+.swatch:focus-visible { outline-offset: 3px; }
+
+/* ---------- reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------- toast with an undo action ---------- */
+.toast { display: inline-flex; align-items: center; gap: 12px; max-width: min(520px, calc(100vw - 32px)); }
+.toastact {
+  font-family: system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--bg);
+  background: none;
+  border: 0;
+  border-inline-start: 1px solid color-mix(in srgb, var(--bg) 35%, transparent);
+  padding: 2px 0 2px 12px;
+  margin-inline-start: 0;
+  cursor: pointer;
+  text-decoration: underline;
+  flex: none;
+}
+[dir='rtl'] .toastact { padding: 2px 12px 2px 0; }
+
+/* ---------- invite builder: which version the link opens in ---------- */
+.opens {
+  order: -1;
+  flex-basis: 100%;
+  font-family: system-ui, sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.sheet.invite .colrow { flex-wrap: wrap; }

@@ -134,7 +134,7 @@ console.log('\nRight-to-left (Arabic UI + Arabic/Hebrew text)')
   const heText = await page.locator('#v-he-1 .vt').innerText()
   check('Hebrew text rendered', /[֐-׿]/.test(heText), heText.slice(0, 40))
   // drawer should open against the inline-end edge, which is the left in RTL
-  await page.locator('.tools .icon').nth(1).click()
+  await page.locator('.tools .icon').nth(2).click()
   await page.waitForSelector('.drawer')
   const d = await page.locator('.drawer').boundingBox()
   check('drawer opens on the left in RTL', d.x < 5, `x=${Math.round(d.x)}`)
@@ -147,8 +147,11 @@ console.log('\nPartial-coverage editions')
 {
   const { ctx, page } = await open({ ...BASE, ui: 'en', columns: ['en', 'el', 'he'] }, { hash: '#/genesis/1/en' })
   await page.waitForSelector('.verse')
-  const missing = await page.locator('#v-el-1 .missing').count()
-  check('Greek shows placeholder in Genesis (OT)', missing === 1)
+  check('Greek shows one coverage note in Genesis, not a dotted column',
+    (await page.locator('.col.uncovered .coverage').count()) === 1 &&
+    (await page.locator('#v-el-1').count()) === 0)
+  check('the note says what the edition covers',
+    /New Testament/i.test(await page.locator('.col.uncovered .coverage').innerText()))
   const heHas = await page.locator('#v-he-1 .vt').innerText()
   check('Hebrew has text in Genesis', /[֐-׿]/.test(heHas))
 
@@ -156,7 +159,8 @@ console.log('\nPartial-coverage editions')
   await page.waitForSelector('.verse')
   const elHas = await page.locator('#v-el-1 .vt').innerText()
   check('Greek has text in Matthew (NT)', /[Ͱ-Ͽἀ-῿]/.test(elHas), elHas.slice(0, 40))
-  check('Hebrew shows placeholder in Matthew', (await page.locator('#v-he-1 .missing').count()) === 1)
+  check('Hebrew shows a coverage note in Matthew',
+    /Old Testament/i.test(await page.locator('.col.uncovered .coverage').innerText()))
   await ctx.close()
 }
 
@@ -190,8 +194,7 @@ console.log('\nReference search in any edition language')
     const got = (await go.count()) ? (await go.innerText()).replace(/^→\s*Go to\s*/, '').trim() : '(none)'
     check(`"${query}" → ${expect}`, got === expect, `got "${got}"`)
     await page.keyboard.press('Escape')
-    await page.locator('.sheet-backdrop').click({ position: { x: 5, y: 5 } }).catch(() => {})
-    await page.waitForTimeout(80)
+    await page.waitForTimeout(150)
   }
   await ctx.close()
 }
@@ -218,26 +221,41 @@ console.log('\nInvite links')
     .replace(/\//g, '_')
     .replace(/=+$/, '')
 
-  // decline: settings untouched
+  // Receiving: applies immediately, no approval step.
   const { ctx, page } = await open({ ...BASE, ui: 'en', columns: ['en', 'fr'] }, { hash: `#/i/${payload}` })
-  await page.waitForSelector('.sheet.invite')
-  check('invite asks before changing anything', true)
-  await page.locator('.sheet.invite .ghost').click()
-  await page.waitForTimeout(200)
-  const colsAfterDecline = await page.evaluate(() => JSON.parse(localStorage.getItem('prefs')).columns)
-  check('declining leaves columns alone', JSON.stringify(colsAfterDecline) === JSON.stringify(['en', 'fr']), colsAfterDecline.join(','))
-  check('declining still opens the passage', (await page.evaluate(() => location.hash)).includes('matthew/15'))
+  await page.waitForSelector('.verse')
+  check('no approval dialog appears', (await page.locator('.sheet.invite').count()) === 0)
+  const applied = await page.evaluate(() => JSON.parse(localStorage.getItem('prefs')).columns)
+  check('sender’s editions applied at once', JSON.stringify(applied) === JSON.stringify(['ar', 'en']), applied.join(','))
+  check('opens in the sender’s first edition', (await page.evaluate(() => location.hash)).includes('/ar/'))
+  check('lands on the shared verse', (await page.evaluate(() => location.hash)).endsWith('/3'))
+  const toast = await page.locator('.toast').innerText()
+  check('toast names what changed', /العربية/.test(toast), toast.replace(/\n/g, ' '))
+
+  // Undo restores the reader's own arrangement without a dialog.
+  await page.locator('.toastact').click()
+  await page.waitForTimeout(300)
+  const undone = await page.evaluate(() => JSON.parse(localStorage.getItem('prefs')).columns)
+  check('Undo restores the previous editions', JSON.stringify(undone) === JSON.stringify(['en', 'fr']), undone.join(','))
   await ctx.close()
 
-  // accept: columns adopted
-  const { ctx: c2, page: p2 } = await open({ ...BASE, ui: 'en', columns: ['en', 'fr'] }, { hash: `#/i/${payload}` })
+  // Sending: the builder picks which editions to share, and their order.
+  const { ctx: c2, page: p2 } = await open({ ...BASE, ui: 'en', columns: ['en', 'ja'] }, { hash: '#/matthew/15/en' })
+  await p2.waitForSelector('.verse')
+  await p2.locator('.tools .icon').nth(1).click()   // share
   await p2.waitForSelector('.sheet.invite')
+  check('builder lists the sender’s editions first', (await p2.locator('.sheet.invite .colrow:not(.off)').count()) === 2)
+  check('builder offers the other nine', (await p2.locator('.sheet.invite .colrow.off').count()) === 9)
+  check('builder marks which edition it opens in', (await p2.locator('.sheet.invite .opens').count()) === 1)
+  // add Arabic, then move it to the top so the link opens in it
+  await p2.locator('.sheet.invite .colrow.off', { hasText: 'العربية' }).locator('.mini').click()
+  await p2.waitForTimeout(150)
+  await p2.locator('.sheet.invite .colrow:not(.off)').last().locator('.mini').nth(0).click()
+  await p2.locator('.sheet.invite .colrow:not(.off)').nth(1).locator('.mini').nth(0).click()
+  await p2.waitForTimeout(150)
+  const order = await p2.locator('.sheet.invite .colrow:not(.off) .collabel').allInnerTexts()
+  check('reordering works in the builder', /العربية/.test(order[0]), order.map(x => x.split('\n')[0]).join(' | '))
   await p2.screenshot({ path: `${OUT}/10-invite.png` })
-  await p2.locator('.sheet.invite .primary').click()
-  await p2.waitForTimeout(400)
-  const colsAfterAccept = await p2.evaluate(() => JSON.parse(localStorage.getItem('prefs')).columns)
-  check('accepting adopts the sender’s editions', JSON.stringify(colsAfterAccept) === JSON.stringify(['ar', 'en']), colsAfterAccept.join(','))
-  check('accepting opens in the sender’s edition', (await p2.evaluate(() => location.hash)).includes('/ar/'))
   await c2.close()
 }
 
@@ -249,15 +267,30 @@ console.log('\nVerse sheet')
   await page.locator('#v-en-16 .vn').click()
   await page.waitForSelector('.verse-sheet')
   check('only visible editions are compared', (await page.locator('.verse-sheet .crow').count()) === 2)
-  check('per-edition highlight swatches present', (await page.locator('.verse-sheet .hlctl .swatch').count()) === 10)
-  await page.locator('.verse-sheet .crow').first().locator('.hlctl .swatch').first().click()
-  await page.waitForTimeout(250)
-  check('highlight applied and shown in the sheet', (await page.locator('.verse-sheet .ctext .hl').count()) > 0)
-  check('remove-highlight control appears', (await page.locator('.verse-sheet .abtn.tiny').count()) === 1)
+  check('no whole-verse colour swatches', (await page.locator('.verse-sheet .hlctl').count()) === 0)
+
+  // Select part of the verse inside the sheet — the same gesture as in the reader.
+  await page.evaluate(() => {
+    const ct = document.querySelector('#sv-en-3-16 .ctext')
+    const t = document.createTreeWalker(ct, NodeFilter.SHOW_TEXT).nextNode()
+    const r = document.createRange()
+    r.setStart(t, 0)
+    r.setEnd(t, 11)
+    const s = getSelection()
+    s.removeAllRanges()
+    s.addRange(r)
+  })
+  await page.waitForSelector('.atoolbar')
+  check('selecting inside the sheet opens the highlight toolbar', true)
+  await page.locator('.atoolbar .sw-blue').click()
+  await page.waitForTimeout(300)
+  const painted = await page.locator('#sv-en-3-16 .ctext .hl.hl-blue').allInnerTexts()
+  check('only the selected words are highlighted', painted.join('') === 'For God so ', `got "${painted.join('')}"`)
+  check('reader shows the same partial highlight', (await page.locator('#v-en-16 .hl.hl-blue').count()) > 0)
   await page.screenshot({ path: `${OUT}/10-versesheet.png` })
   await page.locator('.verse-sheet .abtn.tiny').click()
   await page.waitForTimeout(250)
-  check('highlight removed', (await page.locator('.verse-sheet .ctext .hl').count()) === 0)
+  check('per-edition clear removes it', (await page.locator('#sv-en-3-16 .ctext .hl').count()) === 0)
   await ctx.close()
 }
 
@@ -331,7 +364,7 @@ console.log('\nNotes drawer')
   await page.locator('.sheet.note .primary').click()
   await page.waitForTimeout(250)
 
-  await page.locator('.tools .icon').nth(1).click()
+  await page.locator('.tools .icon').nth(2).click()
   await page.waitForSelector('.drawer')
   check('note listed', (await page.locator('.dlist li').count()) === 1)
   check('tag shown on the note', (await page.locator('.dlist .chip.static').count()) === 1)
@@ -406,7 +439,7 @@ console.log('\nSettings: stop at chapter end + licences sheet')
 {
   const { ctx, page } = await open({ ...BASE, ui: 'en', columns: ['en'] })
   await page.waitForSelector('.verse')
-  await page.locator('.tools .icon').nth(2).click()
+  await page.locator('.tools .icon').nth(3).click()
   await page.waitForSelector('.sheet')
   const groups = await page.locator('.sgroup').allInnerTexts()
   check('settings are grouped', groups.length >= 3, groups.join(' | '))
@@ -423,12 +456,82 @@ console.log('\nSettings: stop at chapter end + licences sheet')
   })
   check('UI language, versions, align, furigana, swipe all in that group', langGroupRows.length >= 5, `${langGroupRows.length} rows`)
 
-  await page.locator('.srow.about .mini').nth(1).click()
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(200)
+  await page.locator('.attrib .liclink').click()
   await page.waitForSelector('.sheet.licences')
   check('licences sheet lists all 11 editions', (await page.locator('.liclist li').count()) === 11)
   check('licences sheet links the repo', (await page.locator('.licrepo a').count()) === 1)
   await page.screenshot({ path: `${OUT}/10-licences.png` })
   await ctx.close()
+}
+
+// ---------- 12b. apostrophes and quotes fold in search ----------
+// The editions disagree: KJV/Almeida use U+0027, the KJF uses U+2019. A reader types
+// whichever their keyboard gives, so both must match either.
+console.log('\nSearch: punctuation folding')
+{
+  const { ctx, page } = await open({ ...BASE, ui: 'en', columns: ['en', 'fr'] })
+  await page.waitForSelector('.verse')
+  const hits = async (q) => {
+    await page.locator('.tools .icon').first().click()
+    await page.waitForSelector('.searchin')
+    await page.locator('.searchin').fill(q)
+    await page.waitForTimeout(2500)
+    const n = await page.locator('.dlist li').count()
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(200)
+    return n
+  }
+  const straight = await hits("l'Esprit")
+  const curly = await hits('l\u2019Esprit')
+  check("straight apostrophe finds French text (l'Esprit)", straight > 0, `${straight} hits`)
+  check('curly apostrophe finds the same', curly > 0, `${curly} hits`)
+  check('both forms agree', straight === curly, `${straight} vs ${curly}`)
+  const gods = await hits("God's")
+  check("straight apostrophe finds English text (God's)", gods > 0, `${gods} hits`)
+  await ctx.close()
+}
+
+// ---------- 12c. no em-dash in rendered copy ----------
+console.log('\nCopy convention: no em-dash on the frontend')
+{
+  for (const ui of ['en', 'fr', 'ja', 'ar']) {
+    const { ctx, page } = await open({ ...BASE, ui, columns: ['en', 'el', 'he'] }, { hash: '#/genesis/1/en' })
+    await page.waitForSelector('.verse')
+    // Open each panel so its copy is in the DOM, closing with Escape between.
+    for (const i of [3, 2, 0]) {
+      await page.locator('.tools .icon').nth(i).click()
+      await page.waitForTimeout(250)
+      const seen = await page.evaluate(() => {
+        const out = []
+        for (const el of document.querySelectorAll('button, label, .empty, .sgroup, option, .collabel, .licname, .lictext')) {
+          if (el.textContent && el.textContent.includes('\u2014')) out.push(el.textContent.trim().slice(0, 60))
+        }
+        return out
+      })
+      if (seen.length) console.log('      panel copy with em-dash:', seen.join(' / '))
+      await page.keyboard.press('Escape')
+      await page.waitForTimeout(200)
+    }
+    // chrome text only: verse text is scripture and not ours to restyle
+    const found = await page.evaluate(() => {
+      const bad = []
+      for (const el of document.querySelectorAll('button, label, .empty, .sgroup, .toast, .attrib, .coverage, .clang, .dmeta, .badge, .cnote, option')) {
+        if (el.textContent && el.textContent.includes('\u2014')) bad.push(el.textContent.trim().slice(0, 50))
+      }
+      const attrs = []
+      for (const el of document.querySelectorAll('[title], [aria-label], [placeholder]')) {
+        for (const a of ['title', 'aria-label', 'placeholder']) {
+          const v = el.getAttribute(a)
+          if (v && v.includes('\u2014')) attrs.push(`${a}="${v.slice(0, 40)}"`)
+        }
+      }
+      return [...bad, ...attrs]
+    })
+    check(`ui=${ui} no em-dash in chrome`, found.length === 0, found.join(' / ') || 'clean')
+    await ctx.close()
+  }
 }
 
 // ---------- 13. splash lists every edition ----------

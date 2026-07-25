@@ -166,7 +166,7 @@ export const VERSIONS: VersionMeta[] = [
     markup: 'plain',
     coverage: 'nt',
     defaultOn: false,
-    attribution: 'Ἑλληνική: Textus Receptus — New Testament only, public domain',
+    attribution: 'Ἑλληνική: Textus Receptus. New Testament only, public domain',
   },
   {
     id: 'he',
@@ -185,7 +185,7 @@ export const VERSIONS: VersionMeta[] = [
     // the well-known cases). Rows are matched by verse number, so in those chapters
     // the Hebrew column will not line up with the others. Stated rather than hidden.
     attribution:
-      'עברית: Westminster Leningrad Codex — Old Testament only, public domain. Hebrew chapter and verse divisions differ from the English in roughly one OT chapter in seven, so parallel rows do not always correspond.',
+      'עברית: Westminster Leningrad Codex. Old Testament only, public domain. Hebrew chapter and verse divisions differ from the English in roughly one OT chapter in seven, so parallel rows do not always correspond.',
   },
 ]
 

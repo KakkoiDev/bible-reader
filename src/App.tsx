@@ -5,7 +5,16 @@ import { BY_ID, DEFAULT_COLUMNS, VERSION_IDS, coversBook, isLang, type Lang } fr
 import { VerseText, type HL } from './lib/format'
 import { useAnnotations, vref, parseRef, allTags, type HColor } from './lib/annotations'
 import { selectionContext, setWordHighlight, clearWordHighlight } from './lib/highlight'
-import { ttsSupported, primeVoices, speakVerses, stopSpeaking, hasVoice, type Gender } from './lib/tts'
+import {
+  ttsSupported,
+  primeVoices,
+  speakVerses,
+  stopSpeaking,
+  hasVoice,
+  voicesLoaded,
+  onVoicesChanged,
+  type Gender,
+} from './lib/tts'
 import { translator, detectUiLang } from './lib/i18n'
 import { decodeInvite, inviteUrl, type Invite } from './lib/invite'
 import {
@@ -20,7 +29,7 @@ import {
   type DrawerItem,
   type SortMode,
 } from './components/Panels'
-import { SearchSheet, Navigator, VerseSheet, InviteSheet, type VerseSheetData } from './components/Sheets'
+import { SearchSheet, Navigator, VerseSheet, InviteBuilder, type VerseSheetData } from './components/Sheets'
 
 const BASE = import.meta.env.BASE_URL
 const SWIPE_MIN = 45
@@ -126,7 +135,13 @@ export default function App() {
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs)
   const [wide, setWide] = useState(() => matchMedia('(min-width: 900px)').matches)
   const [loading, setLoading] = useState(false)
-  const [toast, setToast] = useState<string | null>(null)
+  // An action turns the toast into an undo affordance — used by invite links, which
+  // apply immediately rather than asking first.
+  const [toast, setToast] = useState<{ text: string; action?: { label: string; run: () => void } } | null>(null)
+  const say = useCallback(
+    (text: string, action?: { label: string; run: () => void }) => setToast({ text, action }),
+    [],
+  )
   const [speaking, setSpeaking] = useState<{ ch: number; v: number; lang: Lang } | null>(null)
   const [playingLang, setPlayingLang] = useState<Lang | null>(null)
   const [autoNext, setAutoNext] = useState<Lang | null>(null)
@@ -138,6 +153,8 @@ export default function App() {
   const [paras, setParas] = useState<Paragraphs>({})
   const [invite, setInvite] = useState<Invite | null>(initHash.invite ?? null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  // Set to the verse to share (or 0 for the chapter) while the builder is open.
+  const [inviteFor, setInviteFor] = useState<number | null>(null)
   const canTTS = ttsSupported()
 
   const { store, addHighlight, clearHighlightsIn, setNote, setTags, setOrder, remove, importStore } = useAnnotations()
@@ -287,20 +304,30 @@ export default function App() {
   // keep the current language among the enabled columns; a shared link pointing at a
   // hidden edition opens in the first visible one instead, and says so.
   useEffect(() => {
+    // An invite sets the editions and the reading edition together; without this
+    // guard the fallback can observe the intermediate state and redirect away from
+    // the edition the invite was meant to open.
+    if (invite) return
     if (!prefs.columns.length || prefs.columns.includes(pos.lang)) return
     const fallback = prefs.columns[0]
-    setToast(t('hidden_version', { shown: BY_ID[fallback].label, hidden: BY_ID[pos.lang].label }))
+    say(t('hidden_version', { shown: BY_ID[fallback].label, hidden: BY_ID[pos.lang].label }))
     navigate({ lang: fallback, verse: flashVerse ?? undefined })
-  }, [prefs.columns, pos.lang, navigate, flashVerse, t])
+  }, [prefs.columns, pos.lang, navigate, flashVerse, t, say, invite])
 
   // ---- audio (Web Speech) ----
+  // Chrome populates getVoices() asynchronously, so voice availability has to be
+  // reactive — memoising it at mount labelled every edition "no voice installed"
+  // and hid every play button, because the list was still empty.
+  const [voicesTick, setVoicesTick] = useState(0)
   useEffect(() => {
     primeVoices()
+    return onVoicesChanged(() => setVoicesTick((n) => n + 1))
   }, [])
   const noVoice = useMemo(() => {
-    if (!canTTS) return new Set<Lang>()
+    // Until the list arrives, "unknown" — don't claim anything is unspeakable.
+    if (!canTTS || !voicesLoaded()) return new Set<Lang>()
     return new Set(VERSION_IDS.filter((id) => !hasVoice(id)))
-  }, [canTTS, prefs.ui])
+  }, [canTTS, voicesTick])
   const genRef = useRef(0) // bumped on stop/new-play so stale callbacks are ignored
   const stopAudio = useCallback(() => {
     genRef.current++
@@ -524,9 +551,9 @@ export default function App() {
     const handler = () => {
       window.clearTimeout(timer)
       timer = window.setTimeout(() => {
-        const el = readerRef.current
-        if (!el) return
-        const ctx = selectionContext(el)
+        // No root: selections are matched by the verse-id patterns themselves, so
+        // this also picks up text selected inside the verse sheet.
+        const ctx = selectionContext()
         if (ctx)
           setSel({
             lang: ctx.lang ?? posRef.current.lang,
@@ -578,26 +605,28 @@ export default function App() {
       const url = `${location.origin}${location.pathname}${buildHash(pos.slug, pos.chapter, lang, v)}`
       try {
         await navigator.clipboard.writeText(url)
-        setToast(t('link_copied'))
+        say(t('link_copied'))
       } catch {
-        setToast(t('copy_failed'))
+        say(t('copy_failed'))
       }
     },
     [pos.slug, pos.chapter, t],
   )
-  /** An invite carries the reader's whole setup, not just the passage. */
+  /** An invite carries a chosen set of editions, not just the passage. The first
+   *  column is the one it opens in. */
   const copyInvite = useCallback(
-    async (verse?: number) => {
+    async (columns: Lang[], verse?: number) => {
       try {
         await navigator.clipboard.writeText(
-          inviteUrl({ columns: prefs.columns, lang: pos.lang, slug: pos.slug, chapter: pos.chapter, verse }),
+          inviteUrl({ columns, lang: columns[0], slug: pos.slug, chapter: pos.chapter, verse }),
         )
-        setToast(t('invite_copied'))
+        say(t('invite_copied'))
       } catch {
-        setToast(t('copy_failed'))
+        say(t('copy_failed'))
       }
+      setInviteFor(null)
     },
-    [prefs.columns, pos.lang, pos.slug, pos.chapter, t],
+    [pos.slug, pos.chapter, t, say],
   )
   const copyVerseText = useCallback(
     async (lang: Lang, ch: number, v: number, text: string) => {
@@ -612,9 +641,9 @@ export default function App() {
       const name = bookName(book, lang)
       try {
         await navigator.clipboard.writeText(`"${plain}" [${name} ${ch}:${v}] ${BY_ID[lang].fullName}`)
-        setToast(t('verse_copied'))
+        say(t('verse_copied'))
       } catch {
-        setToast(t('copy_failed'))
+        say(t('copy_failed'))
       }
     },
     [book, t],
@@ -678,9 +707,36 @@ export default function App() {
 
   useEffect(() => {
     if (!toast) return
-    const timer = setTimeout(() => setToast(null), 2400)
+    const timer = setTimeout(() => setToast(null), toast.action ? 7000 : 2400)
     return () => clearTimeout(timer)
   }, [toast])
+
+  // Escape closes the topmost overlay, innermost first, so a stack of sheets unwinds
+  // one layer at a time instead of everything vanishing at once.
+  useEffect(() => {
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      const layers: [boolean, () => void][] = [
+        [confirmDelete !== null, () => setConfirmDelete(null)],
+        [noteRef !== null, () => setNoteRef(null)],
+        [verseSheet !== null, () => setVerseSheet(null)],
+        [inviteFor !== null, () => setInviteFor(null)],
+        [licencesOpen, () => setLicencesOpen(false)],
+        [searchOpen, () => setSearchOpen(false)],
+        [navOpen, () => setNavOpen(false)],
+        [drawerOpen, () => setDrawerOpen(false)],
+        [settingsOpen, () => setSettingsOpen(false)],
+        [sel !== null, () => clearSelection()],
+      ]
+      const top = layers.find(([open]) => open)
+      if (top) {
+        e.preventDefault()
+        top[1]()
+      }
+    }
+    window.addEventListener('keydown', onEsc)
+    return () => window.removeEventListener('keydown', onEsc)
+  })
 
   // keyboard
   useEffect(() => {
@@ -731,8 +787,8 @@ export default function App() {
     a.click()
     URL.revokeObjectURL(url)
     const n = Object.keys(store).length
-    setToast(n ? t('exported_n', { n }) : t('nothing_to_export'))
-  }, [store, t])
+    say(n ? t('exported_n', { n }) : t('nothing_to_export'))
+  }, [store, t, say])
 
   const importAnnotations = useCallback(
     (file: File) => {
@@ -743,12 +799,12 @@ export default function App() {
           const data = parsed && parsed.type === 'annotations' && parsed.data ? parsed.data : parsed
           if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('bad')
           importStore(data)
-          setToast(t('imported_n', { n: Object.keys(data).length }))
+          say(t('imported_n', { n: Object.keys(data).length }))
         } catch {
-          setToast(t('import_failed'))
+          say(t('import_failed'))
         }
       }
-      reader.onerror = () => setToast(t('import_failed'))
+      reader.onerror = () => say(t('import_failed'))
       reader.readAsText(file)
     },
     [importStore, t],
@@ -816,23 +872,26 @@ export default function App() {
     [drawerItems, setOrder],
   )
 
-  const acceptInvite = useCallback(() => {
+  // An invite comes from someone who already knows the recipient, so it applies
+  // with no approval step: adopt the sender's editions and open the passage. The
+  // toast carries an Undo so a link can't silently cost someone a arrangement they
+  // liked, without putting a dialog in the way of reading.
+  const columnsRef = useRef(prefs.columns)
+  columnsRef.current = prefs.columns
+  useEffect(() => {
     if (!invite) return
+    const previous = columnsRef.current
+    setInvite(null)
     setPref({ columns: invite.columns })
     setFlashVerse(invite.verse ?? null)
     setPos({ slug: invite.slug, chapter: invite.chapter, lang: invite.lang })
     location.hash = buildHash(invite.slug, invite.chapter, invite.lang, invite.verse)
-    setInvite(null)
-  }, [invite, setPref])
-  const declineInvite = useCallback(() => {
-    if (!invite) return
-    // Keep the reader's own editions; open the passage in one they already have.
-    const lang = prefs.columns.includes(invite.lang) ? invite.lang : prefs.columns[0] ?? 'en'
-    setFlashVerse(invite.verse ?? null)
-    setPos({ slug: invite.slug, chapter: invite.chapter, lang })
-    location.hash = buildHash(invite.slug, invite.chapter, lang, invite.verse)
-    setInvite(null)
-  }, [invite, prefs.columns])
+    window.scrollTo({ top: 0 })
+    say(t('invite_applied', { versions: invite.columns.map((l) => BY_ID[l].label).join(' · ') }), {
+      label: t('undo'),
+      run: () => setPref({ columns: previous }),
+    })
+  }, [invite, setPref, say, t])
 
   const title = bookName(book, prefs.ui)
   const readingTitle = bookName(book, pos.lang)
@@ -849,6 +908,7 @@ export default function App() {
         </button>
         <div className="tools">
           <button className="icon" title={t('search')} onClick={() => setSearchOpen(true)}>🔍</button>
+          <button className="icon" title={t('copy_invite')} onClick={() => setInviteFor(0)}>🔗</button>
           <button className="icon" title={t('saved_aria')} onClick={() => setDrawerOpen(true)}>🔖</button>
           <button className="icon" title={t('settings')} onClick={() => setSettingsOpen(true)}>⚙</button>
         </div>
@@ -910,16 +970,24 @@ export default function App() {
           <div className={`cols cols-${langsToShow.length} ${aligned ? 'aligned' : ''}`} style={colsStyle}>
             {langsToShow.map((l) => {
               const m = BY_ID[l]
-              const playable = canTTS && !noVoice.has(l)
+              const covers = bookIdx < 0 || coversBook(l, bookIdx)
+              // Nothing to speak in a column with no text for this book.
+              const playable = canTTS && !noVoice.has(l) && covers
+              // Greek carries no Old Testament and Hebrew no New Testament. Rendering
+              // a verse row per number would give a column of bare placeholders that
+              // reads as a loading failure — and, with alignment on, would stretch
+              // every row. One statement of what the edition contains is both honest
+              // and quieter.
+              const uncovered = !covers
               return (
-                <section key={l} className="col" lang={m.htmlLang} dir={m.dir}>
+                <section key={l} className={`col ${uncovered ? 'uncovered' : ''}`} lang={m.htmlLang} dir={m.dir}>
                   {(wide || playable) && (
                     <div className="colhead">
                       {wide && <span>{m.label} · {m.edition}</span>}
                       {playable && (
                         <button
                           className={`colplay ${playingLang === l ? 'on' : ''}`}
-                          title={playingLang === l ? t('stop') : `${t('play_chapter')} — ${m.label}`}
+                          title={playingLang === l ? t('stop') : `${t('play_chapter')}: ${m.label}`}
                           onClick={() => (playingLang === l ? stopAudio() : playChapter(l))}
                         >
                           {playingLang === l ? '⏹' : '▶'} {m.edition}
@@ -927,6 +995,11 @@ export default function App() {
                       )}
                     </div>
                   )}
+                  {uncovered ? (
+                    <p className="coverage" dir={BY_ID[prefs.ui].dir} lang={BY_ID[prefs.ui].htmlLang}>
+                      {t(m.coverage === 'nt' ? 'coverage_nt_only' : 'coverage_ot_only')}
+                    </p>
+                  ) : (
                   <ol className="verses">
                     {chapter?.verses.map((v) => {
                       const ref = vref(pos.slug, pos.chapter, v.v)
@@ -971,6 +1044,7 @@ export default function App() {
                       )
                     })}
                   </ol>
+                  )}
                 </section>
               )
             })}
@@ -1041,8 +1115,6 @@ export default function App() {
         onStopAtChapterEnd={(v) => setPref({ stopAtChapterEnd: v })}
         onExport={exportAnnotations}
         onImport={importAnnotations}
-        onCopyInvite={() => copyInvite()}
-        onLicences={() => setLicencesOpen(true)}
         onClose={() => setSettingsOpen(false)}
       />
 
@@ -1114,16 +1186,7 @@ export default function App() {
           copyVerseText(verseSheet.lang, verseSheet.ch, verseSheet.v, verseSheet.text[verseSheet.lang]!)
         }
         onCopyLink={() => verseSheet && copyVerseLink(verseSheet.lang, verseSheet.v)}
-        onCopyInvite={() => verseSheet && copyInvite(verseSheet.v)}
-        onHighlight={(lang, color) => {
-          if (!verseSheet) return
-          const text = verseSheet.text[lang]
-          if (!text) return
-          const ref = vref(verseSheet.slug, verseSheet.ch, verseSheet.v)
-          // Whole-verse highlight: the sheet has no selection to work from.
-          clearHighlightsIn(ref, lang, 0, Number.MAX_SAFE_INTEGER)
-          addHighlight(ref, { lang, start: 0, end: displayLength(text, lang), color })
-        }}
+        onCopyInvite={() => verseSheet && setInviteFor(verseSheet.v)}
         onClearHighlight={(lang) =>
           verseSheet &&
           clearHighlightsIn(vref(verseSheet.slug, verseSheet.ch, verseSheet.v), lang, 0, Number.MAX_SAFE_INTEGER)
@@ -1139,16 +1202,13 @@ export default function App() {
         onClose={() => setVerseSheet(null)}
       />
 
-      <InviteSheet
-        invite={invite}
-        refLabel={
-          invite
-            ? `${bookName(index.find((b) => b.slug === invite.slug), prefs.ui)} ${invite.chapter}${invite.verse ? `:${invite.verse}` : ''}`
-            : ''
-        }
+      <InviteBuilder
+        open={inviteFor !== null}
         t={t}
-        onAccept={acceptInvite}
-        onDecline={declineInvite}
+        initial={prefs.columns}
+        refLabel={`${title} ${pos.chapter}${inviteFor ? `:${inviteFor}` : ''}`}
+        onCopy={(cols) => copyInvite(cols, inviteFor || undefined)}
+        onClose={() => setInviteFor(null)}
       />
 
       {noteRef && (
@@ -1191,16 +1251,23 @@ export default function App() {
         </button>
       )}
 
-      {toast && <div className="toast" role="status">{toast}</div>}
+      {toast && (
+        <div className="toast" role="status">
+          <span>{toast.text}</span>
+          {toast.action && (
+            <button
+              className="toastact"
+              onClick={() => {
+                toast.action!.run()
+                setToast(null)
+              }}
+            >
+              {toast.action.label}
+            </button>
+          )}
+        </div>
+      )}
     </div>
   )
 }
 
-/** Length of a verse in displayed-base coordinates — the space highlight offsets
- *  live in, which is not the raw stored length once markup is stripped. */
-function displayLength(text: string, lang: Lang): number {
-  const markup = BY_ID[lang].markup
-  if (markup === 'ruby') return text.replace(/\{\{([^|}]*)\|[^}]+\}\}/g, '$1').length
-  if (markup === 'kjv') return text.replace(/[{}]/g, '').length
-  return text.length
-}

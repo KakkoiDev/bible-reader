@@ -55,6 +55,23 @@ Every attribution is reproduced verbatim in the app under **Texts & licences**.
   hidden, it opens in their first visible one and says so. An **invite link** also
   carries the sender's edition set, and always asks before changing anything.
 
+## Frontend conventions
+
+- **No em-dash (`—`) in user-visible copy.** Use a period, a colon, or a middot
+  (`·`). This covers the `src/lib/i18n.ts` string tables in all eleven languages,
+  the `attribution` text in `src/lib/versions.ts`, JSX literals, `title` and
+  `aria-label` attributes, and `index.html`. It does not apply to code comments or
+  to the punctuation-folding map in `src/lib/search.ts`, where `—` is a character
+  being normalised rather than copy. `scripts/verify10.mjs` asserts that no em-dash
+  reaches the rendered DOM, so a regression fails the suite.
+- **Per-script typography.** Each writing system gets its own text face and leading
+  (see the "Per-script typography" block in `src/styles.css`). Adding an edition in
+  a new script means adding a stack for it, not letting it fall back to the Latin
+  serif.
+- **Logical CSS properties.** Use `margin-inline-*`, `border-inline-*`,
+  `inset-inline-*` and `text-align: start` rather than their physical equivalents:
+  Arabic and Hebrew render right-to-left and the whole UI mirrors with them.
+
 ## Develop
 
 ```bash

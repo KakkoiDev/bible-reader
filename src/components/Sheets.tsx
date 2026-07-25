@@ -1,13 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { IndexItem } from '../lib/types'
 import { bookName } from '../lib/types'
-import { BY_ID, type Lang } from '../lib/versions'
+import { BY_ID, VERSIONS, type Lang } from '../lib/versions'
 import { VerseText, type HL } from '../lib/format'
-import { COLORS, type HColor } from '../lib/annotations'
 import { search, parseReference, bookLookup, minQueryLen, type Hit } from '../lib/search'
 import type { T } from '../lib/i18n'
 import { coverageNote } from './Panels'
-import type { Invite } from '../lib/invite'
 
 /* ------------------------------- Search ------------------------------- */
 export function SearchSheet({
@@ -206,7 +204,6 @@ export function VerseSheet({
   onCopyInvite,
   onPlay,
   onNote,
-  onHighlight,
   onClearHighlight,
   onClose,
 }: {
@@ -222,7 +219,6 @@ export function VerseSheet({
   onCopyInvite: () => void
   onPlay: () => void
   onNote: () => void
-  onHighlight: (lang: Lang, color: HColor) => void
   onClearHighlight: (lang: Lang) => void
   onClose: () => void
 }) {
@@ -241,29 +237,19 @@ export function VerseSheet({
             const hl = highlights[l]
             const note = coverageNote(t, l)
             return (
-              <div key={l} className="crow" lang={m.htmlLang} dir={m.dir}>
+              // id lets selectionContext() resolve a selection made in here, so text
+              // is highlighted by selecting the words you want — same gesture as in
+              // the reader — rather than colouring the whole verse.
+              <div key={l} id={`sv-${l}-${data.ch}-${data.v}`} className="crow" lang={m.htmlLang} dir={m.dir}>
                 <div className="clang">
                   <span>
                     {m.label} · {m.edition}
                     {!text && note && <small className="cnote">{note}</small>}
                   </span>
-                  {text && (
-                    <span className="hlctl">
-                      {COLORS.map((c) => (
-                        <button
-                          key={c}
-                          className={`swatch mini-sw sw-${c}`}
-                          title={t('highlight')}
-                          aria-label={`${t('highlight')} — ${c}`}
-                          onClick={() => onHighlight(l, c)}
-                        />
-                      ))}
-                      {hl && hl.length > 0 && (
-                        <button className="abtn tiny" title={t('remove_highlight')} onClick={() => onClearHighlight(l)}>
-                          ⌫
-                        </button>
-                      )}
-                    </span>
+                  {text && hl && hl.length > 0 && (
+                    <button className="abtn tiny" title={t('remove_highlight')} onClick={() => onClearHighlight(l)}>
+                      ⌫
+                    </button>
                   )}
                 </div>
                 <div className="ctext">
@@ -286,42 +272,83 @@ export function VerseSheet({
   )
 }
 
-/* ------------------------------ Invite sheet --------------------------- */
-/** Accepting an invite rewrites which editions the reader sees, so it always asks
- *  first — a link should never silently reconfigure someone's app. */
-export function InviteSheet({
-  invite,
-  refLabel,
+/* ----------------------------- Invite builder --------------------------- */
+/** Compose a link that carries a chosen set of editions, in a chosen order.
+ *  The first edition is the one the passage opens in, so there is no separate
+ *  control for that — one less decision to make. */
+export function InviteBuilder({
+  open,
   t,
-  onAccept,
-  onDecline,
+  initial,
+  refLabel,
+  onCopy,
+  onClose,
 }: {
-  invite: Invite | null
-  refLabel: string
+  open: boolean
   t: T
-  onAccept: () => void
-  onDecline: () => void
+  /** Seed the picker with what the sender is currently reading. */
+  initial: Lang[]
+  refLabel: string
+  onCopy: (columns: Lang[]) => void
+  onClose: () => void
 }) {
-  if (!invite) return null
-  const names = invite.columns.map((l) => BY_ID[l].label).join(' · ')
+  const [cols, setCols] = useState<Lang[]>(initial)
+  useEffect(() => {
+    if (open) setCols(initial.length ? initial : [VERSIONS[0].id])
+  }, [open, initial])
+  if (!open) return null
+
+  const move = (l: Lang, d: number) => {
+    const i = cols.indexOf(l)
+    const j = i + d
+    if (j < 0 || j >= cols.length) return
+    const c = [...cols]
+    ;[c[i], c[j]] = [c[j], c[i]]
+    setCols(c)
+  }
+  const label = (id: Lang) => {
+    const m = BY_ID[id]
+    const note = coverageNote(t, id)
+    return (
+      <span className="collabel" lang={m.htmlLang} dir={m.dir}>
+        {m.label} <small>{m.edition}</small>
+        {note && <small className="cnote" dir="auto">{note}</small>}
+      </span>
+    )
+  }
+
   return (
-    <div className="sheet-backdrop" onClick={onDecline}>
+    <div className="sheet-backdrop" onClick={onClose}>
       <div className="sheet invite" onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
-          <b>{t('invite_title')}</b>
+          <b>{t('invite_build_title')}</b>
+          <button className="icon" onClick={onClose} aria-label={t('close')}>✕</button>
         </div>
-        <p className="empty">{t('invite_body', { ref: refLabel, versions: names })}</p>
-        <ul className="invlist">
-          {invite.columns.map((l) => (
-            <li key={l} lang={BY_ID[l].htmlLang} dir={BY_ID[l].dir}>
-              {BY_ID[l].label} <small>{BY_ID[l].edition}</small>
-            </li>
+        <p className="empty">{t('invite_build_body')}</p>
+        <div className="collist">
+          {cols.map((l, i) => (
+            <div className="colrow" key={l}>
+              {i === 0 ? <span className="opens">{refLabel}</span> : null}
+              {label(l)}
+              <div className="colctl">
+                <button className="mini" disabled={i === 0} onClick={() => move(l, -1)} aria-label={t('move_up')}>↑</button>
+                <button className="mini" disabled={i === cols.length - 1} onClick={() => move(l, 1)} aria-label={t('move_down')}>↓</button>
+                <button className="mini" disabled={cols.length <= 1} onClick={() => setCols(cols.filter((x) => x !== l))}>
+                  {t('hide')}
+                </button>
+              </div>
+            </div>
           ))}
-        </ul>
+          {VERSIONS.filter((v) => !cols.includes(v.id)).map((v) => (
+            <div className="colrow off" key={v.id}>
+              {label(v.id)}
+              <button className="mini" onClick={() => setCols([...cols, v.id])}>{t('show')}</button>
+            </div>
+          ))}
+        </div>
         <div className="noteact">
-          <button className="ghost" onClick={onDecline}>{t('invite_decline')}</button>
           <span className="spacer" />
-          <button className="primary" onClick={onAccept}>{t('invite_accept')}</button>
+          <button className="primary" onClick={() => onCopy(cols)}>{t('copy_invite')}</button>
         </div>
       </div>
     </div>

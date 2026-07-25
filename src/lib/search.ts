@@ -13,9 +13,32 @@ export interface Entry {
   ch: number
   v: number
   text: string
-  /** Case-folded copy for latin-script matching; identical to `text` for CJK/RTL. */
+  /** Case- and punctuation-folded copy used for matching. */
   fold: string
 }
+
+/**
+ * Fold the punctuation that differs between editions and keyboards.
+ *
+ * The editions are not consistent with each other: the KJV and Almeida use a
+ * straight apostrophe (U+0027) while the KJF uses a typographic one (U+2019) —
+ * 988 of them in John alone. A reader types whichever their keyboard produces, so
+ * without folding, searching `l'Esprit` or `God's` silently returns nothing.
+ *
+ * Every substitution is one character for one character, because `Hit.at` indexes
+ * into the unfolded text to build the snippet — a fold that changed length would
+ * slide the highlight off the match.
+ */
+const FOLD: Record<string, string> = {
+  '’': "'", '‘': "'", '‛': "'", 'ʼ': "'", 'ʹ': "'",
+  '´': "'", '`': "'", '′': "'",
+  '“': '"', '”': '"', '„': '"', '‟': '"', '″': '"',
+  '«': '"', '»': '"',
+  '–': '-', '—': '-', '−': '-', '‐': '-', '‑': '-',
+  ' ': ' ', ' ': ' ', ' ': ' ',
+}
+const FOLDABLE = new RegExp(`[${Object.keys(FOLD).join('')}]`, 'g')
+export const foldText = (s: string) => s.replace(FOLDABLE, (c) => FOLD[c]).toLowerCase()
 
 const plainKjv = (t: string) => t.replace(/[{}]/g, '')
 const plainRuby = (t: string) => t.replace(/\{\{([^|}]*)\|[^}]+\}\}/g, '$1') // kanji, drop readings
@@ -48,7 +71,7 @@ function indexEdition(lang: Lang): Promise<Entry[]> {
       for (const c of book.chapters)
         for (const vv of c.verses) {
           const text = strip(lang, vv.t)
-          out.push({ slug, ch: c.n, v: vv.v, text, fold: text.toLowerCase() })
+          out.push({ slug, ch: c.n, v: vv.v, text, fold: foldText(text) })
         }
     })
     built.set(lang, out)
@@ -77,7 +100,7 @@ export async function search(langs: Lang[], q: string, limit = 150): Promise<Hit
   const query = q.trim()
   if (query.length < minQueryLen(query)) return []
   const indexes = await Promise.all(langs.map(indexEdition))
-  const ql = query.toLowerCase()
+  const ql = foldText(query)
   const hits: Hit[] = []
   // Walk verse-major so results interleave editions by location rather than
   // returning every English hit before the first French one.

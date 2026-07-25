@@ -20,13 +20,30 @@ export function speechText(text: string, lang: Lang): string {
 }
 
 let cached: SpeechSynthesisVoice[] = []
+const voiceListeners = new Set<() => void>()
+
 export function primeVoices() {
   if (!ttsSupported()) return
   cached = speechSynthesis.getVoices()
   speechSynthesis.addEventListener('voiceschanged', () => {
     cached = speechSynthesis.getVoices()
+    for (const cb of voiceListeners) cb()
   })
 }
+
+/** Subscribe to the voice list arriving. Returns an unsubscribe function.
+ *  Chrome resolves getVoices() asynchronously, so anything rendered from voice
+ *  availability has to re-render when the list lands. */
+export function onVoicesChanged(cb: () => void): () => void {
+  voiceListeners.add(cb)
+  return () => voiceListeners.delete(cb)
+}
+
+/** Whether the voice list has arrived at all. An empty list means "not known yet",
+ *  which is different from "this device has no voice for that language" — treating
+ *  the two the same labels every edition unspeakable on first paint. */
+export const voicesLoaded = () =>
+  ttsSupported() && (cached.length > 0 || speechSynthesis.getVoices().length > 0)
 export type Gender = 'male' | 'female'
 // Web Speech exposes no gender field, so match well-known voice names per platform.
 const MALE = ['male', 'alex', 'daniel', 'fred', 'david', 'mark', 'guy', 'thomas', 'otoya', 'ichiro', 'keita', 'ryan']

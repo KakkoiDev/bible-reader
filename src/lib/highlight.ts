@@ -93,12 +93,14 @@ export function clearWordHighlight() {
 }
 
 const verseOf = (n: Node | null): Element | null =>
-  n ? (n.nodeType === 1 ? (n as Element) : n.parentElement)?.closest('.verse, .fverse') ?? null : null
+  n ? (n.nodeType === 1 ? (n as Element) : n.parentElement)?.closest('.verse, .fverse, .crow') ?? null : null
 
-/** Which verse the current selection belongs to. Handles both the parallel view
- *  (`.verse` li with `.vt`, id `v-<lang>-<n>`) and flow view (`.fverse`, `fv-<ch>-<n>`).
+/** Which verse the current selection belongs to. Handles the parallel view
+ *  (`.verse` li with `.vt`, id `v-<lang>-<n>`), flow view (`.fverse`, `fv-<ch>-<n>`)
+ *  and the verse sheet's comparison rows (`.crow` with `.ctext`, `sv-<lang>-<ch>-<n>`),
+ *  so text can be highlighted by selection wherever a verse is rendered.
  *  lang/ch are null when the anchor doesn't encode them (caller fills from state). */
-export function selectionContext(reader: Element): {
+export function selectionContext(reader?: Element | null): {
   el: Element
   lang: Lang | null
   ch: number | null
@@ -111,9 +113,13 @@ export function selectionContext(reader: Element): {
   if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return null
   const range = sel.getRangeAt(0)
   const verseEl = verseOf(range.commonAncestorContainer) || verseOf(range.startContainer)
-  if (!verseEl || !reader.contains(verseEl)) return null
+  if (!verseEl) return null
+  // The id patterns below are specific to this app, so containment is only checked
+  // when a root is supplied — the verse sheet lives outside the reader element.
+  if (reader && !reader.contains(verseEl)) return null
   const mf = /^fv-(\d+)-(\d+)$/.exec(verseEl.id)
   const mn = /^v-([a-z]+)-(\d+)$/.exec(verseEl.id)
+  const ms = /^sv-([a-z]+)-(\d+)-(\d+)$/.exec(verseEl.id)
   let el: Element | null
   let lang: Lang | null
   let ch: number | null
@@ -128,6 +134,11 @@ export function selectionContext(reader: Element): {
     lang = mn[1] as Lang
     ch = null
     v = Number(mn[2])
+  } else if (ms && isLang(ms[1])) {
+    el = verseEl.querySelector('.ctext')
+    lang = ms[1] as Lang
+    ch = Number(ms[2])
+    v = Number(ms[3])
   } else return null
   if (!el) return null
   const a = baseOffsetTo(el, range.startContainer, range.startOffset)

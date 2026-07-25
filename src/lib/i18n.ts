@@ -71,7 +71,7 @@ const en = {
   add_tag: 'Add a tag…',
   created: 'Created',
   updated: 'Updated',
-  unknown: '—',
+  unknown: 'not recorded',
 
   play: 'Play',
   copy_text: 'Copy text',
@@ -93,12 +93,12 @@ const en = {
   nothing_to_export: 'Nothing to export yet',
   imported_n: 'Imported {n}',
   import_failed: 'Could not read that file',
-  hidden_version: 'Opened in {shown} — {hidden} is hidden in your settings',
+  hidden_version: 'Opened in {shown}. {hidden} is hidden in your settings.',
 
-  invite_title: 'Reading invitation',
-  invite_body: 'You have been invited to read {ref} in {versions}.',
-  invite_accept: 'Show these versions',
-  invite_decline: 'Just open the passage',
+  invite_build_title: 'Share these versions',
+  invite_build_body: 'Choose the versions to share and the order they appear in. The passage opens in the first one.',
+  invite_applied: 'Now showing {versions}',
+  undo: 'Undo',
 
   confirm_delete_title: 'Delete this note?',
   confirm_delete_body: 'The note, tags and highlights saved for {ref} will be removed.',
@@ -115,11 +115,13 @@ const en = {
   licences_intro:
     'This reader reproduces the following editions. Attribution and licence terms are given verbatim and are not translated.',
 
+  coverage_nt_only: 'This edition covers the New Testament only.',
+  coverage_ot_only: 'This edition covers the Old Testament only.',
+
   group_reading: 'Reading',
   group_languages: 'Languages & versions',
   group_audio: 'Audio',
-  group_data: 'Notes & data',
-  group_about: 'About',
+  group_data: 'Notes & data'
 }
 
 export type StringKey = keyof typeof en
@@ -140,22 +142,22 @@ const ja: Dict = {
   sort: '並び順', sort_book: '書順', sort_created: '作成日', sort_updated: '更新日', sort_custom: '手動',
   ascending: '昇順', descending: '降順', this_book: 'この書のみ', tags: 'タグ', no_matches: '条件に合うノートがありません。',
   note_placeholder: 'ノートを書く…', save: '保存', delete: '削除', add_tag: 'タグを追加…',
-  created: '作成', updated: '更新', unknown: '—',
+  created: '作成', updated: '更新', unknown: '·',
   play: '再生', copy_text: '本文をコピー', copy_link: 'リンクをコピー', note: 'ノート', add_note: 'ノートを追加',
   highlight: 'ハイライト', remove_highlight: 'ハイライトを削除', verse_actions: '節の操作',
   play_verse: 'この節を再生', play_chapter: 'この章を再生', stop: '停止',
   link_copied: '節のリンクをコピーしました', invite_copied: '招待リンクをコピーしました', verse_copied: '節をコピーしました',
   copy_failed: 'コピーできませんでした', exported_n: '{n} 件を書き出しました', nothing_to_export: '書き出すものがありません',
   imported_n: '{n} 件を読み込みました', import_failed: 'ファイルを読み込めませんでした',
-  hidden_version: '{shown} で開きました — {hidden} は設定で非表示です',
-  invite_title: '読書の招待', invite_body: '{ref} を {versions} で読むよう招待されました。',
-  invite_accept: 'これらの訳を表示', invite_decline: '箇所だけ開く',
+  hidden_version: '{shown} で開きました。{hidden} は設定で非表示です。',
   confirm_delete_title: 'このノートを削除しますか？', confirm_delete_body: '{ref} のノート・タグ・ハイライトが削除されます。',
   cancel: 'キャンセル',
   close: '閉じる', search: '検索', saved_aria: '保存済み（ノートとハイライト）', language: '言語',
   stop_audio: '音声を停止', source_code: 'ソースコード',
   licences: '底本と著作権', licences_intro: '本アプリは以下の版を収録しています。帰属および利用条件は原文のまま掲載し、翻訳していません。',
-  group_reading: '表示', group_languages: '言語と訳', group_audio: '音声', group_data: 'ノートとデータ', group_about: 'このアプリ',
+  group_reading: '表示', group_languages: '言語と訳', group_audio: '音声', group_data: 'ノートとデータ',
+  coverage_nt_only: 'この版は新約聖書のみを収録しています。', coverage_ot_only: 'この版は旧約聖書のみを収録しています。',
+  invite_build_title: '共有する訳', invite_build_body: '共有する訳と並び順を選んでください。箇所は最初の訳で開きます。', invite_applied: '{versions} を表示中', undo: '元に戻す'
 }
 
 const fr: Dict = {
@@ -177,23 +179,23 @@ const fr: Dict = {
   ascending: 'Croissant', descending: 'Décroissant', this_book: 'Ce livre uniquement', tags: 'Étiquettes',
   no_matches: 'Aucune note ne correspond à ces filtres.',
   note_placeholder: 'Écrire une note…', save: 'Enregistrer', delete: 'Supprimer',
-  add_tag: 'Ajouter une étiquette…', created: 'Créée', updated: 'Modifiée', unknown: '—',
+  add_tag: 'Ajouter une étiquette…', created: 'Créée', updated: 'Modifiée', unknown: '·',
   play: 'Lire', copy_text: 'Copier le texte', copy_link: 'Copier le lien', note: 'Note',
   add_note: 'Ajouter une note', highlight: 'Surligner', remove_highlight: 'Retirer le surlignage',
   verse_actions: 'Actions du verset', play_verse: 'Lire le verset', play_chapter: 'Lire le chapitre', stop: 'Arrêter',
   link_copied: 'Lien du verset copié', invite_copied: "Lien d'invitation copié", verse_copied: 'Verset copié',
   copy_failed: 'Copie impossible', exported_n: '{n} exporté(s)', nothing_to_export: 'Rien à exporter',
   imported_n: '{n} importé(s)', import_failed: 'Fichier illisible',
-  hidden_version: 'Ouvert en {shown} — {hidden} est masqué dans vos paramètres',
-  invite_title: 'Invitation à lire', invite_body: 'Vous êtes invité à lire {ref} en {versions}.',
-  invite_accept: 'Afficher ces versions', invite_decline: 'Ouvrir seulement le passage',
+  hidden_version: 'Ouvert en {shown}. {hidden} est masqué dans vos paramètres.',
   confirm_delete_title: 'Supprimer cette note ?',
   confirm_delete_body: 'La note, les étiquettes et les surlignages de {ref} seront supprimés.',
   cancel: 'Annuler',
   close: 'Fermer', search: 'Rechercher', saved_aria: 'Enregistré (notes et surlignages)', language: 'Langue',
   stop_audio: "Arrêter l'audio", source_code: 'Code source',
   licences: 'Textes et licences', licences_intro: "Cette application reproduit les éditions suivantes. Les mentions d'attribution et de licence sont citées telles quelles et ne sont pas traduites.",
-  group_reading: 'Lecture', group_languages: 'Langues et versions', group_audio: 'Audio', group_data: 'Notes et données', group_about: 'À propos',
+  group_reading: 'Lecture', group_languages: 'Langues et versions', group_audio: 'Audio', group_data: 'Notes et données',
+  coverage_nt_only: 'Cette édition ne contient que le Nouveau Testament.', coverage_ot_only: 'Cette édition ne contient que l’Ancien Testament.',
+  invite_build_title: 'Versions à partager', invite_build_body: "Choisissez les versions à partager et leur ordre. Le passage s'ouvre dans la première.", invite_applied: 'Affichage de {versions}', undo: 'Annuler'
 }
 
 const zht: Dict = {
@@ -211,22 +213,22 @@ const zht: Dict = {
   sort: '排序', sort_book: '書卷', sort_created: '建立時間', sort_updated: '更新時間', sort_custom: '自訂',
   ascending: '遞增', descending: '遞減', this_book: '僅本書卷', tags: '標籤', no_matches: '沒有符合條件的筆記。',
   note_placeholder: '寫下筆記…', save: '儲存', delete: '刪除', add_tag: '新增標籤…',
-  created: '建立', updated: '更新', unknown: '—',
+  created: '建立', updated: '更新', unknown: '·',
   play: '朗讀', copy_text: '複製經文', copy_link: '複製連結', note: '筆記', add_note: '新增筆記',
   highlight: '標記', remove_highlight: '移除標記', verse_actions: '節的操作',
   play_verse: '朗讀本節', play_chapter: '朗讀本章', stop: '停止',
   link_copied: '已複製節的連結', invite_copied: '已複製邀請連結', verse_copied: '已複製經文',
   copy_failed: '無法複製', exported_n: '已匯出 {n} 筆', nothing_to_export: '沒有可匯出的內容',
   imported_n: '已匯入 {n} 筆', import_failed: '無法讀取該檔案',
-  hidden_version: '已以{shown}開啟 — {hidden}在設定中為隱藏',
-  invite_title: '閱讀邀請', invite_body: '有人邀請你以 {versions} 閱讀 {ref}。',
-  invite_accept: '顯示這些譯本', invite_decline: '只開啟這段經文',
+  hidden_version: '已以{shown}開啟。{hidden}在設定中為隱藏。',
   confirm_delete_title: '要刪除這則筆記嗎？', confirm_delete_body: '{ref} 的筆記、標籤與標記將被移除。',
   cancel: '取消',
   close: '關閉', search: '搜尋', saved_aria: '已儲存（筆記與標記）', language: '語言',
   stop_audio: '停止朗讀', source_code: '原始碼',
   licences: '底本與版權', licences_intro: '本應用收錄以下譯本。署名與授權條款按原文列出，未經翻譯。',
-  group_reading: '閱讀', group_languages: '語言與譯本', group_audio: '朗讀', group_data: '筆記與資料', group_about: '關於',
+  group_reading: '閱讀', group_languages: '語言與譯本', group_audio: '朗讀', group_data: '筆記與資料',
+  coverage_nt_only: '此譯本僅收錄新約。', coverage_ot_only: '此譯本僅收錄舊約。',
+  invite_build_title: '分享的譯本', invite_build_body: '選擇要分享的譯本與排列順序。經文會以第一個譯本開啟。', invite_applied: '正在顯示 {versions}', undo: '復原'
 }
 
 const zhs: Dict = {
@@ -244,22 +246,22 @@ const zhs: Dict = {
   sort: '排序', sort_book: '书卷', sort_created: '创建时间', sort_updated: '更新时间', sort_custom: '自定义',
   ascending: '升序', descending: '降序', this_book: '仅本书卷', tags: '标签', no_matches: '没有符合条件的笔记。',
   note_placeholder: '写下笔记…', save: '保存', delete: '删除', add_tag: '添加标签…',
-  created: '创建', updated: '更新', unknown: '—',
+  created: '创建', updated: '更新', unknown: '·',
   play: '朗读', copy_text: '复制经文', copy_link: '复制链接', note: '笔记', add_note: '添加笔记',
   highlight: '标记', remove_highlight: '移除标记', verse_actions: '节的操作',
   play_verse: '朗读本节', play_chapter: '朗读本章', stop: '停止',
   link_copied: '已复制节的链接', invite_copied: '已复制邀请链接', verse_copied: '已复制经文',
   copy_failed: '无法复制', exported_n: '已导出 {n} 条', nothing_to_export: '没有可导出的内容',
   imported_n: '已导入 {n} 条', import_failed: '无法读取该文件',
-  hidden_version: '已以{shown}打开 — {hidden}在设置中为隐藏',
-  invite_title: '阅读邀请', invite_body: '有人邀请你以 {versions} 阅读 {ref}。',
-  invite_accept: '显示这些译本', invite_decline: '只打开这段经文',
+  hidden_version: '已以{shown}打开。{hidden}在设置中为隐藏。',
   confirm_delete_title: '要删除这条笔记吗？', confirm_delete_body: '{ref} 的笔记、标签与标记将被移除。',
   cancel: '取消',
   close: '关闭', search: '搜索', saved_aria: '已保存（笔记与标记）', language: '语言',
   stop_audio: '停止朗读', source_code: '源代码',
   licences: '底本与版权', licences_intro: '本应用收录以下译本。署名与授权条款按原文列出，未经翻译。',
-  group_reading: '阅读', group_languages: '语言与译本', group_audio: '朗读', group_data: '笔记与数据', group_about: '关于',
+  group_reading: '阅读', group_languages: '语言与译本', group_audio: '朗读', group_data: '笔记与数据',
+  coverage_nt_only: '此译本仅收录新约。', coverage_ot_only: '此译本仅收录旧约。',
+  invite_build_title: '分享的译本', invite_build_body: '选择要分享的译本与排列顺序。经文会以第一个译本打开。', invite_applied: '正在显示 {versions}', undo: '撤销'
 }
 
 const pt: Dict = {
@@ -281,7 +283,7 @@ const pt: Dict = {
   ascending: 'Crescente', descending: 'Decrescente', this_book: 'Somente este livro', tags: 'Etiquetas',
   no_matches: 'Nenhuma nota corresponde a estes filtros.',
   note_placeholder: 'Escreva uma nota…', save: 'Salvar', delete: 'Excluir', add_tag: 'Adicionar etiqueta…',
-  created: 'Criada', updated: 'Atualizada', unknown: '—',
+  created: 'Criada', updated: 'Atualizada', unknown: '·',
   play: 'Ouvir', copy_text: 'Copiar texto', copy_link: 'Copiar link', note: 'Nota', add_note: 'Adicionar nota',
   highlight: 'Destacar', remove_highlight: 'Remover destaque', verse_actions: 'Ações do versículo',
   play_verse: 'Ouvir o versículo', play_chapter: 'Ouvir o capítulo', stop: 'Parar',
@@ -289,16 +291,16 @@ const pt: Dict = {
   verse_copied: 'Versículo copiado', copy_failed: 'Não foi possível copiar', exported_n: '{n} exportado(s)',
   nothing_to_export: 'Nada para exportar', imported_n: '{n} importado(s)',
   import_failed: 'Não foi possível ler o arquivo',
-  hidden_version: 'Aberto em {shown} — {hidden} está oculto nas suas configurações',
-  invite_title: 'Convite de leitura', invite_body: 'Você foi convidado a ler {ref} em {versions}.',
-  invite_accept: 'Mostrar estas versões', invite_decline: 'Apenas abrir a passagem',
+  hidden_version: 'Aberto em {shown}. {hidden} está oculto nas suas configurações.',
   confirm_delete_title: 'Excluir esta nota?',
   confirm_delete_body: 'A nota, as etiquetas e os destaques de {ref} serão removidos.',
   cancel: 'Cancelar',
   close: 'Fechar', search: 'Pesquisar', saved_aria: 'Salvos (notas e destaques)', language: 'Idioma',
   stop_audio: 'Parar o áudio', source_code: 'Código-fonte',
   licences: 'Textos e licenças', licences_intro: 'Este leitor reproduz as edições a seguir. A atribuição e os termos de licença são citados na íntegra e não são traduzidos.',
-  group_reading: 'Leitura', group_languages: 'Idiomas e versões', group_audio: 'Áudio', group_data: 'Notas e dados', group_about: 'Sobre',
+  group_reading: 'Leitura', group_languages: 'Idiomas e versões', group_audio: 'Áudio', group_data: 'Notas e dados',
+  coverage_nt_only: 'Esta edição contém apenas o Novo Testamento.', coverage_ot_only: 'Esta edição contém apenas o Antigo Testamento.',
+  invite_build_title: 'Versões a compartilhar', invite_build_body: 'Escolha as versões a compartilhar e a ordem delas. A passagem abre na primeira.', invite_applied: 'Mostrando {versions}', undo: 'Desfazer'
 }
 
 const es: Dict = {
@@ -320,7 +322,7 @@ const es: Dict = {
   sort_custom: 'Manual', ascending: 'Ascendente', descending: 'Descendente',
   this_book: 'Solo este libro', tags: 'Etiquetas', no_matches: 'Ninguna nota coincide con estos filtros.',
   note_placeholder: 'Escribe una nota…', save: 'Guardar', delete: 'Eliminar', add_tag: 'Añadir etiqueta…',
-  created: 'Creada', updated: 'Actualizada', unknown: '—',
+  created: 'Creada', updated: 'Actualizada', unknown: '·',
   play: 'Escuchar', copy_text: 'Copiar texto', copy_link: 'Copiar enlace', note: 'Nota',
   add_note: 'Añadir nota', highlight: 'Resaltar', remove_highlight: 'Quitar resaltado',
   verse_actions: 'Acciones del versículo', play_verse: 'Escuchar el versículo',
@@ -329,16 +331,16 @@ const es: Dict = {
   verse_copied: 'Versículo copiado', copy_failed: 'No se pudo copiar', exported_n: '{n} exportado(s)',
   nothing_to_export: 'Nada que exportar', imported_n: '{n} importado(s)',
   import_failed: 'No se pudo leer el archivo',
-  hidden_version: 'Abierto en {shown} — {hidden} está oculto en tus ajustes',
-  invite_title: 'Invitación de lectura', invite_body: 'Te han invitado a leer {ref} en {versions}.',
-  invite_accept: 'Mostrar estas versiones', invite_decline: 'Solo abrir el pasaje',
+  hidden_version: 'Abierto en {shown}. {hidden} está oculto en tus ajustes.',
   confirm_delete_title: '¿Eliminar esta nota?',
   confirm_delete_body: 'Se eliminarán la nota, las etiquetas y los resaltados de {ref}.',
   cancel: 'Cancelar',
   close: 'Cerrar', search: 'Buscar', saved_aria: 'Guardado (notas y resaltados)', language: 'Idioma',
   stop_audio: 'Detener el audio', source_code: 'Código fuente',
   licences: 'Textos y licencias', licences_intro: 'Este lector reproduce las siguientes ediciones. La atribución y los términos de licencia se citan literalmente y no se traducen.',
-  group_reading: 'Lectura', group_languages: 'Idiomas y versiones', group_audio: 'Audio', group_data: 'Notas y datos', group_about: 'Acerca de',
+  group_reading: 'Lectura', group_languages: 'Idiomas y versiones', group_audio: 'Audio', group_data: 'Notas y datos',
+  coverage_nt_only: 'Esta edición contiene solo el Nuevo Testamento.', coverage_ot_only: 'Esta edición contiene solo el Antiguo Testamento.',
+  invite_build_title: 'Versiones para compartir', invite_build_body: 'Elige las versiones que quieres compartir y su orden. El pasaje se abre en la primera.', invite_applied: 'Mostrando {versions}', undo: 'Deshacer'
 }
 
 const ar: Dict = {
@@ -360,23 +362,23 @@ const ar: Dict = {
   sort_custom: 'مخصص', ascending: 'تصاعدي', descending: 'تنازلي', this_book: 'هذا السفر فقط',
   tags: 'الوسوم', no_matches: 'لا ملاحظات تطابق هذه المرشحات.',
   note_placeholder: 'اكتب ملاحظة…', save: 'حفظ', delete: 'حذف', add_tag: 'أضف وسمًا…',
-  created: 'أُنشئت', updated: 'حُدِّثت', unknown: '—',
+  created: 'أُنشئت', updated: 'حُدِّثت', unknown: '·',
   play: 'تشغيل', copy_text: 'نسخ النص', copy_link: 'نسخ الرابط', note: 'ملاحظة', add_note: 'إضافة ملاحظة',
   highlight: 'تظليل', remove_highlight: 'إزالة التظليل', verse_actions: 'إجراءات العدد',
   play_verse: 'تشغيل العدد', play_chapter: 'تشغيل الأصحاح', stop: 'إيقاف',
   link_copied: 'تم نسخ رابط العدد', invite_copied: 'تم نسخ رابط الدعوة', verse_copied: 'تم نسخ العدد',
   copy_failed: 'تعذّر النسخ', exported_n: 'تم تصدير {n}', nothing_to_export: 'لا شيء للتصدير',
   imported_n: 'تم استيراد {n}', import_failed: 'تعذّر قراءة الملف',
-  hidden_version: 'تم الفتح بـ {shown} — {hidden} مخفية في إعداداتك',
-  invite_title: 'دعوة للقراءة', invite_body: 'تلقيت دعوة لقراءة {ref} بـ {versions}.',
-  invite_accept: 'إظهار هذه الترجمات', invite_decline: 'افتح المقطع فقط',
+  hidden_version: 'تم الفتح بـ {shown}. {hidden} مخفية في إعداداتك.',
   confirm_delete_title: 'حذف هذه الملاحظة؟',
   confirm_delete_body: 'ستُحذف الملاحظة والوسوم والتظليل المحفوظة لـ {ref}.',
   cancel: 'إلغاء',
   close: 'إغلاق', search: 'بحث', saved_aria: 'المحفوظات (ملاحظات وتظليل)', language: 'اللغة',
   stop_audio: 'إيقاف الصوت', source_code: 'الشيفرة المصدرية',
   licences: 'النصوص والتراخيص', licences_intro: 'يعرض هذا التطبيق الترجمات الآتية. تُذكر بيانات النسبة وشروط الترخيص كما هي دون ترجمة.',
-  group_reading: 'القراءة', group_languages: 'اللغات والترجمات', group_audio: 'الصوت', group_data: 'الملاحظات والبيانات', group_about: 'حول',
+  group_reading: 'القراءة', group_languages: 'اللغات والترجمات', group_audio: 'الصوت', group_data: 'الملاحظات والبيانات',
+  coverage_nt_only: 'تحتوي هذه الترجمة على العهد الجديد فقط.', coverage_ot_only: 'تحتوي هذه الترجمة على العهد القديم فقط.',
+  invite_build_title: 'الترجمات المشتركة', invite_build_body: 'اختر الترجمات التي تريد مشاركتها وترتيبها. يُفتح المقطع بالترجمة الأولى.', invite_applied: 'يتم عرض {versions}', undo: 'تراجع'
 }
 
 const tl: Dict = {
@@ -398,7 +400,7 @@ const tl: Dict = {
   ascending: 'Pataas', descending: 'Pababa', this_book: 'Aklat na ito lamang', tags: 'Mga tag',
   no_matches: 'Walang talang tumutugma sa mga filter.',
   note_placeholder: 'Sumulat ng tala…', save: 'I-save', delete: 'Tanggalin', add_tag: 'Magdagdag ng tag…',
-  created: 'Ginawa', updated: 'Binago', unknown: '—',
+  created: 'Ginawa', updated: 'Binago', unknown: '·',
   play: 'Pakinggan', copy_text: 'Kopyahin ang teksto', copy_link: 'Kopyahin ang link', note: 'Tala',
   add_note: 'Magdagdag ng tala', highlight: 'I-highlight', remove_highlight: 'Alisin ang highlight',
   verse_actions: 'Mga aksyon sa talata', play_verse: 'Pakinggan ang talata',
@@ -407,16 +409,16 @@ const tl: Dict = {
   verse_copied: 'Nakopya ang talata', copy_failed: 'Hindi makopya', exported_n: 'Nai-export ang {n}',
   nothing_to_export: 'Wala pang mai-export', imported_n: 'Nai-import ang {n}',
   import_failed: 'Hindi mabasa ang file',
-  hidden_version: 'Binuksan sa {shown} — nakatago ang {hidden} sa iyong mga setting',
-  invite_title: 'Imbitasyon sa pagbasa', invite_body: 'Inimbitahan kang basahin ang {ref} sa {versions}.',
-  invite_accept: 'Ipakita ang mga bersyong ito', invite_decline: 'Buksan lang ang bahagi',
+  hidden_version: 'Binuksan sa {shown}. Nakatago ang {hidden} sa iyong mga setting.',
   confirm_delete_title: 'Tanggalin ang talang ito?',
   confirm_delete_body: 'Aalisin ang tala, mga tag at highlight na nakaimbak para sa {ref}.',
   cancel: 'Kanselahin',
   close: 'Isara', search: 'Maghanap', saved_aria: 'Nakaimbak (mga tala at highlight)', language: 'Wika',
   stop_audio: 'Ihinto ang audio', source_code: 'Source code',
   licences: 'Mga teksto at lisensya', licences_intro: 'Ipinapakita ng reader na ito ang mga sumusunod na edisyon. Ang atribusyon at mga tuntunin ng lisensya ay sinipi nang buo at hindi isinasalin.',
-  group_reading: 'Pagbasa', group_languages: 'Mga wika at bersyon', group_audio: 'Audio', group_data: 'Mga tala at data', group_about: 'Tungkol dito',
+  group_reading: 'Pagbasa', group_languages: 'Mga wika at bersyon', group_audio: 'Audio', group_data: 'Mga tala at data',
+  coverage_nt_only: 'Bagong Tipan lamang ang nilalaman ng edisyong ito.', coverage_ot_only: 'Lumang Tipan lamang ang nilalaman ng edisyong ito.',
+  invite_build_title: 'Mga bersyong ibabahagi', invite_build_body: 'Piliin ang mga bersyong ibabahagi at ang pagkakasunod-sunod nila. Bubukas ang bahagi sa una.', invite_applied: 'Ipinapakita ang {versions}', undo: 'I-undo'
 }
 
 // Modern Greek chrome; the text itself stays Koine.
@@ -442,7 +444,7 @@ const el: Dict = {
   this_book: 'Μόνο αυτό το βιβλίο', tags: 'Ετικέτες',
   no_matches: 'Καμία σημείωση δεν ταιριάζει με τα φίλτρα.',
   note_placeholder: 'Γράψτε μια σημείωση…', save: 'Αποθήκευση', delete: 'Διαγραφή',
-  add_tag: 'Προσθήκη ετικέτας…', created: 'Δημιουργήθηκε', updated: 'Ενημερώθηκε', unknown: '—',
+  add_tag: 'Προσθήκη ετικέτας…', created: 'Δημιουργήθηκε', updated: 'Ενημερώθηκε', unknown: '·',
   play: 'Αναπαραγωγή', copy_text: 'Αντιγραφή κειμένου', copy_link: 'Αντιγραφή συνδέσμου',
   note: 'Σημείωση', add_note: 'Προσθήκη σημείωσης', highlight: 'Επισήμανση',
   remove_highlight: 'Αφαίρεση επισήμανσης', verse_actions: 'Ενέργειες στίχου',
@@ -451,17 +453,16 @@ const el: Dict = {
   verse_copied: 'Ο στίχος αντιγράφηκε', copy_failed: 'Η αντιγραφή απέτυχε',
   exported_n: 'Εξήχθησαν {n}', nothing_to_export: 'Δεν υπάρχει κάτι για εξαγωγή',
   imported_n: 'Εισήχθησαν {n}', import_failed: 'Το αρχείο δεν μπόρεσε να διαβαστεί',
-  hidden_version: 'Άνοιξε σε {shown} — η {hidden} είναι κρυμμένη στις ρυθμίσεις σας',
-  invite_title: 'Πρόσκληση ανάγνωσης',
-  invite_body: 'Προσκληθήκατε να διαβάσετε {ref} σε {versions}.',
-  invite_accept: 'Εμφάνιση αυτών των εκδόσεων', invite_decline: 'Άνοιγμα μόνο του χωρίου',
+  hidden_version: 'Άνοιξε σε {shown}. Η {hidden} είναι κρυμμένη στις ρυθμίσεις σας.',
   confirm_delete_title: 'Διαγραφή αυτής της σημείωσης;',
   confirm_delete_body: 'Η σημείωση, οι ετικέτες και οι επισημάνσεις για {ref} θα αφαιρεθούν.',
   cancel: 'Άκυρο',
   close: 'Κλείσιμο', search: 'Αναζήτηση', saved_aria: 'Αποθηκευμένα (σημειώσεις και επισημάνσεις)',
   language: 'Γλώσσα', stop_audio: 'Διακοπή ήχου', source_code: 'Πηγαίος κώδικας',
   licences: 'Κείμενα και άδειες', licences_intro: 'Η εφαρμογή αναπαράγει τις παρακάτω εκδόσεις. Η απόδοση και οι όροι άδειας παρατίθενται αυτολεξεί και δεν μεταφράζονται.',
-  group_reading: 'Ανάγνωση', group_languages: 'Γλώσσες και εκδόσεις', group_audio: 'Ήχος', group_data: 'Σημειώσεις και δεδομένα', group_about: 'Σχετικά',
+  group_reading: 'Ανάγνωση', group_languages: 'Γλώσσες και εκδόσεις', group_audio: 'Ήχος', group_data: 'Σημειώσεις και δεδομένα',
+  coverage_nt_only: 'Η έκδοση αυτή περιέχει μόνο την Καινή Διαθήκη.', coverage_ot_only: 'Η έκδοση αυτή περιέχει μόνο την Παλαιά Διαθήκη.',
+  invite_build_title: 'Εκδόσεις για κοινοποίηση', invite_build_body: 'Επιλέξτε τις εκδόσεις που θα κοινοποιηθούν και τη σειρά τους. Το χωρίο ανοίγει στην πρώτη.', invite_applied: 'Εμφανίζονται {versions}', undo: 'Αναίρεση'
 }
 
 // Modern Hebrew chrome; the text itself stays the Masoretic consonantal tradition.
@@ -484,23 +485,23 @@ const he: Dict = {
   ascending: 'עולה', descending: 'יורד', this_book: 'ספר זה בלבד', tags: 'תגיות',
   no_matches: 'אין הערות שמתאימות לסינון.',
   note_placeholder: 'כתוב הערה…', save: 'שמור', delete: 'מחק', add_tag: 'הוסף תגית…',
-  created: 'נוצר', updated: 'עודכן', unknown: '—',
+  created: 'נוצר', updated: 'עודכן', unknown: '·',
   play: 'נגן', copy_text: 'העתק טקסט', copy_link: 'העתק קישור', note: 'הערה', add_note: 'הוסף הערה',
   highlight: 'הדגש', remove_highlight: 'הסר הדגשה', verse_actions: 'פעולות פסוק',
   play_verse: 'נגן פסוק', play_chapter: 'נגן פרק', stop: 'עצור',
   link_copied: 'קישור הפסוק הועתק', invite_copied: 'קישור ההזמנה הועתק', verse_copied: 'הפסוק הועתק',
   copy_failed: 'ההעתקה נכשלה', exported_n: 'יוצאו {n}', nothing_to_export: 'אין מה לייצא',
   imported_n: 'יובאו {n}', import_failed: 'לא ניתן לקרוא את הקובץ',
-  hidden_version: 'נפתח ב{shown} — {hidden} מוסתרת בהגדרות שלך',
-  invite_title: 'הזמנה לקריאה', invite_body: 'הוזמנת לקרוא {ref} ב{versions}.',
-  invite_accept: 'הצג גרסאות אלה', invite_decline: 'פתח רק את הקטע',
+  hidden_version: 'נפתח ב{shown}. {hidden} מוסתרת בהגדרות שלך.',
   confirm_delete_title: 'למחוק את ההערה?',
   confirm_delete_body: 'ההערה, התגיות וההדגשות של {ref} יוסרו.',
   cancel: 'ביטול',
   close: 'סגור', search: 'חיפוש', saved_aria: 'שמורים (הערות והדגשות)', language: 'שפה',
   stop_audio: 'עצור שמע', source_code: 'קוד המקור',
   licences: 'טקסטים ורישיונות', licences_intro: 'הקורא הזה מציג את המהדורות הבאות. הייחוס ותנאי הרישיון מובאים כלשונם ואינם מתורגמים.',
-  group_reading: 'קריאה', group_languages: 'שפות וגרסאות', group_audio: 'שמע', group_data: 'הערות ונתונים', group_about: 'אודות',
+  group_reading: 'קריאה', group_languages: 'שפות וגרסאות', group_audio: 'שמע', group_data: 'הערות ונתונים',
+  coverage_nt_only: 'מהדורה זו כוללת את הברית החדשה בלבד.', coverage_ot_only: 'מהדורה זו כוללת את התנ״ך בלבד.',
+  invite_build_title: 'גרסאות לשיתוף', invite_build_body: 'בחר את הגרסאות לשיתוף ואת סדרן. הקטע ייפתח בגרסה הראשונה.', invite_applied: 'מוצג {versions}', undo: 'בטל'
 }
 
 const STRINGS: Record<Lang, Dict> = { en, ja, fr, zht, zhs, pt, es, ar, tl, el, he }
