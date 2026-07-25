@@ -12,7 +12,6 @@ export interface HRange {
   color: HColor
 }
 export interface Ann {
-  bookmark?: boolean
   note?: string
   highlights?: HRange[]
 }
@@ -32,7 +31,7 @@ const load = (): Store => {
     return {}
   }
 }
-const isEmpty = (a: Ann) => !a.bookmark && !a.note && !(a.highlights && a.highlights.length)
+const isEmpty = (a: Ann) => !a.note && !(a.highlights && a.highlights.length)
 
 export function useAnnotations() {
   const [store, setStore] = useState<Store>(load)
@@ -70,10 +69,6 @@ export function useAnnotations() {
     [update],
   )
 
-  const toggleBookmark = useCallback(
-    (ref: string) => update(ref, (a) => ({ ...a, bookmark: !a.bookmark })),
-    [update],
-  )
   const remove = useCallback(
     (ref: string) =>
       setStore((prev) => {
@@ -88,5 +83,5 @@ export function useAnnotations() {
     [update],
   )
 
-  return { store, addHighlight, clearHighlightsIn, toggleBookmark, setNote, remove }
+  return { store, addHighlight, clearHighlightsIn, setNote, remove }
 }

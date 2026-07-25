@@ -43,26 +43,27 @@ export function offsetsFromSelection(vt: Element): { start: number; end: number 
   return start === end ? null : { start, end }
 }
 
-function rangeFromOffsets(vt: Element, start: number, end: number): Range | null {
+// One range PER base text node. A single range spanning a <ruby> boundary makes
+// browsers mis-paint the highlight over the furigana; per-node ranges never
+// cross ruby structure, so the paint stays on the base glyphs.
+function rangesFromOffsets(vt: Element, start: number, end: number): Range[] {
   const nodes = baseTextNodes(vt)
-  const r = document.createRange()
+  const ranges: Range[] = []
   let acc = 0
-  let setS = false
-  let setE = false
   for (const t of nodes) {
     const len = t.length
-    if (!setS && start <= acc + len) {
-      r.setStart(t, start - acc)
-      setS = true
-    }
-    if (!setE && end <= acc + len) {
-      r.setEnd(t, end - acc)
-      setE = true
-      break
+    const s = Math.max(start, acc)
+    const e = Math.min(end, acc + len)
+    if (s < e) {
+      const r = document.createRange()
+      r.setStart(t, s - acc)
+      r.setEnd(t, e - acc)
+      ranges.push(r)
     }
     acc += len
+    if (acc >= end) break
   }
-  return setS && setE ? r : null
+  return ranges
 }
 
 const NAME: Record<HColor, string> = {
@@ -80,8 +81,8 @@ export function rebuildHighlights(items: { el: Element; h: HRange }[]) {
   for (const name of Object.values(NAME)) css.highlights.delete(name)
   const byColor: Partial<Record<HColor, Range[]>> = {}
   for (const { el, h } of items) {
-    const r = rangeFromOffsets(el, h.start, h.end)
-    if (r) (byColor[h.color] ||= []).push(r)
+    const rs = rangesFromOffsets(el, h.start, h.end)
+    if (rs.length) (byColor[h.color] ||= []).push(...rs)
   }
   const Ctor = (globalThis as any).Highlight
   for (const color of COLORS) {
@@ -94,9 +95,9 @@ export function rebuildHighlights(items: { el: Element; h: HRange }[]) {
 export function setWordHighlight(el: Element, start: number, end: number) {
   const css = cssAny()
   if (!css || !supportsHighlight()) return
-  const r = rangeFromOffsets(el, start, end)
+  const rs = rangesFromOffsets(el, start, end)
   const Ctor = (globalThis as any).Highlight
-  if (r) css.highlights.set('hl-speaking', new Ctor(r))
+  if (rs.length) css.highlights.set('hl-speaking', new Ctor(...rs))
   else css.highlights.delete('hl-speaking')
 }
 export function clearWordHighlight() {

@@ -59,19 +59,15 @@ await page.waitForTimeout(120)
 const noteMk = await page.locator('#v-en-2 .mk.note').count()
 log(`2 NOTE       marker=${noteMk}  stored="${(await lsAnn())['genesis.1.2']?.note}"`)
 
-// 3) BOOKMARK + drawer jump
-await selectText('#v-en-3', 8)
-await page.waitForSelector('.atoolbar')
-await page.locator('.atoolbar .abtn').nth(1).click() // 🔖 bookmark
-await page.waitForTimeout(120)
-const bkMk = await page.locator('#v-en-3 .mk').first().count()
-await page.locator('.tools .icon[title="Bookmarks & notes"]').click() // open drawer
+// 3) SAVED drawer lists the highlight + note; jump works
+await page.locator('.tools .icon[title="Saved (notes & highlights)"]').click()
 await page.waitForSelector('.drawer')
 const drawerCount = await page.locator('.dlist li').count()
+const hasDot = await page.locator('.dlist .dot').count()
 await page.screenshot({ path: `${OUT}/c-drawer.png` })
 await page.locator('.dlist .dref').first().click()
 await page.waitForTimeout(200)
-log(`3 BOOKMARK   marker=${bkMk}  drawerItems=${drawerCount}  drawerClosed=${(await page.locator('.drawer').count()) === 0}`)
+log(`3 SAVED      drawerItems=${drawerCount} (expect 2) colorDots=${hasDot} drawerClosed=${(await page.locator('.drawer').count()) === 0}`)
 
 // 4) SETTINGS: theme + font size
 await page.locator('.tools .icon[title="Settings"]').click()

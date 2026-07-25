@@ -26,9 +26,22 @@ export function primeVoices() {
     cached = speechSynthesis.getVoices()
   })
 }
-function pickVoice(lang: Lang): SpeechSynthesisVoice | undefined {
-  const list = cached.length ? cached : ttsSupported() ? speechSynthesis.getVoices() : []
-  return list.find((v) => v.lang === LANG_TAG[lang]) || list.find((v) => v.lang?.startsWith(lang))
+export type Gender = 'male' | 'female'
+// Web Speech exposes no gender field, so match well-known voice names per platform.
+const MALE = ['male', 'alex', 'daniel', 'fred', 'david', 'mark', 'guy', 'thomas', 'otoya', 'ichiro', 'keita', 'ryan']
+const FEMALE = [
+  'female', 'samantha', 'victoria', 'karen', 'moira', 'tessa', 'fiona', 'susan', 'zira', 'aria', 'jenny',
+  'amelie', 'amélie', 'audrey', 'marie', 'kyoko', 'haruka', 'ayumi', 'nanami', 'sara',
+]
+function pickVoice(lang: Lang, gender: Gender): SpeechSynthesisVoice | undefined {
+  const all = cached.length ? cached : ttsSupported() ? speechSynthesis.getVoices() : []
+  const list = all.filter((v) => v.lang === LANG_TAG[lang] || v.lang?.startsWith(lang))
+  if (!list.length) return undefined
+  const want = gender === 'female' ? FEMALE : MALE
+  const other = gender === 'female' ? MALE : FEMALE
+  const named = list.find((v) => want.some((k) => v.name.toLowerCase().includes(k)))
+  if (named) return named
+  return list.find((v) => !other.some((k) => v.name.toLowerCase().includes(k))) || list[0]
 }
 
 export interface SpeakItem {
@@ -36,13 +49,66 @@ export interface SpeakItem {
   text: string
 }
 
+// Maps a run of the spoken (kana) string to the displayed (kanji) base text.
+interface Seg {
+  ss: number
+  se: number
+  bs: number
+  be: number
+}
+/** For Japanese, build the spoken kana string alongside a map back to the
+ *  displayed base-text offsets (kanji), so a spoken word can highlight its kanji. */
+function jaSpeech(text: string): { spoken: string; map: Seg[] } {
+  const map: Seg[] = []
+  let spoken = ''
+  let bpos = 0
+  const pushPlain = (chunk: string) => {
+    for (const ch of chunk) {
+      const out = ch === '〔' || ch === '〕' ? ' ' : ch
+      map.push({ ss: spoken.length, se: spoken.length + 1, bs: bpos, be: bpos + 1 })
+      spoken += out
+      bpos += 1
+    }
+  }
+  const re = /\{\{([^|}]*)\|([^}]+)\}\}/g
+  let i = 0
+  let m: RegExpExecArray | null
+  while ((m = re.exec(text))) {
+    if (m.index > i) pushPlain(text.slice(i, m.index))
+    map.push({ ss: spoken.length, se: spoken.length + m[2].length, bs: bpos, be: bpos + m[1].length })
+    spoken += m[2]
+    bpos += m[1].length
+    i = m.index + m[0].length
+  }
+  if (i < text.length) pushPlain(text.slice(i))
+  return { spoken, map }
+}
+function mapJaWord(map: Seg[], cs: number, ce: number): { s: number; e: number } | null {
+  let s = Infinity
+  let e = -Infinity
+  for (const seg of map) {
+    if (seg.ss < ce && seg.se > cs) {
+      if (seg.se - seg.ss === seg.be - seg.bs) {
+        // 1:1 plain run — map the overlapping sub-range precisely
+        s = Math.min(s, seg.bs + (Math.max(cs, seg.ss) - seg.ss))
+        e = Math.max(e, seg.bs + (Math.min(ce, seg.se) - seg.ss))
+      } else {
+        s = Math.min(s, seg.bs) // marker — highlight the whole kanji group
+        e = Math.max(e, seg.be)
+      }
+    }
+  }
+  return e > s ? { s, e } : null
+}
+
 /** Speak a run of verses in order; hooks fire as each verse begins / all finish.
- *  onWord reports the spoken word's char range for EN/FR (JA is skipped: we speak
- *  kana readings while the screen shows kanji, so indices wouldn't align). */
+ *  onWord reports the spoken word's displayed char range. For JA the kana index is
+ *  mapped back to the kanji; it still only fires if the voice emits word boundaries. */
 export function speakVerses(
   items: SpeakItem[],
   lang: Lang,
   rate: number,
+  gender: Gender,
   hooks: {
     onVerse: (v: number) => void
     onDone: () => void
@@ -51,20 +117,28 @@ export function speakVerses(
 ) {
   if (!ttsSupported() || items.length === 0) return
   speechSynthesis.cancel()
-  const voice = pickVoice(lang)
+  const voice = pickVoice(lang, gender)
+  const ja = lang === 'ja'
   items.forEach((it, i) => {
-    const spoken = speechText(it.text, lang)
+    const built = ja ? jaSpeech(it.text) : { spoken: speechText(it.text, lang), map: null as Seg[] | null }
+    const spoken = built.spoken
     const u = new SpeechSynthesisUtterance(spoken)
     u.lang = LANG_TAG[lang]
     if (voice) u.voice = voice
     u.rate = rate
     u.onstart = () => hooks.onVerse(it.v)
-    if (lang !== 'ja' && hooks.onWord) {
+    if (hooks.onWord) {
       u.onboundary = (e) => {
         if (e.name && e.name !== 'word') return
         const ci = e.charIndex
-        const len = e.charLength || spoken.slice(ci).match(/^\S+/)?.[0].length || 0
-        if (len) hooks.onWord!(it.v, ci, ci + len)
+        const len = e.charLength || (ja ? 1 : spoken.slice(ci).match(/^\S+/)?.[0].length || 0)
+        if (!len) return
+        if (ja && built.map) {
+          const r = mapJaWord(built.map, ci, ci + len)
+          if (r) hooks.onWord!(it.v, r.s, r.e)
+        } else {
+          hooks.onWord!(it.v, ci, ci + len)
+        }
       }
     }
     if (i === items.length - 1) u.onend = () => hooks.onDone()

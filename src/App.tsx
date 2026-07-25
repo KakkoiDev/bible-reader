@@ -4,7 +4,7 @@ import { LANG_META, RING } from './lib/types'
 import { VerseText } from './lib/format'
 import { useAnnotations, vref, parseRef, type HColor } from './lib/annotations'
 import { rebuildHighlights, selectionContext, setWordHighlight, clearWordHighlight } from './lib/highlight'
-import { ttsSupported, primeVoices, speakVerses, stopSpeaking } from './lib/tts'
+import { ttsSupported, primeVoices, speakVerses, stopSpeaking, type Gender } from './lib/tts'
 import {
   Toolbar,
   Settings,
@@ -28,6 +28,7 @@ interface Prefs {
   size: Size
   furigana: boolean
   rate: number
+  voice: Gender
 }
 
 // ---- URL hash: #/<slug>/<chapter>/<lang>[/<verse>] ----
@@ -51,10 +52,11 @@ const buildHash = (slug: string, chapter: number, lang: Lang, verse?: number) =>
   `#/${slug}/${chapter}/${lang}` + (verse ? `/${verse}` : '')
 
 const loadPrefs = (): Prefs => {
+  const d: Prefs = { theme: 'system', size: 'md', furigana: true, rate: 1, voice: 'male' }
   try {
-    return { theme: 'system', size: 'md', furigana: true, rate: 1, ...JSON.parse(localStorage.getItem('prefs') || '{}') }
+    return { ...d, ...JSON.parse(localStorage.getItem('prefs') || '{}') }
   } catch {
-    return { theme: 'system', size: 'md', furigana: true, rate: 1 }
+    return d
   }
 }
 const loadLastRead = (): { slug: string; chapter: number; lang: Lang; verse: number } | null => {
@@ -84,10 +86,10 @@ export default function App() {
   const [loading, setLoading] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [speaking, setSpeaking] = useState<{ v: number; lang: Lang } | null>(null)
-  const [playing, setPlaying] = useState(false)
+  const [playingLang, setPlayingLang] = useState<Lang | null>(null)
   const canTTS = ttsSupported()
 
-  const { store, addHighlight, clearHighlightsIn, toggleBookmark, setNote, remove } = useAnnotations()
+  const { store, addHighlight, clearHighlightsIn, setNote, remove } = useAnnotations()
   const [sel, setSel] = useState<{ lang: Lang; v: number; start: number; end: number; rect: DOMRect } | null>(null)
   const [noteRef, setNoteRef] = useState<string | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -168,15 +170,15 @@ export default function App() {
     stopSpeaking()
     clearWordHighlight()
     setSpeaking(null)
-    setPlaying(false)
+    setPlayingLang(null)
   }, [])
   const speakList = useCallback(
     (lang: Lang, verses: { v: number; text: string }[]) => {
       if (!canTTS || !verses.length) return
-      setPlaying(true)
+      setPlayingLang(lang)
       setSpeaking(null)
       clearWordHighlight()
-      speakVerses(verses, lang, prefs.rate, {
+      speakVerses(verses, lang, prefs.rate, prefs.voice, {
         onVerse: (v) => {
           setSpeaking({ v, lang })
           clearWordHighlight()
@@ -189,29 +191,30 @@ export default function App() {
         onDone: () => {
           clearWordHighlight()
           setSpeaking(null)
-          setPlaying(false)
+          setPlayingLang(null)
         },
       })
     },
-    [canTTS, prefs.rate],
+    [canTTS, prefs.rate, prefs.voice],
   )
-  const playChapter = useCallback(() => {
-    if (!chapter) return
-    const els = readerRef.current?.querySelectorAll(`[id^="v-${pos.lang}-"]`)
-    let start = chapter.verses[0]?.v ?? 1
-    if (els) {
-      for (const el of els) {
-        if (el.getBoundingClientRect().bottom > 96) {
-          start = Number(/-(\d+)$/.exec(el.id)?.[1] ?? start)
-          break
+  // Play the whole chapter in one language, from the top-visible verse of that column.
+  const playChapter = useCallback(
+    (lang: Lang) => {
+      if (!chapter) return
+      const els = readerRef.current?.querySelectorAll(`[id^="v-${lang}-"]`)
+      let start = chapter.verses[0]?.v ?? 1
+      if (els) {
+        for (const el of els) {
+          if (el.getBoundingClientRect().bottom > 96) {
+            start = Number(/-(\d+)$/.exec(el.id)?.[1] ?? start)
+            break
+          }
         }
       }
-    }
-    speakList(
-      pos.lang,
-      chapter.verses.filter((v) => v.v >= start).map((v) => ({ v: v.v, text: v[pos.lang] })),
-    )
-  }, [chapter, pos.lang, speakList])
+      speakList(lang, chapter.verses.filter((v) => v.v >= start).map((v) => ({ v: v.v, text: v[lang] })))
+    },
+    [chapter, speakList],
+  )
   const playVerse = useCallback((lang: Lang, v: number, text: string) => speakList(lang, [{ v, text }]), [speakList])
   // stop audio when leaving the current chapter/language
   useEffect(() => () => stopAudio(), [pos.slug, pos.chapter, pos.lang, stopAudio])
@@ -362,8 +365,7 @@ export default function App() {
 
   // annotation actions bound to the current selection
   const selRef = sel ? vref(pos.slug, pos.chapter, sel.v) : null
-  const selAnn = selRef ? store[selRef] : undefined
-  const selHasHL = !!(sel && selAnn?.highlights?.some((h) => h.lang === sel.lang && h.start < sel.end && h.end > sel.start))
+  const selHasHL = !!(sel && store[selRef!]?.highlights?.some((h) => h.lang === sel.lang && h.start < sel.end && h.end > sel.start))
   const clearSelection = () => {
     window.getSelection()?.removeAllRanges()
     setSel(null)
@@ -384,8 +386,13 @@ export default function App() {
   const drawerItems: DrawerItem[] = useMemo(() => {
     const rank = (slug: string) => index.findIndex((b) => b.slug === slug)
     return Object.entries(store)
-      .filter(([, a]) => a.bookmark || a.note)
-      .map(([ref, a]) => ({ ref, label: labelFor(ref), note: a.note, bookmark: a.bookmark }))
+      .filter(([, a]) => a.note || a.highlights?.length)
+      .map(([ref, a]) => ({
+        ref,
+        label: labelFor(ref),
+        note: a.note,
+        colors: [...new Set((a.highlights || []).map((h) => h.color))],
+      }))
       .sort((x, y) => {
         const px = parseRef(x.ref)
         const py = parseRef(y.ref)
@@ -413,16 +420,7 @@ export default function App() {
           </select>
         </div>
         <div className="tools">
-          {canTTS && (
-            <button
-              className={`icon ${playing ? 'playing' : ''}`}
-              title={playing ? 'Stop audio' : 'Play chapter'}
-              onClick={() => (playing ? stopAudio() : playChapter())}
-            >
-              {playing ? '⏹' : '▶'}
-            </button>
-          )}
-          <button className="icon" title="Bookmarks & notes" onClick={() => setDrawerOpen(true)}>🔖</button>
+          <button className="icon" title="Saved (notes & highlights)" onClick={() => setDrawerOpen(true)}>🔖</button>
           <button className="icon" title="Settings" onClick={() => setSettingsOpen(true)}>⚙</button>
         </div>
       </header>
@@ -461,7 +459,20 @@ export default function App() {
           <div className={`cols cols-${langsToShow.length}`}>
             {langsToShow.map((l) => (
               <section key={l} className="col" lang={LANG_META[l].htmlLang}>
-                {wide && <div className="colhead">{LANG_META[l].label} · {LANG_META[l].edition}</div>}
+                {(wide || canTTS) && (
+                  <div className="colhead">
+                    {wide && <span>{LANG_META[l].label} · {LANG_META[l].edition}</span>}
+                    {canTTS && (
+                      <button
+                        className={`colplay ${playingLang === l ? 'on' : ''}`}
+                        title={playingLang === l ? 'Stop' : `Play chapter (${LANG_META[l].label})`}
+                        onClick={() => (playingLang === l ? stopAudio() : playChapter(l))}
+                      >
+                        {playingLang === l ? '⏹' : '▶'} {LANG_META[l].edition}
+                      </button>
+                    )}
+                  </div>
+                )}
                 <ol className="verses">
                   {chapter?.verses.map((v) => {
                     const ref = vref(pos.slug, pos.chapter, v.v)
@@ -486,7 +497,6 @@ export default function App() {
                             ▶
                           </button>
                         )}
-                        {ann?.bookmark && <span className="mk" title="Bookmarked">🔖</span>}
                         {ann?.note && (
                           <button className="mk note" title="Note" onClick={() => setNoteRef(ref)}>
                             ✎
@@ -525,15 +535,11 @@ export default function App() {
       {sel && (
         <Toolbar
           rect={sel.rect}
-          bookmarked={!!selAnn?.bookmark}
+          dock={wide ? 'float' : 'bottom'}
           hasHL={selHasHL}
           onColor={doColor}
           onNote={() => {
             if (selRef) setNoteRef(selRef)
-            clearSelection()
-          }}
-          onBookmark={() => {
-            if (selRef) toggleBookmark(selRef)
             clearSelection()
           }}
           onClear={() => {
@@ -549,11 +555,13 @@ export default function App() {
         size={prefs.size}
         furigana={prefs.furigana}
         rate={prefs.rate}
+        voice={prefs.voice}
         ttsOn={canTTS}
         onTheme={(t) => setPref({ theme: t })}
         onSize={(s) => setPref({ size: s })}
         onFurigana={(f) => setPref({ furigana: f })}
         onRate={(r) => setPref({ rate: r })}
+        onVoice={(g) => setPref({ voice: g })}
         onClose={() => setSettingsOpen(false)}
       />
 
@@ -573,12 +581,10 @@ export default function App() {
         <NoteEditor
           label={labelFor(noteRef)}
           value={store[noteRef]?.note ?? ''}
-          bookmarked={!!store[noteRef]?.bookmark}
           onSave={(text) => {
             setNote(noteRef, text)
             setNoteRef(null)
           }}
-          onToggleBookmark={() => toggleBookmark(noteRef)}
           onDelete={() => {
             remove(noteRef)
             setNoteRef(null)

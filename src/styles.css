@@ -221,6 +221,46 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
   transition: background 0.8s ease, box-shadow 0.8s ease;
 }
 
+/* ---------- per-language chapter play button (column header) ---------- */
+.colhead { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.colplay {
+  font-family: system-ui, sans-serif;
+  font-size: 12px;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--fg);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.colplay.on { color: var(--accent); border-color: var(--accent); background: var(--accent-bg); }
+
+/* ---------- mobile: dock the selection toolbar to the bottom ---------- */
+.atoolbar.bottom {
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(env(safe-area-inset-bottom) + 16px);
+  top: auto;
+  max-width: calc(100vw - 20px);
+}
+
+/* ---------- drawer highlight color dots ---------- */
+.dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin-left: 5px;
+  vertical-align: middle;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+}
+.dtag { margin-left: 6px; font-size: 11px; color: var(--muted); }
+
 /* ---------- audio: play buttons + spoken highlighting ---------- */
 .vplay {
   font-size: 9px;
@@ -268,7 +308,9 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
   position: fixed;
   z-index: 75;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
   gap: 6px;
   padding: 6px 8px;
   background: var(--card);
@@ -301,6 +343,8 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
 .sheet {
   margin: auto;
   width: min(440px, 92vw);
+  max-height: 88dvh;
+  overflow: auto;
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: 16px;
