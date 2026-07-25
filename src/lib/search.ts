@@ -49,9 +49,11 @@ export interface Hit {
   at: number
   len: number
 }
+// CJK searches are meaningful at one character; latin needs two to avoid noise.
+export const minQueryLen = (q: string) => (/[぀-ヿ㐀-鿿豈-﫿]/.test(q) ? 1 : 2)
 export function runSearch(entries: Entry[], q: string, limit = 150): Hit[] {
   const query = q.trim()
-  if (query.length < 2) return []
+  if (query.length < minQueryLen(query)) return []
   const ql = query.toLowerCase()
   const hits: Hit[] = []
   for (const e of entries) {

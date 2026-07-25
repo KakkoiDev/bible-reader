@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { IndexItem, Lang } from '../lib/types'
 import { LANG_META } from '../lib/types'
 import { VerseText } from '../lib/format'
-import { buildIndex, runSearch, parseReference, type Hit } from '../lib/search'
+import { buildIndex, runSearch, parseReference, minQueryLen, type Hit } from '../lib/search'
 
 /* ------------------------------- Search ------------------------------- */
 export function SearchSheet({
@@ -13,7 +13,7 @@ export function SearchSheet({
 }: {
   open: boolean
   index: IndexItem[]
-  onNavigate: (slug: string, ch: number, v?: number) => void
+  onNavigate: (slug: string, ch: number, v?: number, lang?: Lang) => void
   onClose: () => void
 }) {
   const [q, setQ] = useState('')
@@ -29,7 +29,7 @@ export function SearchSheet({
     }
   }, [open])
   useEffect(() => {
-    if (q.trim().length < 2) {
+    if (q.trim().length < minQueryLen(q.trim())) {
       setHits([])
       setLoading(false)
       return
@@ -81,7 +81,7 @@ export function SearchSheet({
               const sn = snippet(h)
               return (
                 <li key={i}>
-                  <button className="dref" onClick={() => onNavigate(h.slug, h.ch, h.v)}>
+                  <button className="dref" onClick={() => onNavigate(h.slug, h.ch, h.v, h.lang)}>
                     <span className="dlabel">
                       {enBySlug.get(h.slug)} {h.ch}:{h.v} <small className="badge">{LANG_META[h.lang].edition}</small>
                     </span>

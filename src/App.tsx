@@ -682,8 +682,8 @@ export default function App() {
       <SearchSheet
         open={searchOpen}
         index={index}
-        onNavigate={(slug, ch, v) => {
-          go({ slug, chapter: ch, verse: v })
+        onNavigate={(slug, ch, v, lang) => {
+          go({ slug, chapter: ch, verse: v, lang })
           setSearchOpen(false)
         }}
         onClose={() => setSearchOpen(false)}
