@@ -167,6 +167,22 @@ degrades correctly, but the service worker would cache that HTML under a JSON UR
 GitHub Pages returns a proper 404, so this is fine as configured; `vite preview` does
 *not*, which is a local-only quirk.
 
+### How readers receive an update
+
+The service worker serves the app shell from its precache, so a page that is already
+open does not get a new build just because one was deployed. `src/main.tsx` listens
+for `controllerchange` and reloads once when a newly deployed worker takes control, so
+a reader **reloads once and the update lands a couple of seconds later**, on its own.
+
+Without that listener it took *three* reloads to see a deploy, which is worth knowing
+if the listener is ever removed or the registration is reworked. Reloading mid-read is
+safe because the reader records its position continuously (`lastRead`) and restores it
+on boot.
+
+To verify the update path after changing anything about the service worker: build,
+serve, load the page, rebuild with a visible change, then reload once and confirm the
+change appears without a second manual reload.
+
 ### Known warning
 
 The run logs a deprecation notice: `actions/checkout@v4`, `actions/setup-node@v4` and
