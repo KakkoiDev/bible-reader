@@ -13,7 +13,7 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icons/*.png'],
       manifest: {
-        name: 'Bible — EN · 日本語 · FR',
+        name: 'Bible · EN · 日本語 · FR',
         short_name: 'Bible',
         description:
           'Read the Bible in English (KJV), French (KJF) and classical Japanese (文語訳) with furigana. Works offline.',

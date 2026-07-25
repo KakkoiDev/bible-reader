@@ -107,7 +107,7 @@ export function VerseText({
   showFurigana: boolean
   highlights?: HL[]
 }): ReactNode {
-  if (!text) return <span className="missing">—</span>
+  if (!text) return <span className="missing">·</span>
   const tokens = tokenize(text, lang)
   const total = tokens.reduce((a, t) => a + t.len, 0)
   const colors = highlights && highlights.length ? colorMap(total, highlights) : null
