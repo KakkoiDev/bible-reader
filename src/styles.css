@@ -381,6 +381,20 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
 .dnote { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .empty { color: var(--muted); font-family: system-ui, sans-serif; font-size: 14px; line-height: 1.6; }
 
+.databtns { display: inline-flex; gap: 8px; }
+.mini {
+  font-family: system-ui, sans-serif;
+  font-size: 13px;
+  padding: 6px 12px;
+  background: var(--card);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.mini.asbtn { display: inline-flex; align-items: center; }
+.mini input[type='file'] { display: none; }
+
 /* ---------- toast ---------- */
 .toast {
   position: fixed;

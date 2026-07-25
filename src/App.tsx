@@ -90,7 +90,7 @@ export default function App() {
   const [playingLang, setPlayingLang] = useState<Lang | null>(null)
   const canTTS = ttsSupported()
 
-  const { store, addHighlight, clearHighlightsIn, setNote, remove } = useAnnotations()
+  const { store, addHighlight, clearHighlightsIn, setNote, remove, importStore } = useAnnotations()
   const [sel, setSel] = useState<{ lang: Lang; v: number; start: number; end: number; rect: DOMRect } | null>(null)
   const [noteRef, setNoteRef] = useState<string | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -376,6 +376,40 @@ export default function App() {
     clearSelection()
   }
 
+  const exportAnnotations = useCallback(() => {
+    const payload = { app: 'bible-reader', type: 'annotations', version: 1, exportedAt: new Date().toISOString(), data: store }
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `bible-notes-${new Date().toISOString().slice(0, 10)}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+    const n = Object.keys(store).length
+    setToast(n ? `Exported ${n} verse${n === 1 ? '' : 's'}` : 'Nothing to export yet')
+  }, [store])
+
+  const importAnnotations = useCallback(
+    (file: File) => {
+      const reader = new FileReader()
+      reader.onload = () => {
+        try {
+          const parsed = JSON.parse(String(reader.result))
+          const data = parsed && parsed.type === 'annotations' && parsed.data ? parsed.data : parsed
+          if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('bad')
+          importStore(data)
+          const n = Object.keys(data).length
+          setToast(`Imported ${n} verse${n === 1 ? '' : 's'}`)
+        } catch {
+          setToast('Could not read that file')
+        }
+      }
+      reader.onerror = () => setToast('Could not read that file')
+      reader.readAsText(file)
+    },
+    [importStore],
+  )
+
   const labelFor = useCallback(
     (ref: string) => {
       const { slug, ch, v } = parseRef(ref)
@@ -569,6 +603,8 @@ export default function App() {
         onRate={(r) => setPref({ rate: r })}
         onVoice={(g) => setPref({ voice: g })}
         onSwipe={(v) => setPref({ swipe: v })}
+        onExport={exportAnnotations}
+        onImport={importAnnotations}
         onClose={() => setSettingsOpen(false)}
       />
 

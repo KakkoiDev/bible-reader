@@ -78,10 +78,12 @@ export function useAnnotations() {
       }),
     [],
   )
+  // Merge imported annotations in; an imported verse replaces that verse's entry.
+  const importStore = useCallback((incoming: Store) => setStore((prev) => ({ ...prev, ...incoming })), [])
   const setNote = useCallback(
     (ref: string, note: string) => update(ref, (a) => ({ ...a, note: note.trim() || undefined })),
     [update],
   )
 
-  return { store, addHighlight, clearHighlightsIn, setNote, remove }
+  return { store, addHighlight, clearHighlightsIn, setNote, remove, importStore }
 }

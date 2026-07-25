@@ -73,6 +73,8 @@ export function Settings({
   onRate,
   onVoice,
   onSwipe,
+  onExport,
+  onImport,
   onClose,
 }: {
   open: boolean
@@ -89,6 +91,8 @@ export function Settings({
   onRate: (r: number) => void
   onVoice: (g: 'male' | 'female') => void
   onSwipe: (v: boolean) => void
+  onExport: () => void
+  onImport: (file: File) => void
   onClose: () => void
 }) {
   if (!open) return null
@@ -127,6 +131,24 @@ export function Settings({
           <span>Swipe to change language (mobile)</span>
           <input type="checkbox" checked={swipe} onChange={(e) => onSwipe(e.target.checked)} />
         </label>
+        <div className="srow">
+          <span>Notes &amp; highlights</span>
+          <div className="databtns">
+            <button className="mini" onClick={onExport}>Export</button>
+            <label className="mini asbtn">
+              Import
+              <input
+                type="file"
+                accept="application/json,.json"
+                onChange={(e) => {
+                  const f = e.target.files?.[0]
+                  if (f) onImport(f)
+                  e.target.value = ''
+                }}
+              />
+            </label>
+          </div>
+        </div>
         {ttsOn && (
           <>
             <div className="srow">
