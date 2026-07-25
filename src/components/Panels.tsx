@@ -65,12 +65,14 @@ export function Settings({
   furigana,
   rate,
   voice,
+  swipe,
   ttsOn,
   onTheme,
   onSize,
   onFurigana,
   onRate,
   onVoice,
+  onSwipe,
   onClose,
 }: {
   open: boolean
@@ -79,12 +81,14 @@ export function Settings({
   furigana: boolean
   rate: number
   voice: 'male' | 'female'
+  swipe: boolean
   ttsOn: boolean
   onTheme: (t: Theme) => void
   onSize: (s: Size) => void
   onFurigana: (f: boolean) => void
   onRate: (r: number) => void
   onVoice: (g: 'male' | 'female') => void
+  onSwipe: (v: boolean) => void
   onClose: () => void
 }) {
   if (!open) return null
@@ -118,6 +122,10 @@ export function Settings({
         <label className="srow">
           <span>Furigana (日本語)</span>
           <input type="checkbox" checked={furigana} onChange={(e) => onFurigana(e.target.checked)} />
+        </label>
+        <label className="srow">
+          <span>Swipe to change language (mobile)</span>
+          <input type="checkbox" checked={swipe} onChange={(e) => onSwipe(e.target.checked)} />
         </label>
         {ttsOn && (
           <>

@@ -49,50 +49,9 @@ export interface SpeakItem {
   text: string
 }
 
-// Maps a run of the spoken (kana) string to the displayed (kanji) base text.
-interface Seg {
-  ss: number
-  se: number
-  bs: number
-  be: number
-}
-/** For Japanese, build the spoken kana string alongside a chunk map back to the
- *  displayed base text (kanji). Each chunk is a kanji group ({{…}}) or a run of
- *  kana between them; a boundary highlights its whole chunk so nothing is skipped. */
-function jaSpeech(text: string): { spoken: string; map: Seg[] } {
-  const map: Seg[] = []
-  let spoken = ''
-  let bpos = 0
-  const pushPlain = (chunk: string) => {
-    if (!chunk) return
-    const spokenChunk = chunk.replace(/[〔〕]/g, ' ')
-    map.push({ ss: spoken.length, se: spoken.length + spokenChunk.length, bs: bpos, be: bpos + chunk.length })
-    spoken += spokenChunk
-    bpos += chunk.length
-  }
-  const re = /\{\{([^|}]*)\|([^}]+)\}\}/g
-  let i = 0
-  let m: RegExpExecArray | null
-  while ((m = re.exec(text))) {
-    if (m.index > i) pushPlain(text.slice(i, m.index))
-    map.push({ ss: spoken.length, se: spoken.length + m[2].length, bs: bpos, be: bpos + m[1].length })
-    spoken += m[2]
-    bpos += m[1].length
-    i = m.index + m[0].length
-  }
-  if (i < text.length) pushPlain(text.slice(i))
-  return { spoken, map }
-}
-/** Base range of the chunk the spoken position falls in. */
-function segmentBaseAt(map: Seg[], ci: number): { s: number; e: number } | null {
-  for (const seg of map) if (seg.ss <= ci && ci < seg.se) return { s: seg.bs, e: seg.be }
-  const last = map[map.length - 1]
-  return last ? { s: last.bs, e: last.be } : null
-}
-
 /** Speak a run of verses in order; hooks fire as each verse begins / all finish.
- *  onWord reports the spoken word's displayed char range. For JA the kana index is
- *  mapped back to the kanji; it still only fires if the voice emits word boundaries. */
+ *  Word-level highlighting (onWord) is EN/FR only — Japanese highlights per verse,
+ *  because its browser voices rarely emit reliable word boundaries (see FUTURE.md). */
 export function speakVerses(
   items: SpeakItem[],
   lang: Lang,
@@ -107,26 +66,17 @@ export function speakVerses(
   if (!ttsSupported() || items.length === 0) return
   speechSynthesis.cancel()
   const voice = pickVoice(lang, gender)
-  const ja = lang === 'ja'
   items.forEach((it, i) => {
-    const built = ja ? jaSpeech(it.text) : { spoken: speechText(it.text, lang), map: null as Seg[] | null }
-    const spoken = built.spoken
+    const spoken = speechText(it.text, lang)
     const u = new SpeechSynthesisUtterance(spoken)
     u.lang = LANG_TAG[lang]
     if (voice) u.voice = voice
     u.rate = rate
     u.onstart = () => hooks.onVerse(it.v)
-    if (hooks.onWord) {
+    if (hooks.onWord && lang !== 'ja') {
       u.onboundary = (e) => {
         if (e.name && e.name !== 'word') return
         const ci = e.charIndex
-        if (ja) {
-          if (built.map) {
-            const r = segmentBaseAt(built.map, ci)
-            if (r) hooks.onWord!(it.v, r.s, r.e)
-          }
-          return
-        }
         const len = e.charLength || spoken.slice(ci).match(/^\S+/)?.[0].length || 0
         if (len) hooks.onWord!(it.v, ci, ci + len)
       }

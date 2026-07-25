@@ -29,6 +29,7 @@ interface Prefs {
   furigana: boolean
   rate: number
   voice: Gender
+  swipe: boolean
 }
 
 // ---- URL hash: #/<slug>/<chapter>/<lang>[/<verse>] ----
@@ -52,7 +53,7 @@ const buildHash = (slug: string, chapter: number, lang: Lang, verse?: number) =>
   `#/${slug}/${chapter}/${lang}` + (verse ? `/${verse}` : '')
 
 const loadPrefs = (): Prefs => {
-  const d: Prefs = { theme: 'system', size: 'md', furigana: true, rate: 1, voice: 'male' }
+  const d: Prefs = { theme: 'system', size: 'md', furigana: true, rate: 1, voice: 'male', swipe: false }
   try {
     return { ...d, ...JSON.parse(localStorage.getItem('prefs') || '{}') }
   } catch {
@@ -355,7 +356,7 @@ export default function App() {
     touch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
   }
   const onTouchEnd = (e: React.TouchEvent) => {
-    if (!touch.current || wide) return
+    if (!touch.current || wide || !prefs.swipe) return
     if (!window.getSelection()?.isCollapsed) return // don't swipe while selecting text
     const dx = e.changedTouches[0].clientX - touch.current.x
     const dy = e.changedTouches[0].clientY - touch.current.y
@@ -560,12 +561,14 @@ export default function App() {
         furigana={prefs.furigana}
         rate={prefs.rate}
         voice={prefs.voice}
+        swipe={prefs.swipe}
         ttsOn={canTTS}
         onTheme={(t) => setPref({ theme: t })}
         onSize={(s) => setPref({ size: s })}
         onFurigana={(f) => setPref({ furigana: f })}
         onRate={(r) => setPref({ rate: r })}
         onVoice={(g) => setPref({ voice: g })}
+        onSwipe={(v) => setPref({ swipe: v })}
         onClose={() => setSettingsOpen(false)}
       />
 
