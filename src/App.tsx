@@ -15,6 +15,7 @@ import {
   type DrawerItem,
 } from './components/Panels'
 import { SearchSheet, Navigator, VerseSheet, type VerseSheetData } from './components/Sheets'
+import { FR_BOOKS } from './lib/frbooks'
 
 const BASE = import.meta.env.BASE_URL
 const SWIPE_MIN = 45
@@ -415,22 +416,27 @@ export default function App() {
     },
     [pos.slug, pos.chapter],
   )
-  const copyVerseText = useCallback(async (lang: Lang, label: string, text: string) => {
-    const plain =
-      lang === 'en'
-        ? text.replace(/[{}]/g, '')
-        : lang === 'ja'
-          ? text.replace(/\{\{([^|}]*)\|[^}]+\}\}/g, '$1')
-          : text
-    const version =
-      lang === 'en' ? 'King James Version (KJV)' : lang === 'ja' ? '文語訳聖書' : 'Bible King James Française (KJF)'
-    try {
-      await navigator.clipboard.writeText(`"${plain}" [${label}] ${version}`)
-      setToast('Verse copied')
-    } catch {
-      setToast('Could not copy the text')
-    }
-  }, [])
+  const copyVerseText = useCallback(
+    async (lang: Lang, slug: string, ch: number, v: number, text: string) => {
+      const plain =
+        lang === 'en'
+          ? text.replace(/[{}]/g, '')
+          : lang === 'ja'
+            ? text.replace(/\{\{([^|}]*)\|[^}]+\}\}/g, '$1')
+            : text
+      const b = index.find((x) => x.slug === slug)
+      const book = lang === 'ja' ? b?.ja || slug : lang === 'fr' ? FR_BOOKS[slug] || b?.en || slug : b?.en || slug
+      const version =
+        lang === 'en' ? 'King James Version (KJV)' : lang === 'ja' ? '文語訳聖書' : 'Bible King James Française (KJF)'
+      try {
+        await navigator.clipboard.writeText(`${book}: "${plain}" [${b?.en || slug} ${ch}:${v}] ${version}`)
+        setToast('Verse copied')
+      } catch {
+        setToast('Could not copy the text')
+      }
+    },
+    [index],
+  )
   const openVerseAt = useCallback(
     (lang: Lang, ch: number, v: number) => {
       const vv = data?.chapters.find((c) => c.n === ch)?.verses.find((x) => x.v === v)
@@ -792,7 +798,10 @@ export default function App() {
       <VerseSheet
         data={verseSheet}
         showFurigana={prefs.furigana}
-        onCopyText={() => verseSheet && copyVerseText(verseSheet.lang, verseSheet.label, verseSheet[verseSheet.lang])}
+        onCopyText={() =>
+          verseSheet &&
+          copyVerseText(verseSheet.lang, verseSheet.slug, verseSheet.ch, verseSheet.v, verseSheet[verseSheet.lang])
+        }
         onCopyLink={() => verseSheet && copyVerseLink(verseSheet.lang, verseSheet.v)}
         onPlay={() => {
           if (verseSheet) playFrom(verseSheet.lang, verseSheet.ch, verseSheet.v)
