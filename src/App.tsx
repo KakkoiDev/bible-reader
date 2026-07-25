@@ -923,7 +923,15 @@ export default function App() {
   const verseCount = chapter?.verses.length ?? 0
   // Subgrid needs a literal row count, so it's computed here rather than in CSS.
   const aligned = prefs.align && !flow && wide && langsToShow.length > 1
-  const colsStyle = aligned ? { gridTemplateRows: `auto repeat(${verseCount}, auto)` } : undefined
+  // Column tracks are set here, not in CSS: there were only rules for one, two and
+  // three columns, so a fourth edition made the whole set stack vertically. Past
+  // three, tracks get a readable floor and the row scrolls sideways instead of
+  // squeezing every edition into an unreadable ribbon.
+  const many = langsToShow.length > 3
+  const colsStyle: React.CSSProperties = {
+    gridTemplateColumns: `repeat(${langsToShow.length}, minmax(${many ? '240px' : '0'}, 1fr))`,
+    ...(aligned ? { gridTemplateRows: `auto repeat(${verseCount}, auto)` } : {}),
+  }
 
   return (
     <div className="app">
@@ -996,7 +1004,10 @@ export default function App() {
             ))}
           </div>
         ) : (
-          <div className={`cols cols-${langsToShow.length} ${aligned ? 'aligned' : ''}`} style={colsStyle}>
+          <div
+            className={`cols cols-${langsToShow.length} ${aligned ? 'aligned' : ''} ${many ? 'many' : ''}`}
+            style={colsStyle}
+          >
             {langsToShow.map((l) => {
               const m = BY_ID[l]
               const covers = bookIdx < 0 || coversBook(l, bookIdx)

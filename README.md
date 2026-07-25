@@ -55,6 +55,79 @@ Every attribution is reproduced verbatim in the app under **Texts & licences**.
   hidden, it opens in their first visible one and says so. An **invite link** also
   carries the sender's edition set, and always asks before changing anything.
 
+## Text sources, for audit
+
+Every edition, where it came from, and how to re-fetch it. `scripts/sources.mjs` is
+the machine-readable version; this table is the audit trail. Retrieved 2026-07-26.
+
+| id | Source | Exact reference | Licence as stated by the source |
+| --- | --- | --- | --- |
+| `en` | hand-curated, in repo | `data-src/kjv.md` | public domain |
+| `ja` | hand-curated, in repo | `data-src/bungo.md` | public domain |
+| `fr` | hand-curated, in repo | `data-src/kjf.md` — **provenance unresolved, see below** | © Nadine L. Stratford |
+| `zht` | eBible.org | `https://ebible.org/Scriptures/cmn-cu89t_usfm.zip` | public domain |
+| `zhs` | eBible.org | `https://ebible.org/Scriptures/cmn-cu89s_usfm.zip` | public domain |
+| `pt` | getbible.net v2 | `https://api.getbible.net/v2/almeida.json` | module claims GPL — see FUTURE.md |
+| `es` | eBible.org | `https://ebible.org/Scriptures/spaRV1909_usfm.zip` | public domain |
+| `ar` | eBible.org | `https://ebible.org/Scriptures/arb-vd_usfm.zip` | public domain |
+| `tl` | getbible.net v2 | `https://api.getbible.net/v2/tagalog.json` | public domain |
+| `el` | eBible.org | `https://ebible.org/Scriptures/grctr_usfm.zip` | public domain |
+| `he` | eBible.org | `https://ebible.org/Scriptures/hebwlc_usfm.zip` | public domain |
+
+Catalogues used to choose the above:
+`https://ebible.org/Scriptures/translations.csv` and
+`https://api.getbible.net/v2/translations.json`.
+
+### Open item: the KJF's provenance is undocumented
+
+`data-src/kjf.md` arrived in the initial commit already merged, and its own header is
+the only record of where it came from:
+
+> *Le Cantique des Cantiques est absent de l'export OSIS 2022 (défaut de source) ;
+> il est repris de l'édition KJF 2006. Les autres livres proviennent de l'OSIS 2022.*
+
+So two upstream files were used — an **OSIS 2022 export** and a **KJF 2006 edition** —
+and neither is in the repo, nor is any URL recorded in git history. The 2006 edition
+demonstrably existed for this project (the Song of Solomon is present and came from
+it), so it is worth recovering: it would likely fill the gaps listed below.
+
+Searched without success on 2026-07-26:
+
+- `ebible.org` catalogue — five French editions, no KJF
+- `api.getbible.net` catalogue — French has Darby, Louis Segond, Martin; no KJF
+- CrossWire SWORD module registry — `ModInfo.jsp?modName=KJF` returns
+  *"No module found: KJF"*
+- GitHub repository search for "king james francaise bible" — 0 results
+- `kingjamesfrancaise.net` and `kingjamesfrancaise.fr` — do not resolve
+
+If you still have either upstream file, drop it in and the gaps close.
+
+### Known gaps in the KJF (41 verses the KJV carries)
+
+Verified against the committed source, so these are upstream omissions rather than
+pipeline losses. They render the missing-verse placeholder.
+
+```
+leviticus       13:1
+numbers         13:9, 30:5
+1-samuel        20:43
+1-kings         22:54
+1-chronicles    23:26
+psalms          21:12, 44:23, 45:1, 57:10, 60:8, 60:9, 63:7, 69:7,
+                84:11, 92:8, 113:9, 140:13, 142:6
+isaiah          9:17
+ezekiel         20:49
+jonah           2:3
+john            18:24
+1-corinthians   7:6
+2-thessalonians 2:16
+3-john          1:15
+revelation      5:1-14 (the whole chapter), 12:18
+```
+
+These are genuine holes, not a numbering offset: Psalm 44 runs to verse 26 in the KJF
+but has no verse 23, and Revelation 4 and 6 are complete while 5 is absent entirely.
+
 ## Frontend conventions
 
 - **No em-dash (`—`) in user-visible copy.** Use a period, a colon, or a middot

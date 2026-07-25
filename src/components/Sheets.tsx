@@ -61,6 +61,13 @@ export function SearchSheet({
 
   if (!open) return null
   const jump = parseReference(q, index, lookup)
+  const query = q.trim()
+  const longEnough = query.length >= minQueryLen(query)
+  const showNoResults = !loading && longEnough && hits.length === 0 && !jump
+  // Nothing to show means no results container at all: an empty one still carried
+  // the head's bottom margin, so the sheet had 29px under the field against 17
+  // above it.
+  const hasResults = !!jump || loading || hits.length > 0 || showNoResults
   const snippet = (h: Hit) => ({
     pre: (h.at > 30 ? '…' : '') + h.text.slice(Math.max(0, h.at - 30), h.at),
     mid: h.text.slice(h.at, h.at + h.len),
@@ -79,6 +86,7 @@ export function SearchSheet({
           />
           <button className="icon" onClick={onClose} aria-label={t('close')}>✕</button>
         </div>
+        {hasResults && (
         <div className="results">
           {jump && (
             <button className="dref go" onClick={() => onNavigate(jump.slug, jump.ch, jump.v)}>
@@ -89,9 +97,7 @@ export function SearchSheet({
             </button>
           )}
           {loading && <p className="empty">{t('searching')}</p>}
-          {!loading && q.trim().length >= minQueryLen(q.trim()) && hits.length === 0 && !jump && (
-            <p className="empty">{t('no_results')}</p>
-          )}
+          {showNoResults && <p className="empty">{t('no_results')}</p>}
           <ul className="dlist">
             {hits.map((h, i) => {
               const sn = snippet(h)
@@ -113,6 +119,7 @@ export function SearchSheet({
             })}
           </ul>
         </div>
+        )}
       </div>
     </div>
   )

@@ -81,7 +81,10 @@ body {
   overflow-x: auto;
 }
 .ringtab {
-  flex: 1 1 0;
+  /* Don't shrink below a legible width: with many editions enabled the tabs used
+     to squeeze to 25px, so the ring scrolls instead. */
+  flex: 1 0 auto;
+  min-width: 82px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -117,9 +120,9 @@ body {
 .status { color: var(--muted); }
 
 .cols { display: grid; gap: 26px; }
-.cols-1 { grid-template-columns: 1fr; }
-.cols-2 { grid-template-columns: repeat(2, 1fr); }
-.cols-3 { grid-template-columns: repeat(3, 1fr); }
+/* Track counts are set inline in App.tsx so any number of editions works; there
+   used to be rules only for 1-3, and a fourth column made the set stack. */
+.cols.many { overflow-x: auto; padding-bottom: 6px; }
 .colhead {
   font-family: system-ui, sans-serif;
   font-size: 12px;
@@ -431,7 +434,10 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
   border: 1px solid var(--line);
   border-radius: 10px;
 }
-.results { margin-top: 6px; }
+/* The search field is the whole head, so the gap below it belongs to the results
+   block and disappears with it. */
+.sheet.search .sheet-head { margin-bottom: 0; }
+.results { margin-top: 14px; }
 .results .dref.go {
   background: var(--accent-bg);
   border-color: color-mix(in srgb, var(--accent) 32%, transparent);

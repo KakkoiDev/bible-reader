@@ -131,6 +131,68 @@ console.log('\nAligned verses across editions')
   await c2.close()
 }
 
+// ---------- 4b. any number of editions lays out side by side ----------
+// There were CSS rules for one, two and three columns only, so a fourth edition
+// made the whole set stack vertically when alignment was off.
+console.log('\nMany editions side by side')
+{
+  const ALL = ['en', 'ja', 'fr', 'zht', 'zhs', 'pt', 'es', 'ar', 'tl', 'el', 'he']
+  for (const align of [true, false]) {
+    for (const n of [2, 4, 7, 11]) {
+      const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } })
+      await ctx.addInitScript((p) => localStorage.setItem('prefs', JSON.stringify(p)), {
+        ...BASE, align, ui: 'en', columns: ALL.slice(0, n),
+      })
+      const page = await ctx.newPage()
+      await page.goto(URL + '#/john/1/en', { waitUntil: 'networkidle' })
+      await page.waitForSelector('.verse')
+      const r = await page.evaluate(() => {
+        const cols = [...document.querySelectorAll('.col')]
+        const ws = cols.map((c) => Math.round(c.getBoundingClientRect().width))
+        return {
+          count: cols.length,
+          stacked: new Set(cols.map((c) => Math.round(c.getBoundingClientRect().top))).size > 1,
+          spread: Math.max(...ws) - Math.min(...ws),
+          narrowest: Math.min(...ws),
+          pageOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        }
+      })
+      const ok = r.count === n && !r.stacked && r.spread <= 2 && r.narrowest >= 100 && r.pageOverflow === 0
+      check(`align=${align} ${String(n).padStart(2)} editions side by side, equal, no page overflow`, ok,
+        `${r.count} cols, stacked=${r.stacked}, spread=${r.spread}px, narrowest=${r.narrowest}px, pageOverflow=${r.pageOverflow}`)
+      await ctx.close()
+    }
+  }
+}
+
+// ---------- 4c. the language ring stays legible with many editions ----------
+console.log('\nLanguage ring with many editions')
+{
+  const ALL = ['en', 'ja', 'fr', 'zht', 'zhs', 'pt', 'es', 'ar', 'tl', 'el', 'he']
+  for (const n of [3, 7, 11]) {
+    const ctx = await browser.newContext({ viewport: { width: 360, height: 780 }, isMobile: true, hasTouch: true })
+    await ctx.addInitScript((p) => localStorage.setItem('prefs', JSON.stringify(p)), {
+      ...BASE, ui: 'en', columns: ALL.slice(0, n),
+    })
+    const page = await ctx.newPage()
+    await page.goto(URL + '#/john/1/en', { waitUntil: 'networkidle' })
+    await page.waitForSelector('.verse')
+    const r = await page.evaluate(() => {
+      const tabs = [...document.querySelectorAll('.ringtab')]
+      const ring = document.querySelector('.langring')
+      return {
+        narrowest: Math.round(Math.min(...tabs.map((t) => t.getBoundingClientRect().width))),
+        pageOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        ringScrolls: ring.scrollWidth > ring.clientWidth,
+      }
+    })
+    check(`${String(n).padStart(2)} editions: tabs stay >=80px, page does not overflow`,
+      r.narrowest >= 80 && r.pageOverflow === 0,
+      `narrowest ${r.narrowest}px, pageOverflow ${r.pageOverflow}, ring scrolls=${r.ringScrolls}`)
+    await ctx.close()
+  }
+}
+
 // ---------- 5. RTL ----------
 console.log('\nRight-to-left (Arabic UI + Arabic/Hebrew text)')
 {
@@ -677,6 +739,18 @@ console.log('\nSettings: stop at chapter end + licences sheet')
     return Math.round(x.left - i.right)
   })
   check('search close button is clear of the input', sep >= 8, `${sep}px apart`)
+
+  // With nothing to show, the sheet must be evenly padded: an empty results
+  // container used to leave more space under the field than above it.
+  const pad = await page.evaluate(() => {
+    const sh = document.querySelector('.sheet.search').getBoundingClientRect()
+    const hd = document.querySelector('.sheet.search .sheet-head').getBoundingClientRect()
+    const rs = document.querySelector('.sheet.search .results')
+    const last = rs && rs.getBoundingClientRect().height ? rs.getBoundingClientRect() : hd
+    return { top: Math.round(hd.top - sh.top), bottom: Math.round(sh.bottom - last.bottom) }
+  })
+  check('empty search sheet is evenly padded', Math.abs(pad.top - pad.bottom) <= 2,
+    `${pad.top}px top vs ${pad.bottom}px bottom`)
   await page.screenshot({ path: `${OUT}/10-licences.png` })
   await ctx.close()
 }
