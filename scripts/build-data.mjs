@@ -1,7 +1,7 @@
 // Build aligned per-book JSON from the three Markdown Bibles in ../data-src.
 // Output: ../public/data/index.json + ../public/data/<slug>.json
 // Run: node scripts/build-data.mjs
-import { readFileSync, writeFileSync, mkdirSync, readdirSync, rmSync } from 'node:fs'
+import { readFileSync, writeFileSync, mkdirSync, readdirSync, rmSync, copyFileSync, existsSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -91,6 +91,9 @@ for (const en of kjv.order) {
   index.push({ slug: sl, en, ja, chapters: chapters.length })
 }
 writeFileSync(resolve(OUT, 'index.json'), JSON.stringify(index))
+
+// Paragraph boundaries for flow/reading mode (derived from WEB USFM, by reference).
+if (existsSync(resolve(SRC, 'paragraphs.json'))) copyFileSync(resolve(SRC, 'paragraphs.json'), resolve(OUT, 'paragraphs.json'))
 
 // summary
 const files = readdirSync(OUT).filter((f) => f !== 'index.json')

@@ -444,6 +444,15 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
 .chbtn { font-family: system-ui, sans-serif; font-size: 15px; padding: 10px 0; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
 .mini.back { margin-bottom: 8px; }
 
+/* ---------- flow / reading mode ---------- */
+.flow { max-width: 720px; margin: 0 auto; }
+.fpar { font-size: var(--verse-size); line-height: 1.95; margin: 0 0 1.05em; }
+:lang(ja) .fpar { line-height: 2.15; }
+.fverse { cursor: pointer; }
+.fverse.flash { background: var(--accent-bg); border-radius: 6px; box-shadow: 0 0 0 4px var(--accent-bg); transition: background 0.8s ease, box-shadow 0.8s ease; }
+.fverse.speaking { background: var(--accent-bg); border-radius: 6px; box-shadow: 0 0 0 4px var(--accent-bg); }
+.vt { cursor: pointer; }
+
 /* ---------- verse compare sheet ---------- */
 .compare { display: flex; flex-direction: column; gap: 14px; margin-bottom: 14px; }
 .clang { font-family: system-ui, sans-serif; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin-bottom: 3px; }

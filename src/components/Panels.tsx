@@ -66,6 +66,7 @@ export function Settings({
   rate,
   voice,
   swipe,
+  flow,
   ttsOn,
   onTheme,
   onSize,
@@ -73,6 +74,7 @@ export function Settings({
   onRate,
   onVoice,
   onSwipe,
+  onFlow,
   onExport,
   onImport,
   onClose,
@@ -84,6 +86,7 @@ export function Settings({
   rate: number
   voice: 'male' | 'female'
   swipe: boolean
+  flow: boolean
   ttsOn: boolean
   onTheme: (t: Theme) => void
   onSize: (s: Size) => void
@@ -91,6 +94,7 @@ export function Settings({
   onRate: (r: number) => void
   onVoice: (g: 'male' | 'female') => void
   onSwipe: (v: boolean) => void
+  onFlow: (v: boolean) => void
   onExport: () => void
   onImport: (file: File) => void
   onClose: () => void
@@ -123,6 +127,10 @@ export function Settings({
             ))}
           </div>
         </div>
+        <label className="srow">
+          <span>Flowing text (no verse numbers)</span>
+          <input type="checkbox" checked={flow} onChange={(e) => onFlow(e.target.checked)} />
+        </label>
         <label className="srow">
           <span>Furigana (日本語)</span>
           <input type="checkbox" checked={furigana} onChange={(e) => onFurigana(e.target.checked)} />

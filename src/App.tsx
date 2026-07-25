@@ -31,7 +31,9 @@ interface Prefs {
   rate: number
   voice: Gender
   swipe: boolean
+  flow: boolean
 }
+type Paragraphs = Record<string, Record<string, number[]>>
 
 // ---- URL hash: #/<slug>/<chapter>/<lang>[/<verse>] ----
 interface HashLoc {
@@ -54,7 +56,7 @@ const buildHash = (slug: string, chapter: number, lang: Lang, verse?: number) =>
   `#/${slug}/${chapter}/${lang}` + (verse ? `/${verse}` : '')
 
 const loadPrefs = (): Prefs => {
-  const d: Prefs = { theme: 'system', size: 'md', furigana: true, rate: 1, voice: 'male', swipe: false }
+  const d: Prefs = { theme: 'system', size: 'md', furigana: true, rate: 1, voice: 'male', swipe: false, flow: false }
   try {
     return { ...d, ...JSON.parse(localStorage.getItem('prefs') || '{}') }
   } catch {
@@ -87,13 +89,14 @@ export default function App() {
   const [wide, setWide] = useState(() => matchMedia('(min-width: 900px)').matches)
   const [loading, setLoading] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
-  const [speaking, setSpeaking] = useState<{ v: number; lang: Lang } | null>(null)
+  const [speaking, setSpeaking] = useState<{ ch: number; v: number; lang: Lang } | null>(null)
   const [playingLang, setPlayingLang] = useState<Lang | null>(null)
   const [autoNext, setAutoNext] = useState<Lang | null>(null)
   const [pending, setPending] = useState<{ slug: string; chapter: number; lang: Lang } | null>(null)
   const [navOpen, setNavOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [verseSheet, setVerseSheet] = useState<(VerseSheetData & { slug: string; ch: number; v: number }) | null>(null)
+  const [paras, setParas] = useState<Paragraphs>({})
   const canTTS = ttsSupported()
 
   const { store, addHighlight, clearHighlightsIn, setNote, remove, importStore } = useAnnotations()
@@ -141,10 +144,16 @@ export default function App() {
     return () => window.removeEventListener('hashchange', apply)
   }, [])
 
-  // load index + book
+  // load index + book + paragraph boundaries (for flow mode)
   useEffect(() => {
     fetch(`${BASE}data/index.json`).then((r) => r.json()).then(setIndex).catch(() => setIndex([]))
+    fetch(`${BASE}data/paragraphs.json`).then((r) => r.json()).then(setParas).catch(() => setParas({}))
   }, [])
+  const flow = prefs.flow
+  const verseElId = useCallback(
+    (ch: number, v: number, lang: Lang) => (flow ? `fv-${ch}-${v}` : `v-${lang}-${v}`),
+    [flow],
+  )
   useEffect(() => {
     let alive = true
     setLoading(true)
@@ -167,7 +176,7 @@ export default function App() {
     () => data?.chapters.find((c) => c.n === pos.chapter) ?? data?.chapters[0],
     [data, pos.chapter],
   )
-  const langsToShow: Lang[] = wide ? RING : [pos.lang]
+  const langsToShow: Lang[] = flow || !wide ? [pos.lang] : RING
 
   // ---- audio (Web Speech) ----
   useEffect(() => {
@@ -184,22 +193,24 @@ export default function App() {
     setPending(null)
   }, [])
   const speakList = useCallback(
-    (lang: Lang, verses: { v: number; text: string }[], continuous: boolean) => {
+    (lang: Lang, verses: { ch: number; v: number; text: string }[], continuous: boolean) => {
       if (!canTTS || !verses.length) return
       const gen = ++genRef.current
+      const chOf = new Map(verses.map((x) => [x.v, x.ch]))
       setPlayingLang(lang)
       setSpeaking(null)
       clearWordHighlight()
       speakVerses(verses, lang, prefs.rate, prefs.voice, {
         onVerse: (v) => {
           if (gen !== genRef.current) return
-          setSpeaking({ v, lang })
+          const ch = chOf.get(v) ?? pos.chapter
+          setSpeaking({ ch, v, lang })
           clearWordHighlight()
-          document.getElementById(`v-${lang}-${v}`)?.scrollIntoView({ block: 'center' })
+          document.getElementById(verseElId(ch, v, lang))?.scrollIntoView({ block: 'center' })
         },
         onWord: (v, s, e) => {
           if (gen !== genRef.current) return
-          const el = document.getElementById(`v-${lang}-${v}`)?.querySelector('.vt')
+          const el = document.getElementById(verseElId(chOf.get(v) ?? pos.chapter, v, lang))?.querySelector('.vt')
           if (el) setWordHighlight(el, s, e)
         },
         onDone: () => {
@@ -211,13 +222,13 @@ export default function App() {
         },
       })
     },
-    [canTTS, prefs.rate, prefs.voice],
+    [canTTS, prefs.rate, prefs.voice, verseElId, pos.chapter],
   )
   // Play the whole chapter in one language, from the top-visible verse of that column.
   const playChapter = useCallback(
     (lang: Lang) => {
       if (!chapter) return
-      const els = readerRef.current?.querySelectorAll(`[id^="v-${lang}-"]`)
+      const els = readerRef.current?.querySelectorAll(`[id^="${flow ? 'fv-' + chapter.n + '-' : 'v-' + lang + '-'}"]`)
       let start = chapter.verses[0]?.v ?? 1
       if (els) {
         for (const el of els) {
@@ -227,11 +238,14 @@ export default function App() {
           }
         }
       }
-      speakList(lang, chapter.verses.filter((v) => v.v >= start).map((v) => ({ v: v.v, text: v[lang] })), true)
+      speakList(lang, chapter.verses.filter((v) => v.v >= start).map((v) => ({ ch: chapter.n, v: v.v, text: v[lang] })), true)
     },
-    [chapter, speakList],
+    [chapter, speakList, flow],
   )
-  const playVerse = useCallback((lang: Lang, v: number, text: string) => speakList(lang, [{ v, text }], false), [speakList])
+  const playVerse = useCallback(
+    (lang: Lang, ch: number, v: number, text: string) => speakList(lang, [{ ch, v, text }], false),
+    [speakList],
+  )
   useEffect(() => () => stopSpeaking(), []) // stop on unmount
 
   // user navigation stops audio; auto-advance (below) uses navigate() directly so it doesn't
@@ -262,7 +276,7 @@ export default function App() {
     if (pos.slug === pending.slug && pos.chapter === pending.chapter && chapter.n === pending.chapter) {
       const lang = pending.lang
       setPending(null)
-      speakList(lang, chapter.verses.map((v) => ({ v: v.v, text: v[lang] })), true)
+      speakList(lang, chapter.verses.map((v) => ({ ch: chapter.n, v: v.v, text: v[lang] })), true)
     }
   }, [pending, chapter, pos.slug, pos.chapter, speakList])
 
@@ -270,39 +284,46 @@ export default function App() {
   useEffect(() => {
     if (flashVerse == null || !data) return
     const raf = requestAnimationFrame(() =>
-      document.getElementById(`v-${pos.lang}-${flashVerse}`)?.scrollIntoView({ block: 'center' }),
+      document.getElementById(verseElId(pos.chapter, flashVerse, pos.lang))?.scrollIntoView({ block: 'center' }),
     )
     const t = setTimeout(() => setFlashVerse(null), 4000)
     return () => {
       cancelAnimationFrame(raf)
       clearTimeout(t)
     }
-  }, [flashVerse, data, pos.chapter, pos.lang, wide])
+  }, [flashVerse, data, pos.chapter, pos.lang, wide, verseElId])
 
-  // remember the top-visible verse for resume-on-reopen
+  // remember the top-visible verse for resume-on-reopen (and, in flow, the current chapter)
+  const posRef = useRef(pos)
+  posRef.current = pos
   useEffect(() => {
     const el = readerRef.current
     if (!el || !data) return
-    const visible = new Map<string, number>()
+    const visible = new Map<string, { ch: number; v: number }>()
     const io = new IntersectionObserver(
       (entries) => {
         for (const e of entries) {
-          const m = /^v-(en|ja|fr)-(\d+)$/.exec(e.target.id)
-          if (!m) continue
-          if (!(wide || m[1] === pos.lang)) continue
-          if (e.isIntersecting) visible.set(e.target.id, Number(m[2]))
+          const mf = /^fv-(\d+)-(\d+)$/.exec(e.target.id)
+          const mn = /^v-(en|ja|fr)-(\d+)$/.exec(e.target.id)
+          let cur: { ch: number; v: number } | null = null
+          if (mf) cur = { ch: Number(mf[1]), v: Number(mf[2]) }
+          else if (mn && (wide || mn[1] === posRef.current.lang)) cur = { ch: posRef.current.chapter, v: Number(mn[2]) }
+          if (!cur) continue
+          if (e.isIntersecting) visible.set(e.target.id, cur)
           else visible.delete(e.target.id)
         }
-        let top = Infinity
-        for (const v of visible.values()) top = Math.min(top, v)
-        if (top !== Infinity)
-          localStorage.setItem('lastRead', JSON.stringify({ slug: pos.slug, chapter: pos.chapter, lang: pos.lang, verse: top }))
+        let best: { ch: number; v: number } | null = null
+        for (const c of visible.values()) if (!best || c.ch < best.ch || (c.ch === best.ch && c.v < best.v)) best = c
+        if (best) {
+          localStorage.setItem('lastRead', JSON.stringify({ slug: posRef.current.slug, chapter: best.ch, lang: posRef.current.lang, verse: best.v }))
+          if (flow) setPos((prev) => (prev.chapter === best!.ch ? prev : { ...prev, chapter: best!.ch }))
+        }
       },
       { rootMargin: '-84px 0px -55% 0px', threshold: 0 },
     )
-    el.querySelectorAll('.verse').forEach((v) => io.observe(v))
+    el.querySelectorAll(flow ? '.fverse' : '.verse').forEach((x) => io.observe(x))
     return () => io.disconnect()
-  }, [data, pos.slug, pos.chapter, pos.lang, wide, prefs.furigana])
+  }, [data, pos.slug, pos.lang, wide, prefs.furigana, flow])
 
   // text-selection → annotation toolbar
   useEffect(() => {
@@ -372,20 +393,33 @@ export default function App() {
       setToast('Could not copy the text')
     }
   }, [])
-  const openVerseSheet = useCallback(
-    (lang: Lang, vv: { v: number; en: string; fr: string; ja: string }) =>
-      setVerseSheet({
-        label: `${data?.en} ${pos.chapter}:${vv.v}`,
-        lang,
-        en: vv.en,
-        fr: vv.fr,
-        ja: vv.ja,
-        slug: pos.slug,
-        ch: pos.chapter,
-        v: vv.v,
-      }),
-    [data, pos.slug, pos.chapter],
+  const openVerseAt = useCallback(
+    (lang: Lang, ch: number, v: number) => {
+      const vv = data?.chapters.find((c) => c.n === ch)?.verses.find((x) => x.v === v)
+      if (!vv) return
+      setVerseSheet({ label: `${data?.en} ${ch}:${v}`, lang, en: vv.en, fr: vv.fr, ja: vv.ja, slug: pos.slug, ch, v })
+    },
+    [data, pos.slug],
   )
+  // paragraphs for flow/reading mode (whole book, single language, logical breaks)
+  const flowParas = useMemo(() => {
+    if (!flow || !data) return []
+    const breaks = paras[pos.slug] || {}
+    const out: { ch: number; v: number; text: string; ann: import('./lib/annotations').Ann | undefined }[][] = []
+    let cur: (typeof out)[number] = []
+    for (const c of data.chapters) {
+      const chBreaks = breaks[String(c.n)] || []
+      for (const vv of c.verses) {
+        if (chBreaks.includes(vv.v) && cur.length) {
+          out.push(cur)
+          cur = []
+        }
+        cur.push({ ch: c.n, v: vv.v, text: vv[pos.lang], ann: store[vref(pos.slug, c.n, vv.v)] })
+      }
+    }
+    if (cur.length) out.push(cur)
+    return out
+  }, [flow, data, paras, pos.slug, pos.lang, store])
   useEffect(() => {
     if (!toast) return
     const t = setTimeout(() => setToast(null), 1800)
@@ -502,7 +536,7 @@ export default function App() {
         </div>
       </header>
 
-      {!wide && (
+      {(!wide || flow) && (
         <div className="langring" role="tablist" aria-label="Language">
           {RING.map((l) => (
             <button
@@ -532,6 +566,30 @@ export default function App() {
 
         {loading && !chapter ? (
           <p className="status">…</p>
+        ) : flow ? (
+          <div className="flow" lang={LANG_META[pos.lang].htmlLang}>
+            {flowParas.map((para, pi) => (
+              <p className="fpar" key={pi}>
+                {para.map((it) => (
+                  <span
+                    key={`${it.ch}-${it.v}`}
+                    id={`fv-${it.ch}-${it.v}`}
+                    className={`fverse ${flashVerse === it.v && pos.chapter === it.ch ? 'flash' : ''} ${
+                      speaking?.ch === it.ch && speaking?.v === it.v ? 'speaking' : ''
+                    }`}
+                    onClick={() => window.getSelection()?.isCollapsed && openVerseAt(pos.lang, it.ch, it.v)}
+                  >
+                    <VerseText
+                      text={it.text}
+                      lang={pos.lang}
+                      showFurigana={prefs.furigana}
+                      highlights={it.ann?.highlights?.filter((h) => h.lang === pos.lang)}
+                    />{' '}
+                  </span>
+                ))}
+              </p>
+            ))}
+          </div>
         ) : (
           <div className={`cols cols-${langsToShow.length}`}>
             {langsToShow.map((l) => (
@@ -554,36 +612,31 @@ export default function App() {
                   {chapter?.verses.map((v) => {
                     const ref = vref(pos.slug, pos.chapter, v.v)
                     const ann = store[ref]
+                    const spk = speaking?.ch === pos.chapter && speaking?.v === v.v && speaking?.lang === l
                     return (
                       <li
                         key={v.v}
                         id={`v-${l}-${v.v}`}
-                        className={`verse ${flashVerse === v.v && pos.lang === l ? 'flash' : ''} ${
-                          speaking?.v === v.v && speaking?.lang === l ? 'speaking' : ''
-                        }`}
+                        className={`verse ${flashVerse === v.v && pos.lang === l ? 'flash' : ''} ${spk ? 'speaking' : ''}`}
                       >
-                        <button className="vn" title="Verse actions" onClick={() => openVerseSheet(l, v)}>
-                          {v.v}
-                        </button>
-                        {canTTS &&
-                          (() => {
-                            const spk = speaking?.v === v.v && speaking?.lang === l
-                            return (
-                              <button
-                                className={`vplay ${spk ? 'on' : ''}`}
-                                title={spk ? 'Stop' : 'Play verse'}
-                                onClick={() => (spk ? stopAudio() : playVerse(l, v.v, v[l]))}
-                              >
-                                {spk ? '⏹' : '▶'}
-                              </button>
-                            )
-                          })()}
+                        {canTTS && (
+                          <button
+                            className={`vplay ${spk ? 'on' : ''}`}
+                            title={spk ? 'Stop' : 'Play verse'}
+                            onClick={() => (spk ? stopAudio() : playVerse(l, pos.chapter, v.v, v[l]))}
+                          >
+                            {spk ? '⏹' : '▶'}
+                          </button>
+                        )}
                         {ann?.note && (
                           <button className="mk note" title="Note" onClick={() => setNoteRef(ref)}>
                             ✎
                           </button>
                         )}
-                        <span className="vt">
+                        <span
+                          className="vt"
+                          onClick={() => window.getSelection()?.isCollapsed && openVerseAt(l, pos.chapter, v.v)}
+                        >
                           <VerseText
                             text={v[l]}
                             lang={l}
@@ -600,16 +653,18 @@ export default function App() {
           </div>
         )}
 
-        <nav className="chapnav">
-          <button onClick={() => goChapter(-1)} disabled={bookIdx === 0 && pos.chapter <= 1}>← Prev</button>
-          <span className="chaplabel">{data?.en} {pos.chapter}</span>
-          <button
-            onClick={() => goChapter(1)}
-            disabled={bookIdx === index.length - 1 && data != null && pos.chapter >= data.chapters.length}
-          >
-            Next →
-          </button>
-        </nav>
+        {!flow && (
+          <nav className="chapnav">
+            <button onClick={() => goChapter(-1)} disabled={bookIdx === 0 && pos.chapter <= 1}>← Prev</button>
+            <span className="chaplabel">{data?.en} {pos.chapter}</span>
+            <button
+              onClick={() => goChapter(1)}
+              disabled={bookIdx === index.length - 1 && data != null && pos.chapter >= data.chapters.length}
+            >
+              Next →
+            </button>
+          </nav>
+        )}
 
         <footer className="attrib">
           English: King James Version (public domain) · Français: Bible King James
@@ -643,6 +698,7 @@ export default function App() {
         rate={prefs.rate}
         voice={prefs.voice}
         swipe={prefs.swipe}
+        flow={prefs.flow}
         ttsOn={canTTS}
         onTheme={(t) => setPref({ theme: t })}
         onSize={(s) => setPref({ size: s })}
@@ -650,6 +706,7 @@ export default function App() {
         onRate={(r) => setPref({ rate: r })}
         onVoice={(g) => setPref({ voice: g })}
         onSwipe={(v) => setPref({ swipe: v })}
+        onFlow={(v) => setPref({ flow: v })}
         onExport={exportAnnotations}
         onImport={importAnnotations}
         onClose={() => setSettingsOpen(false)}
@@ -695,7 +752,7 @@ export default function App() {
         onCopyText={() => verseSheet && copyVerseText(verseSheet.label, verseSheet.en, verseSheet.fr, verseSheet.ja)}
         onCopyLink={() => verseSheet && copyVerseLink(verseSheet.lang, verseSheet.v)}
         onPlay={() => {
-          if (verseSheet) playVerse(verseSheet.lang, verseSheet.v, verseSheet[verseSheet.lang])
+          if (verseSheet) playVerse(verseSheet.lang, verseSheet.ch, verseSheet.v, verseSheet[verseSheet.lang])
           setVerseSheet(null)
         }}
         onNote={() => {
