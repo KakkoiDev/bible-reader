@@ -429,7 +429,7 @@ export default function App() {
       const version =
         lang === 'en' ? 'King James Version (KJV)' : lang === 'ja' ? '文語訳聖書' : 'Bible King James Française (KJF)'
       try {
-        await navigator.clipboard.writeText(`${book}: "${plain}" [${b?.en || slug} ${ch}:${v}] ${version}`)
+        await navigator.clipboard.writeText(`"${plain}" [${book} ${ch}:${v}] ${version}`)
         setToast('Verse copied')
       } catch {
         setToast('Could not copy the text')
