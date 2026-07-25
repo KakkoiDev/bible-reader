@@ -1,7 +1,7 @@
 // Selection → base-text offsets (for persistent highlights, rendered as DOM
 // spans in format.tsx) and the transient audio word-highlight (CSS Custom
 // Highlight API — used only for EN/FR, which have no <ruby>).
-import type { Lang } from './types'
+import { isLang, type Lang } from './versions'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 const cssAny = (): any => (typeof CSS !== 'undefined' ? (CSS as any) : undefined)
@@ -113,7 +113,7 @@ export function selectionContext(reader: Element): {
   const verseEl = verseOf(range.commonAncestorContainer) || verseOf(range.startContainer)
   if (!verseEl || !reader.contains(verseEl)) return null
   const mf = /^fv-(\d+)-(\d+)$/.exec(verseEl.id)
-  const mn = /^v-(en|ja|fr)-(\d+)$/.exec(verseEl.id)
+  const mn = /^v-([a-z]+)-(\d+)$/.exec(verseEl.id)
   let el: Element | null
   let lang: Lang | null
   let ch: number | null
@@ -123,7 +123,7 @@ export function selectionContext(reader: Element): {
     lang = null
     ch = Number(mf[1])
     v = Number(mf[2])
-  } else if (mn) {
+  } else if (mn && isLang(mn[1])) {
     el = verseEl.querySelector('.vt')
     lang = mn[1] as Lang
     ch = null

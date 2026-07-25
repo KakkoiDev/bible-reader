@@ -8,10 +8,149 @@
     <meta name="theme-color" content="#1e1b4b" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <title>Bible · EN · 日本語 · FR</title>
+    <title>Bible · 11 editions</title>
+    <!--
+      Splash screen. Lives in the document (not in a component) and is styled inline
+      so it paints on the very first frame, before the JS bundle or styles.css load —
+      which is the whole point on a cold PWA start. React replaces #root's children
+      when it mounts, so there is nothing to tear down.
+    -->
+    <style>
+      :root {
+        --sbg: #faf8f4;
+        --sfg: #1f2430;
+        --smuted: #8a8f9c;
+        --sline: #e7e2d8;
+        --saccent: #4338ca;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --sbg: #14131a;
+          --sfg: #e9e6df;
+          --smuted: #8c8a95;
+          --sline: #2a2833;
+          --saccent: #a9a2ff;
+        }
+      }
+      html,
+      body {
+        margin: 0;
+        background: var(--sbg);
+      }
+      #splash {
+        min-height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 22px;
+        padding: 32px 20px calc(env(safe-area-inset-bottom) + 32px);
+        box-sizing: border-box;
+        color: var(--sfg);
+        font-family: ui-serif, Georgia, 'Times New Roman', 'Yu Mincho', 'Hiragino Mincho ProN', serif;
+        animation: sfade 0.5s ease both;
+      }
+      @keyframes sfade {
+        from { opacity: 0 }
+        to { opacity: 1 }
+      }
+      #splash .smark {
+        width: 44px;
+        height: 44px;
+        flex: none;
+      }
+      #splash h1 {
+        margin: 0;
+        font-size: 27px;
+        font-weight: 600;
+        letter-spacing: 0.01em;
+      }
+      #splash .stag {
+        margin: -14px 0 0;
+        font-family: system-ui, sans-serif;
+        font-size: 12px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--smuted);
+      }
+      #splash ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        width: min(560px, 100%);
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 1px 0;
+        border-top: 1px solid var(--sline);
+      }
+      #splash li {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 9px 12px;
+        border-bottom: 1px solid var(--sline);
+        font-size: 16px;
+        line-height: 1.35;
+      }
+      #splash li small {
+        font-family: system-ui, sans-serif;
+        font-size: 11px;
+        color: var(--smuted);
+        white-space: nowrap;
+      }
+      #splash .sload {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        font-family: system-ui, sans-serif;
+        font-size: 12px;
+        color: var(--smuted);
+      }
+      #splash .sdot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--saccent);
+        animation: spulse 1.1s ease-in-out infinite;
+      }
+      @keyframes spulse {
+        0%, 100% { opacity: 0.25; transform: scale(0.8) }
+        50% { opacity: 1; transform: scale(1) }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #splash, #splash .sdot { animation: none }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div id="splash">
+        <svg class="smark" viewBox="0 0 48 48" aria-hidden="true">
+          <path d="M24 6v30" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" />
+          <path d="M13 17h22" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" />
+          <circle cx="14" cy="43" r="2.6" fill="#d4a03c" />
+          <circle cx="24" cy="43" r="2.6" fill="#d4657f" />
+          <circle cx="34" cy="43" r="2.6" fill="#5b9bd5" />
+        </svg>
+        <h1>Bible</h1>
+        <p class="stag">11 editions · offline</p>
+        <ul>
+          <li lang="en"><span>English</span><small>KJV</small></li>
+          <li lang="ja"><span>日本語</span><small>文語訳</small></li>
+          <li lang="fr"><span>Français</span><small>KJF</small></li>
+          <li lang="zh-Hant"><span>繁體中文</span><small>和合本</small></li>
+          <li lang="zh-Hans"><span>简体中文</span><small>和合本</small></li>
+          <li lang="pt"><span>Português</span><small>Almeida</small></li>
+          <li lang="es"><span>Español</span><small>RV1909</small></li>
+          <li lang="ar" dir="rtl"><span>العربية</span><small>فان دايك</small></li>
+          <li lang="tl"><span>Tagalog</span><small>ADB 1905</small></li>
+          <li lang="grc"><span>Ἑλληνική</span><small>TR · NT</small></li>
+          <li lang="hbo" dir="rtl"><span>עברית</span><small>WLC · OT</small></li>
+        </ul>
+        <p class="sload"><span class="sdot"></span> Loading…</p>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -30,6 +30,11 @@ const browser = await chromium.launch()
     isMobile: true,
     hasTouch: true,
   })
+  // Swipe-to-change-language is opt-in, so the swipe checks below need it enabled.
+  await ctx.addInitScript(() => {
+    const p = JSON.parse(localStorage.getItem('prefs') || '{}')
+    localStorage.setItem('prefs', JSON.stringify({ ...p, swipe: true }))
+  })
   const page = await ctx.newPage()
   await page.goto(URL, { waitUntil: 'networkidle' })
   await page.waitForSelector('.verse')
@@ -47,14 +52,22 @@ const browser = await chromium.launch()
   await page.screenshot({ path: `${OUT}/3-mobile-ja-furigana.png` })
   log(`TAP JA   activeLang="${activeJa}"  ruby<rt>=${rubyOn}`)
 
-  // toggle furigana OFF -> rt should disappear, base kanji remain
-  await page.locator('.furi input').uncheck()
-  await page.waitForTimeout(120)
+  // toggle furigana OFF -> rt should disappear, base kanji remain.
+  // The toggle lives in the Settings sheet (there is no longer a header control).
+  const furigana = async (on) => {
+    await page.locator('.tools .icon').nth(2).click()
+    await page.waitForSelector('.sheet .sgroup')
+    const row = page.locator('.srow', { hasText: /Furigana|ふりがな/ }).first()
+    await (on ? row.locator('input').check() : row.locator('input').uncheck())
+    await page.locator('.sheet .icon[aria-label]').first().click()
+    await page.waitForTimeout(150)
+  }
+  await furigana(false)
   const rubyOff = await page.locator('ruby rt').count()
   const jaText = await page.locator('.verse .vt').first().innerText()
   await page.screenshot({ path: `${OUT}/4-mobile-ja-nofurigana.png` })
   log(`FURI OFF ruby<rt>=${rubyOff}  firstVerseHasKanji=${/[一-鿿]/.test(jaText)}`)
-  await page.locator('.furi input').check()
+  await furigana(true)
 
   // SWIPE left on the reader -> ring should advance JA -> FR
   async function swipe(dir) {

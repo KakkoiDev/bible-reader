@@ -1,24 +1,30 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { BookData, IndexItem, Lang } from './lib/types'
-import { LANG_META, RING } from './lib/types'
-import { VerseText } from './lib/format'
-import { useAnnotations, vref, parseRef, type HColor } from './lib/annotations'
+import type { Chapter, EditionBook, IndexItem } from './lib/types'
+import { bookName } from './lib/types'
+import { BY_ID, DEFAULT_COLUMNS, VERSION_IDS, coversBook, isLang, type Lang } from './lib/versions'
+import { VerseText, type HL } from './lib/format'
+import { useAnnotations, vref, parseRef, allTags, type HColor } from './lib/annotations'
 import { selectionContext, setWordHighlight, clearWordHighlight } from './lib/highlight'
-import { ttsSupported, primeVoices, speakVerses, stopSpeaking, type Gender } from './lib/tts'
+import { ttsSupported, primeVoices, speakVerses, stopSpeaking, hasVoice, type Gender } from './lib/tts'
+import { translator, detectUiLang } from './lib/i18n'
+import { decodeInvite, inviteUrl, type Invite } from './lib/invite'
 import {
   Toolbar,
   Settings,
   Drawer,
   NoteEditor,
+  ConfirmSheet,
+  LicencesSheet,
   type Theme,
   type Size,
   type DrawerItem,
+  type SortMode,
 } from './components/Panels'
-import { SearchSheet, Navigator, VerseSheet, type VerseSheetData } from './components/Sheets'
-import { FR_BOOKS } from './lib/frbooks'
+import { SearchSheet, Navigator, VerseSheet, InviteSheet, type VerseSheetData } from './components/Sheets'
 
 const BASE = import.meta.env.BASE_URL
 const SWIPE_MIN = 45
+const REPO_URL = 'https://github.com/KakkoiDev/bible-reader'
 
 interface Pos {
   slug: string
@@ -26,46 +32,74 @@ interface Pos {
   lang: Lang
 }
 interface Prefs {
+  ui: Lang
   theme: Theme
   size: Size
   furigana: boolean
+  align: boolean
   rate: number
   voice: Gender
   swipe: boolean
   flow: boolean
+  stopAtChapterEnd: boolean
   columns: Lang[]
 }
 type Paragraphs = Record<string, Record<string, number[]>>
 
-// ---- URL hash: #/<slug>/<chapter>/<lang>[/<verse>] ----
+// ---- URL hash: #/<slug>/<chapter>/<lang>[/<verse>]  or  #/i/<invite payload> ----
 interface HashLoc {
   slug: string
   chapter: number
   lang?: Lang
   verse?: number
 }
-function parseHash(): HashLoc | null {
+function parseHash(): { loc?: HashLoc; invite?: Invite } {
   const h = location.hash.replace(/^#\/?/, '')
-  if (!h) return null
+  if (!h) return {}
+  if (h.startsWith('i/')) {
+    const invite = decodeInvite(h.slice(2))
+    return invite ? { invite } : {}
+  }
   const [slug, ch, lang, verse] = h.split('/')
   const chapter = parseInt(ch, 10)
-  if (!slug || !Number.isFinite(chapter)) return null
-  const L = (RING as string[]).includes(lang) ? (lang as Lang) : undefined
+  if (!slug || !Number.isFinite(chapter)) return {}
   const v = verse != null ? parseInt(verse, 10) : NaN
-  return { slug, chapter, lang: L, verse: Number.isFinite(v) ? v : undefined }
+  return {
+    loc: {
+      slug,
+      chapter,
+      lang: isLang(lang) ? lang : undefined,
+      verse: Number.isFinite(v) ? v : undefined,
+    },
+  }
 }
 const buildHash = (slug: string, chapter: number, lang: Lang, verse?: number) =>
   `#/${slug}/${chapter}/${lang}` + (verse ? `/${verse}` : '')
 
 const loadPrefs = (): Prefs => {
-  const d: Prefs = { theme: 'system', size: 'md', furigana: true, rate: 1, voice: 'male', swipe: false, flow: false, columns: ['en', 'ja', 'fr'] }
+  const d: Prefs = {
+    ui: 'en',
+    theme: 'system',
+    size: 'md',
+    furigana: true,
+    align: true,
+    rate: 1,
+    voice: 'male',
+    swipe: false,
+    flow: false,
+    stopAtChapterEnd: false,
+    columns: DEFAULT_COLUMNS,
+  }
   try {
-    const p = { ...d, ...JSON.parse(localStorage.getItem('prefs') || '{}') }
-    const valid = [...new Set((p.columns || []).filter((l: Lang) => (RING as string[]).includes(l)))] as Lang[]
-    p.columns = valid.length ? valid : ['en', 'ja', 'fr']
+    const stored = JSON.parse(localStorage.getItem('prefs') || '{}')
+    const p = { ...d, ...stored }
+    const valid = [...new Set((p.columns || []).filter(isLang))] as Lang[]
+    p.columns = valid.length ? valid : DEFAULT_COLUMNS
+    // First run has no stored UI language: follow the browser instead of forcing English.
+    if (!isLang(stored.ui)) p.ui = detectUiLang()
     return p
   } catch {
-    return d
+    return { ...d, ui: detectUiLang() }
   }
 }
 const loadLastRead = (): { slug: string; chapter: number; lang: Lang; verse: number } | null => {
@@ -78,19 +112,18 @@ const loadLastRead = (): { slug: string; chapter: number; lang: Lang; verse: num
 
 export default function App() {
   const initHash = parseHash()
-  const initLast = initHash ? null : loadLastRead()
+  const initLast = initHash.loc ? null : loadLastRead()
 
   const [index, setIndex] = useState<IndexItem[]>([])
   const [pos, setPos] = useState<Pos>(() =>
-    initHash
-      ? { slug: initHash.slug, chapter: initHash.chapter, lang: initHash.lang ?? 'en' }
+    initHash.loc
+      ? { slug: initHash.loc.slug, chapter: initHash.loc.chapter, lang: initHash.loc.lang ?? 'en' }
       : initLast
         ? { slug: initLast.slug, chapter: initLast.chapter, lang: initLast.lang }
         : { slug: 'genesis', chapter: 1, lang: 'en' },
   )
-  const [flashVerse, setFlashVerse] = useState<number | null>(initHash?.verse ?? initLast?.verse ?? null)
+  const [flashVerse, setFlashVerse] = useState<number | null>(initHash.loc?.verse ?? initLast?.verse ?? null)
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs)
-  const [data, setData] = useState<BookData | null>(null)
   const [wide, setWide] = useState(() => matchMedia('(min-width: 900px)').matches)
   const [loading, setLoading] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
@@ -100,17 +133,27 @@ export default function App() {
   const [pending, setPending] = useState<{ slug: string; chapter: number; lang: Lang } | null>(null)
   const [navOpen, setNavOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
-  const [verseSheet, setVerseSheet] = useState<(VerseSheetData & { slug: string; ch: number; v: number }) | null>(null)
+  const [licencesOpen, setLicencesOpen] = useState(false)
+  const [verseSheet, setVerseSheet] = useState<VerseSheetData | null>(null)
   const [paras, setParas] = useState<Paragraphs>({})
+  const [invite, setInvite] = useState<Invite | null>(initHash.invite ?? null)
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const canTTS = ttsSupported()
 
-  const { store, addHighlight, clearHighlightsIn, setNote, remove, importStore } = useAnnotations()
+  const { store, addHighlight, clearHighlightsIn, setNote, setTags, setOrder, remove, importStore } = useAnnotations()
   const [sel, setSel] = useState<{ lang: Lang; ch: number; v: number; start: number; end: number; rect: DOMRect } | null>(null)
   const [noteRef, setNoteRef] = useState<string | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const readerRef = useRef<HTMLElement>(null)
 
+  // saved-notes drawer controls
+  const [sort, setSort] = useState<SortMode>('book')
+  const [asc, setAsc] = useState(true)
+  const [thisBook, setThisBook] = useState(false)
+  const [tagFilter, setTagFilter] = useState<string[]>([])
+
+  const t = useMemo(() => translator(prefs.ui), [prefs.ui])
   const setPref = useCallback((p: Partial<Prefs>) => setPrefs((prev) => ({ ...prev, ...p })), [])
 
   // navigation via URL hash (shareable, back-button friendly)
@@ -121,11 +164,13 @@ export default function App() {
     })
   }, [])
 
-  // apply prefs to <html> for CSS
+  // apply prefs to <html> for CSS, including writing direction for the UI language
   useEffect(() => {
     const el = document.documentElement
     el.dataset.theme = prefs.theme === 'system' ? '' : prefs.theme
     el.dataset.size = prefs.size
+    el.lang = BY_ID[prefs.ui].htmlLang
+    el.dir = BY_ID[prefs.ui].dir
     localStorage.setItem('prefs', JSON.stringify(prefs))
   }, [prefs])
 
@@ -137,60 +182,125 @@ export default function App() {
     return () => mq.removeEventListener('change', on)
   }, [])
 
-  // apply hash on change (pasted link, back/forward)
-  useEffect(() => {
-    const apply = () => {
-      const h = parseHash()
-      if (!h) return
-      setPos((prev) => ({ ...prev, slug: h.slug, chapter: h.chapter, lang: h.lang ?? prev.lang }))
-      setFlashVerse(h.verse ?? null)
-    }
-    window.addEventListener('hashchange', apply)
-    return () => window.removeEventListener('hashchange', apply)
-  }, [])
-
-  // load index + book + paragraph boundaries (for flow mode)
-  useEffect(() => {
-    fetch(`${BASE}data/index.json`).then((r) => r.json()).then(setIndex).catch(() => setIndex([]))
-    fetch(`${BASE}data/paragraphs.json`).then((r) => r.json()).then(setParas).catch(() => setParas({}))
-  }, [])
   const flow = prefs.flow
   const verseElId = useCallback(
     (ch: number, v: number, lang: Lang) => (flow ? `fv-${ch}-${v}` : `v-${lang}-${v}`),
     [flow],
   )
+  // In flow mode the whole book is on one page, so navigating a chapter means
+  // scrolling to it. Non-null while that scroll is pending — the observer below
+  // must not fight it by deriving the chapter back from scroll position.
+  const [flowTarget, setFlowTarget] = useState<{ ch: number; v: number } | null>(null)
+  const flowTargetRef = useRef(flowTarget)
+  flowTargetRef.current = flowTarget
+
+  // load index + paragraph boundaries (for flow mode)
+  useEffect(() => {
+    fetch(`${BASE}data/index.json`).then((r) => r.json()).then(setIndex).catch(() => setIndex([]))
+    fetch(`${BASE}data/paragraphs.json`).then((r) => r.json()).then(setParas).catch(() => setParas({}))
+  }, [])
+
+  const book = useMemo(() => index.find((b) => b.slug === pos.slug), [index, pos.slug])
+  const bookIdx = useMemo(() => index.findIndex((b) => b.slug === pos.slug), [index, pos.slug])
+  const chapterCount = book?.chapters.length ?? 0
+
+  // Editions to download: the visible columns plus whatever is being read. On a
+  // phone only one column shows at a time, but the ring can reach any of them.
+  // Editions that don't cover this half of the canon are skipped — asking for
+  // data/el/genesis.json would only ever be a wasted round trip.
+  const needed = useMemo(() => {
+    const all = [...new Set([...prefs.columns, pos.lang])]
+    return bookIdx < 0 ? all : all.filter((l) => coversBook(l, bookIdx))
+  }, [prefs.columns, pos.lang, bookIdx])
+  const neededKey = needed.join(',')
+
+  // ---- per-edition book loading ----
+  const cache = useRef(new Map<string, EditionBook>())
+  const [loaded, setLoaded] = useState<{ slug: string; texts: Partial<Record<Lang, EditionBook>> }>({ slug: '', texts: {} })
   useEffect(() => {
     let alive = true
+    const slug = pos.slug
     setLoading(true)
-    fetch(`${BASE}data/${pos.slug}.json`)
-      .then((r) => r.json())
-      .then((d: BookData) => {
+    Promise.all(
+      needed.map(async (l) => {
+        const key = `${l}/${slug}`
+        let b = cache.current.get(key)
+        if (!b) {
+          b = await fetch(`${BASE}data/${l}/${slug}.json`)
+            .then((r) => (r.ok ? (r.json() as Promise<EditionBook>) : { chapters: [] }))
+            .catch(() => ({ chapters: [] }) as EditionBook)
+          cache.current.set(key, b)
+        }
+        return [l, b] as const
+      }),
+    )
+      .then((pairs) => {
         if (!alive) return
-        setData(d)
-        setPos((prev) => ({ ...prev, chapter: Math.min(prev.chapter, d.chapters.length) }))
+        setLoaded({ slug, texts: Object.fromEntries(pairs) })
       })
-      .catch(() => alive && setData(null))
-      .finally(() => alive && setLoading(false))
+      .finally(() => {
+        if (alive) setLoading(false)
+      })
     return () => {
       alive = false
     }
-  }, [pos.slug])
+  }, [pos.slug, neededKey, needed])
 
-  const bookIdx = useMemo(() => index.findIndex((b) => b.slug === pos.slug), [index, pos.slug])
-  const chapter = useMemo(
-    () => data?.chapters.find((c) => c.n === pos.chapter) ?? data?.chapters[0],
-    [data, pos.chapter],
-  )
-  const langsToShow: Lang[] = flow || !wide ? [pos.lang] : prefs.columns
-  // keep the current language among the enabled columns
+  /** `<ch>.<v>` → text, per edition, for the book currently open. */
+  const verseText = useMemo(() => {
+    const out: Partial<Record<Lang, Map<string, string>>> = {}
+    if (loaded.slug !== pos.slug) return out
+    for (const [l, b] of Object.entries(loaded.texts) as [Lang, EditionBook][]) {
+      const m = new Map<string, string>()
+      for (const c of b.chapters) for (const vv of c.verses) m.set(`${c.n}.${vv.v}`, vv.t)
+      out[l] = m
+    }
+    return out
+  }, [loaded, pos.slug])
+  const ready = loaded.slug === pos.slug && !!book
+
+  // keep the chapter within the book
   useEffect(() => {
-    if (prefs.columns.length && !prefs.columns.includes(pos.lang)) navigate({ lang: prefs.columns[0] })
-  }, [prefs.columns, pos.lang, navigate])
+    if (chapterCount && pos.chapter > chapterCount) navigate({ chapter: chapterCount })
+    else if (pos.chapter < 1) navigate({ chapter: 1 })
+  }, [chapterCount, pos.chapter, navigate])
+
+  const langsToShow: Lang[] = flow || !wide ? [pos.lang] : prefs.columns
+
+  /** Rows of the open chapter — one per verse number in the canonical union. */
+  const chapter: Chapter | null = useMemo(() => {
+    if (!book) return null
+    const count = book.chapters[pos.chapter - 1] ?? 0
+    if (!count) return null
+    const verses = Array.from({ length: count }, (_, i) => {
+      const v = i + 1
+      const text: Partial<Record<Lang, string>> = {}
+      for (const l of needed) {
+        const s = verseText[l]?.get(`${pos.chapter}.${v}`)
+        if (s) text[l] = s
+      }
+      return { v, text }
+    })
+    return { n: pos.chapter, verses }
+  }, [book, pos.chapter, needed, verseText])
+
+  // keep the current language among the enabled columns; a shared link pointing at a
+  // hidden edition opens in the first visible one instead, and says so.
+  useEffect(() => {
+    if (!prefs.columns.length || prefs.columns.includes(pos.lang)) return
+    const fallback = prefs.columns[0]
+    setToast(t('hidden_version', { shown: BY_ID[fallback].label, hidden: BY_ID[pos.lang].label }))
+    navigate({ lang: fallback, verse: flashVerse ?? undefined })
+  }, [prefs.columns, pos.lang, navigate, flashVerse, t])
 
   // ---- audio (Web Speech) ----
   useEffect(() => {
     primeVoices()
   }, [])
+  const noVoice = useMemo(() => {
+    if (!canTTS) return new Set<Lang>()
+    return new Set(VERSION_IDS.filter((id) => !hasVoice(id)))
+  }, [canTTS, prefs.ui])
   const genRef = useRef(0) // bumped on stop/new-play so stale callbacks are ignored
   const stopAudio = useCallback(() => {
     genRef.current++
@@ -240,6 +350,8 @@ export default function App() {
     },
     [canTTS, prefs.rate, prefs.voice, verseElId, pos.chapter],
   )
+  // "Stop at chapter end" turns off the roll-on into the next chapter/book.
+  const keepGoing = !prefs.stopAtChapterEnd
   // Play the whole chapter in one language, from the top-visible verse of that column.
   const playChapter = useCallback(
     (lang: Lang) => {
@@ -254,9 +366,15 @@ export default function App() {
           }
         }
       }
-      speakList(lang, chapter.verses.filter((v) => v.v >= start).map((v) => ({ ch: chapter.n, v: v.v, text: v[lang] })), true)
+      speakList(
+        lang,
+        chapter.verses
+          .filter((v) => v.v >= start && v.text[lang])
+          .map((v) => ({ ch: chapter.n, v: v.v, text: v.text[lang]! })),
+        keepGoing,
+      )
     },
-    [chapter, speakList, flow],
+    [chapter, speakList, flow, keepGoing],
   )
   const playVerse = useCallback(
     (lang: Lang, ch: number, v: number, text: string) => speakList(lang, [{ ch, v, text }], false),
@@ -265,11 +383,15 @@ export default function App() {
   // Play continuously from a given verse onward (through the chapter, then the book).
   const playFrom = useCallback(
     (lang: Lang, ch: number, v: number) => {
-      const c = data?.chapters.find((x) => x.n === ch)
-      if (!c) return
-      speakList(lang, c.verses.filter((x) => x.v >= v).map((x) => ({ ch, v: x.v, text: x[lang] })), true)
+      const count = book?.chapters[ch - 1] ?? 0
+      const items: { ch: number; v: number; text: string }[] = []
+      for (let n = v; n <= count; n++) {
+        const text = verseText[lang]?.get(`${ch}.${n}`)
+        if (text) items.push({ ch, v: n, text })
+      }
+      speakList(lang, items, keepGoing)
     },
-    [data, speakList],
+    [book, verseText, speakList, keepGoing],
   )
   useEffect(() => () => stopSpeaking(), []) // stop on unmount
 
@@ -277,85 +399,131 @@ export default function App() {
   const go = useCallback(
     (next: { slug?: string; chapter?: number; lang?: Lang; verse?: number }) => {
       stopAudio()
+      if (flow && (next.chapter != null || next.slug != null)) {
+        setFlowTarget({ ch: next.chapter ?? pos.chapter, v: next.verse ?? 1 })
+      }
       navigate(next)
     },
-    [stopAudio, navigate],
+    [stopAudio, navigate, flow, pos.chapter],
   )
   // continuous playback: when a chapter ends, move to the next chapter/book and keep playing
   useEffect(() => {
-    if (autoNext == null || !data) return
+    if (autoNext == null || !book) return
     const lang = autoNext
     setAutoNext(null)
-    const at = data.chapters.findIndex((c) => c.n === pos.chapter)
     let target: { slug: string; chapter: number; lang: Lang } | null = null
-    if (at < data.chapters.length - 1) target = { slug: pos.slug, chapter: data.chapters[at + 1].n, lang }
+    if (pos.chapter < chapterCount) target = { slug: pos.slug, chapter: pos.chapter + 1, lang }
     else if (bookIdx < index.length - 1) target = { slug: index[bookIdx + 1].slug, chapter: 1, lang }
     if (target) {
       setPending(target)
       navigate({ slug: target.slug, chapter: target.chapter })
       window.scrollTo({ top: 0 })
     }
-  }, [autoNext, data, pos.slug, pos.chapter, bookIdx, index, navigate])
+  }, [autoNext, book, pos.slug, pos.chapter, chapterCount, bookIdx, index, navigate])
   useEffect(() => {
-    if (!pending || !chapter) return
-    if (pos.slug === pending.slug && pos.chapter === pending.chapter && chapter.n === pending.chapter) {
+    if (!pending || !chapter || !ready) return
+    if (pos.slug === pending.slug && pos.chapter === pending.chapter) {
       const lang = pending.lang
       setPending(null)
-      speakList(lang, chapter.verses.map((v) => ({ ch: chapter.n, v: v.v, text: v[lang] })), true)
+      speakList(
+        lang,
+        chapter.verses.filter((v) => v.text[lang]).map((v) => ({ ch: chapter.n, v: v.v, text: v.text[lang]! })),
+        keepGoing,
+      )
     }
-  }, [pending, chapter, pos.slug, pos.chapter, speakList])
+  }, [pending, chapter, ready, pos.slug, pos.chapter, speakList, keepGoing])
+
+  // apply hash on change (pasted link, back/forward)
+  useEffect(() => {
+    const apply = () => {
+      const h = parseHash()
+      if (h.invite) {
+        setInvite(h.invite)
+        return
+      }
+      if (!h.loc) return
+      const loc = h.loc
+      setPos((prev) => {
+        if (flow && (loc.slug !== prev.slug || loc.chapter !== prev.chapter))
+          setFlowTarget({ ch: loc.chapter, v: loc.verse ?? 1 })
+        return { ...prev, slug: loc.slug, chapter: loc.chapter, lang: loc.lang ?? prev.lang }
+      })
+      setFlashVerse(loc.verse ?? null)
+    }
+    window.addEventListener('hashchange', apply)
+    return () => window.removeEventListener('hashchange', apply)
+  }, [flow])
 
   // scroll to flashed verse once rendered; auto-clear the flash
   useEffect(() => {
-    if (flashVerse == null || !data) return
+    if (flashVerse == null || !ready) return
     const raf = requestAnimationFrame(() =>
       document.getElementById(verseElId(pos.chapter, flashVerse, pos.lang))?.scrollIntoView({ block: 'center' }),
     )
-    const t = setTimeout(() => setFlashVerse(null), 4000)
+    const timer = setTimeout(() => setFlashVerse(null), 4000)
     return () => {
       cancelAnimationFrame(raf)
-      clearTimeout(t)
+      clearTimeout(timer)
     }
-  }, [flashVerse, data, pos.chapter, pos.lang, wide, verseElId])
+  }, [flashVerse, ready, pos.chapter, pos.lang, wide, verseElId])
+
+  // flow mode: scroll to the chapter the reader navigated to, then release the observer
+  useEffect(() => {
+    if (!flowTarget || !flow || !ready) return
+    const el =
+      document.getElementById(`fv-${flowTarget.ch}-${flowTarget.v}`) ||
+      document.getElementById(`fv-${flowTarget.ch}-1`)
+    if (!el) return
+    el.scrollIntoView({ block: 'center' })
+    // Release on the next frame *after* the scroll has settled, so the observer's
+    // catch-up callbacks don't immediately rewrite pos.chapter.
+    const timer = setTimeout(() => setFlowTarget(null), 250)
+    return () => clearTimeout(timer)
+  }, [flowTarget, flow, ready])
 
   // remember the top-visible verse for resume-on-reopen (and, in flow, the current chapter)
   const posRef = useRef(pos)
   posRef.current = pos
   useEffect(() => {
     const el = readerRef.current
-    if (!el || !data) return
+    if (!el || !ready) return
     const visible = new Map<string, { ch: number; v: number }>()
     const io = new IntersectionObserver(
       (entries) => {
         for (const e of entries) {
           const mf = /^fv-(\d+)-(\d+)$/.exec(e.target.id)
-          const mn = /^v-(en|ja|fr)-(\d+)$/.exec(e.target.id)
+          const mn = /^v-([a-z]+)-(\d+)$/.exec(e.target.id)
           let cur: { ch: number; v: number } | null = null
           if (mf) cur = { ch: Number(mf[1]), v: Number(mf[2]) }
-          else if (mn && (wide || mn[1] === posRef.current.lang)) cur = { ch: posRef.current.chapter, v: Number(mn[2]) }
+          else if (mn && isLang(mn[1]) && (wide || mn[1] === posRef.current.lang))
+            cur = { ch: posRef.current.chapter, v: Number(mn[2]) }
           if (!cur) continue
           if (e.isIntersecting) visible.set(e.target.id, cur)
           else visible.delete(e.target.id)
         }
         let best: { ch: number; v: number } | null = null
         for (const c of visible.values()) if (!best || c.ch < best.ch || (c.ch === best.ch && c.v < best.v)) best = c
-        if (best) {
-          localStorage.setItem('lastRead', JSON.stringify({ slug: posRef.current.slug, chapter: best.ch, lang: posRef.current.lang, verse: best.v }))
-          if (flow) setPos((prev) => (prev.chapter === best!.ch ? prev : { ...prev, chapter: best!.ch }))
-        }
+        if (!best) return
+        localStorage.setItem(
+          'lastRead',
+          JSON.stringify({ slug: posRef.current.slug, chapter: best.ch, lang: posRef.current.lang, verse: best.v }),
+        )
+        // Don't derive the chapter from scrolling while a chapter jump is in flight.
+        if (flow && !flowTargetRef.current)
+          setPos((prev) => (prev.chapter === best!.ch ? prev : { ...prev, chapter: best!.ch }))
       },
       { rootMargin: '-84px 0px -55% 0px', threshold: 0 },
     )
     el.querySelectorAll(flow ? '.fverse' : '.verse').forEach((x) => io.observe(x))
     return () => io.disconnect()
-  }, [data, pos.slug, pos.lang, wide, prefs.furigana, flow])
+  }, [ready, pos.slug, pos.lang, wide, prefs.furigana, flow, prefs.columns, prefs.align])
 
   // text-selection → annotation toolbar
   useEffect(() => {
-    let t = 0
+    let timer = 0
     const handler = () => {
-      window.clearTimeout(t)
-      t = window.setTimeout(() => {
+      window.clearTimeout(timer)
+      timer = window.setTimeout(() => {
         const el = readerRef.current
         if (!el) return
         const ctx = selectionContext(el)
@@ -377,22 +545,23 @@ export default function App() {
     document.addEventListener('selectionchange', handler)
     return () => {
       document.removeEventListener('selectionchange', handler)
-      window.clearTimeout(t)
+      window.clearTimeout(timer)
     }
   }, [])
 
   const goChapter = useCallback(
     (delta: number) => {
-      if (!data) return
-      const at = data.chapters.findIndex((c) => c.n === pos.chapter)
-      const nx = at + delta
-      if (nx >= 0 && nx < data.chapters.length) go({ chapter: data.chapters[nx].n })
-      else if (nx < 0 && bookIdx > 0) go({ slug: index[bookIdx - 1].slug, chapter: 999 })
-      else if (nx >= data.chapters.length && bookIdx < index.length - 1) go({ slug: index[bookIdx + 1].slug, chapter: 1 })
+      if (!book) return
+      const next = pos.chapter + delta
+      if (next >= 1 && next <= chapterCount) go({ chapter: next })
+      else if (next < 1 && bookIdx > 0) {
+        const prevBook = index[bookIdx - 1]
+        go({ slug: prevBook.slug, chapter: prevBook.chapters.length })
+      } else if (next > chapterCount && bookIdx < index.length - 1) go({ slug: index[bookIdx + 1].slug, chapter: 1 })
       else return
-      window.scrollTo({ top: 0 })
+      if (!flow) window.scrollTo({ top: 0 })
     },
-    [data, pos.chapter, bookIdx, index, go],
+    [book, pos.chapter, chapterCount, bookIdx, index, go, flow],
   )
   const cycleLang = useCallback(
     (dir: 1 | -1) => {
@@ -409,71 +578,115 @@ export default function App() {
       const url = `${location.origin}${location.pathname}${buildHash(pos.slug, pos.chapter, lang, v)}`
       try {
         await navigator.clipboard.writeText(url)
-        setToast('Verse link copied')
+        setToast(t('link_copied'))
       } catch {
-        setToast('Could not copy the link')
+        setToast(t('copy_failed'))
       }
     },
-    [pos.slug, pos.chapter],
+    [pos.slug, pos.chapter, t],
+  )
+  /** An invite carries the reader's whole setup, not just the passage. */
+  const copyInvite = useCallback(
+    async (verse?: number) => {
+      try {
+        await navigator.clipboard.writeText(
+          inviteUrl({ columns: prefs.columns, lang: pos.lang, slug: pos.slug, chapter: pos.chapter, verse }),
+        )
+        setToast(t('invite_copied'))
+      } catch {
+        setToast(t('copy_failed'))
+      }
+    },
+    [prefs.columns, pos.lang, pos.slug, pos.chapter, t],
   )
   const copyVerseText = useCallback(
-    async (lang: Lang, slug: string, ch: number, v: number, text: string) => {
+    async (lang: Lang, ch: number, v: number, text: string) => {
+      const markup = BY_ID[lang].markup
       const plain =
-        lang === 'en'
+        markup === 'kjv'
           ? text.replace(/[{}]/g, '')
-          : lang === 'ja'
+          : markup === 'ruby'
             ? text.replace(/\{\{([^|}]*)\|[^}]+\}\}/g, '$1')
             : text
-      const b = index.find((x) => x.slug === slug)
-      const book = lang === 'ja' ? b?.ja || slug : lang === 'fr' ? FR_BOOKS[slug] || b?.en || slug : b?.en || slug
-      const version =
-        lang === 'en' ? 'King James Version (KJV)' : lang === 'ja' ? '文語訳聖書' : 'Bible King James Française (KJF)'
+      // Cite in the verse's own language, not the UI's.
+      const name = bookName(book, lang)
       try {
-        await navigator.clipboard.writeText(`"${plain}" [${book} ${ch}:${v}] ${version}`)
-        setToast('Verse copied')
+        await navigator.clipboard.writeText(`"${plain}" [${name} ${ch}:${v}] ${BY_ID[lang].fullName}`)
+        setToast(t('verse_copied'))
       } catch {
-        setToast('Could not copy the text')
+        setToast(t('copy_failed'))
       }
     },
-    [index],
+    [book, t],
   )
+
+  /** Saved highlights for one verse, grouped by edition — for the verse sheet. */
+  const highlightsFor = useCallback(
+    (ch: number, v: number): Partial<Record<Lang, HL[]>> => {
+      const ann = store[vref(pos.slug, ch, v)]
+      if (!ann?.highlights?.length) return {}
+      const out: Partial<Record<Lang, HL[]>> = {}
+      for (const h of ann.highlights) (out[h.lang] ||= []).push(h)
+      return out
+    },
+    [store, pos.slug],
+  )
+
   const openVerseAt = useCallback(
     (lang: Lang, ch: number, v: number) => {
-      const vv = data?.chapters.find((c) => c.n === ch)?.verses.find((x) => x.v === v)
-      if (!vv) return
-      setVerseSheet({ label: `${data?.en} ${ch}:${v}`, lang, en: vv.en, fr: vv.fr, ja: vv.ja, slug: pos.slug, ch, v })
+      const text: Partial<Record<Lang, string>> = {}
+      // Only the editions the reader has visible — a hidden edition stays hidden here too.
+      for (const l of prefs.columns) {
+        const s = verseText[l]?.get(`${ch}.${v}`)
+        if (s) text[l] = s
+      }
+      setVerseSheet({ label: `${bookName(book, prefs.ui)} ${ch}:${v}`, lang, slug: pos.slug, ch, v, text })
     },
-    [data, pos.slug],
+    [verseText, prefs.columns, prefs.ui, book, pos.slug],
   )
+
   // paragraphs for flow/reading mode (whole book, single language, logical breaks)
   const flowParas = useMemo(() => {
-    if (!flow || !data) return []
+    if (!flow || !book) return []
     const breaks = paras[pos.slug] || {}
-    const out: { ch: number; v: number; text: string; ann: import('./lib/annotations').Ann | undefined }[][] = []
-    let cur: (typeof out)[number] = []
-    for (const c of data.chapters) {
-      const chBreaks = breaks[String(c.n)] || []
-      for (const vv of c.verses) {
-        if (chBreaks.includes(vv.v) && cur.length) {
+    const m = verseText[pos.lang]
+    type Item = { ch: number; v: number; text: string; first: boolean; hl?: HL[] }
+    const out: Item[][] = []
+    let cur: Item[] = []
+    for (let c = 1; c <= book.chapters.length; c++) {
+      const chBreaks = breaks[String(c)] || []
+      const count = book.chapters[c - 1] ?? 0
+      for (let v = 1; v <= count; v++) {
+        const text = m?.get(`${c}.${v}`)
+        if (!text) continue
+        if ((v === 1 || chBreaks.includes(v)) && cur.length) {
           out.push(cur)
           cur = []
         }
-        cur.push({ ch: c.n, v: vv.v, text: vv[pos.lang], ann: store[vref(pos.slug, c.n, vv.v)] })
+        cur.push({
+          ch: c,
+          v,
+          text,
+          first: v === 1,
+          hl: store[vref(pos.slug, c, v)]?.highlights?.filter((h) => h.lang === pos.lang),
+        })
       }
     }
     if (cur.length) out.push(cur)
     return out
-  }, [flow, data, paras, pos.slug, pos.lang, store])
+  }, [flow, book, paras, pos.slug, pos.lang, verseText, store])
+
   useEffect(() => {
     if (!toast) return
-    const t = setTimeout(() => setToast(null), 1800)
-    return () => clearTimeout(t)
+    const timer = setTimeout(() => setToast(null), 2400)
+    return () => clearTimeout(timer)
   }, [toast])
 
   // keyboard
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement)?.tagName === 'TEXTAREA') return
+      const tag = (e.target as HTMLElement)?.tagName
+      if (tag === 'TEXTAREA' || tag === 'INPUT' || tag === 'SELECT') return
       if (e.key === 'ArrowRight') goChapter(1)
       else if (e.key === 'ArrowLeft') goChapter(-1)
       else if (!wide && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) cycleLang(e.key === 'ArrowUp' ? -1 : 1)
@@ -518,8 +731,8 @@ export default function App() {
     a.click()
     URL.revokeObjectURL(url)
     const n = Object.keys(store).length
-    setToast(n ? `Exported ${n} verse${n === 1 ? '' : 's'}` : 'Nothing to export yet')
-  }, [store])
+    setToast(n ? t('exported_n', { n }) : t('nothing_to_export'))
+  }, [store, t])
 
   const importAnnotations = useCallback(
     (file: File) => {
@@ -530,58 +743,119 @@ export default function App() {
           const data = parsed && parsed.type === 'annotations' && parsed.data ? parsed.data : parsed
           if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('bad')
           importStore(data)
-          const n = Object.keys(data).length
-          setToast(`Imported ${n} verse${n === 1 ? '' : 's'}`)
+          setToast(t('imported_n', { n: Object.keys(data).length }))
         } catch {
-          setToast('Could not read that file')
+          setToast(t('import_failed'))
         }
       }
-      reader.onerror = () => setToast('Could not read that file')
+      reader.onerror = () => setToast(t('import_failed'))
       reader.readAsText(file)
     },
-    [importStore],
+    [importStore, t],
   )
 
   const labelFor = useCallback(
     (ref: string) => {
-      const { slug, ch, v } = parseRef(ref)
-      const en = index.find((b) => b.slug === slug)?.en ?? slug
-      return `${en} ${ch}:${v}`
+      const p = parseRef(ref)
+      return `${bookName(index.find((b) => b.slug === p.slug), prefs.ui)} ${p.ch}:${p.v}`
     },
-    [index],
+    [index, prefs.ui],
+  )
+
+  const tags = useMemo(() => allTags(store), [store])
+  const savedCount = useMemo(
+    () => Object.values(store).filter((a) => a.note || a.highlights?.length || a.tags?.length).length,
+    [store],
   )
   const drawerItems: DrawerItem[] = useMemo(() => {
-    const rank = (slug: string) => index.findIndex((b) => b.slug === slug)
-    return Object.entries(store)
-      .filter(([, a]) => a.note || a.highlights?.length)
-      .map(([ref, a]) => ({
-        ref,
-        label: labelFor(ref),
-        note: a.note,
-        colors: [...new Set((a.highlights || []).map((h) => h.color))],
-      }))
-      .sort((x, y) => {
-        const px = parseRef(x.ref)
-        const py = parseRef(y.ref)
-        return rank(px.slug) - rank(py.slug) || px.ch - py.ch || px.v - py.v
+    const rank = new Map(index.map((b, i) => [b.slug, i]))
+    let items = Object.entries(store)
+      .filter(([, a]) => a.note || a.highlights?.length || a.tags?.length)
+      .map(([ref, a]) => {
+        const p = parseRef(ref)
+        return {
+          ref,
+          slug: p.slug,
+          label: labelFor(ref),
+          note: a.note,
+          tags: a.tags ?? [],
+          colors: [...new Set((a.highlights || []).map((h) => h.color))],
+          createdAt: a.createdAt,
+          updatedAt: a.updatedAt,
+          order: a.order ?? Number.MAX_SAFE_INTEGER,
+        }
       })
-  }, [store, index, labelFor])
+    if (thisBook) items = items.filter((it) => it.slug === pos.slug)
+    if (tagFilter.length) items = items.filter((it) => tagFilter.every((tag) => it.tags.includes(tag)))
+
+    const byBook = (x: typeof items[number], y: typeof items[number]) => {
+      const px = parseRef(x.ref)
+      const py = parseRef(y.ref)
+      return (rank.get(px.slug) ?? 0) - (rank.get(py.slug) ?? 0) || px.ch - py.ch || px.v - py.v
+    }
+    items.sort((x, y) => {
+      if (sort === 'custom') return x.order - y.order || byBook(x, y)
+      const dir = asc ? 1 : -1
+      if (sort === 'created') return dir * ((x.createdAt ?? 0) - (y.createdAt ?? 0)) || byBook(x, y)
+      if (sort === 'updated') return dir * ((x.updatedAt ?? 0) - (y.updatedAt ?? 0)) || byBook(x, y)
+      return dir * byBook(x, y)
+    })
+    return items
+  }, [store, index, labelFor, sort, asc, thisBook, tagFilter, pos.slug])
+
+  /** Move one note within the hand-arranged order, persisting the whole list. */
+  const moveNote = useCallback(
+    (ref: string, delta: 1 | -1) => {
+      const refs = drawerItems.map((it) => it.ref)
+      const i = refs.indexOf(ref)
+      const j = i + delta
+      if (i < 0 || j < 0 || j >= refs.length) return
+      ;[refs[i], refs[j]] = [refs[j], refs[i]]
+      setOrder(refs)
+    },
+    [drawerItems, setOrder],
+  )
+
+  const acceptInvite = useCallback(() => {
+    if (!invite) return
+    setPref({ columns: invite.columns })
+    setFlashVerse(invite.verse ?? null)
+    setPos({ slug: invite.slug, chapter: invite.chapter, lang: invite.lang })
+    location.hash = buildHash(invite.slug, invite.chapter, invite.lang, invite.verse)
+    setInvite(null)
+  }, [invite, setPref])
+  const declineInvite = useCallback(() => {
+    if (!invite) return
+    // Keep the reader's own editions; open the passage in one they already have.
+    const lang = prefs.columns.includes(invite.lang) ? invite.lang : prefs.columns[0] ?? 'en'
+    setFlashVerse(invite.verse ?? null)
+    setPos({ slug: invite.slug, chapter: invite.chapter, lang })
+    location.hash = buildHash(invite.slug, invite.chapter, lang, invite.verse)
+    setInvite(null)
+  }, [invite, prefs.columns])
+
+  const title = bookName(book, prefs.ui)
+  const readingTitle = bookName(book, pos.lang)
+  const verseCount = chapter?.verses.length ?? 0
+  // Subgrid needs a literal row count, so it's computed here rather than in CSS.
+  const aligned = prefs.align && !flow && wide && langsToShow.length > 1
+  const colsStyle = aligned ? { gridTemplateRows: `auto repeat(${verseCount}, auto)` } : undefined
 
   return (
     <div className="app">
       <header className="bar">
         <button className="navbtn" onClick={() => setNavOpen(true)}>
-          {data?.en} {pos.chapter} <span className="caret">▾</span>
+          {title} {pos.chapter} <span className="caret">▾</span>
         </button>
         <div className="tools">
-          <button className="icon" title="Search" onClick={() => setSearchOpen(true)}>🔍</button>
-          <button className="icon" title="Saved (notes & highlights)" onClick={() => setDrawerOpen(true)}>🔖</button>
-          <button className="icon" title="Settings" onClick={() => setSettingsOpen(true)}>⚙</button>
+          <button className="icon" title={t('search')} onClick={() => setSearchOpen(true)}>🔍</button>
+          <button className="icon" title={t('saved_aria')} onClick={() => setDrawerOpen(true)}>🔖</button>
+          <button className="icon" title={t('settings')} onClick={() => setSettingsOpen(true)}>⚙</button>
         </div>
       </header>
 
       {(!wide || flow) && prefs.columns.length > 1 && (
-        <div className="langring" role="tablist" aria-label="Language">
+        <div className="langring" role="tablist" aria-label={t('language')}>
           {prefs.columns.map((l) => (
             <button
               key={l}
@@ -590,8 +864,8 @@ export default function App() {
               className={`ringtab ${l === pos.lang ? 'active' : ''}`}
               onClick={() => go({ lang: l, verse: flashVerse ?? undefined })}
             >
-              <span lang={LANG_META[l].htmlLang}>{LANG_META[l].label}</span>
-              <small>{LANG_META[l].edition}</small>
+              <span lang={BY_ID[l].htmlLang} dir={BY_ID[l].dir}>{BY_ID[l].label}</span>
+              <small>{BY_ID[l].edition}</small>
             </button>
           ))}
         </div>
@@ -599,19 +873,19 @@ export default function App() {
 
       <main className="reader" ref={readerRef} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         <h1 className="ref">
-          {wide ? (
-            <>{data?.en} {pos.chapter}</>
+          {wide && !flow ? (
+            <>{title} {pos.chapter}</>
           ) : (
-            <span lang={LANG_META[pos.lang].htmlLang}>
-              {pos.lang === 'ja' ? `${data?.ja} ${pos.chapter}` : `${data?.en} ${pos.chapter}`}
+            <span lang={BY_ID[pos.lang].htmlLang} dir={BY_ID[pos.lang].dir}>
+              {readingTitle} {pos.chapter}
             </span>
           )}
         </h1>
 
-        {loading && !chapter ? (
+        {loading && !ready ? (
           <p className="status">…</p>
         ) : flow ? (
-          <div className="flow" lang={LANG_META[pos.lang].htmlLang}>
+          <div className="flow" lang={BY_ID[pos.lang].htmlLang} dir={BY_ID[pos.lang].dir}>
             {flowParas.map((para, pi) => (
               <p className="fpar" key={pi}>
                 {para.map((it) => (
@@ -623,100 +897,100 @@ export default function App() {
                     }`}
                     onClick={() => window.getSelection()?.isCollapsed && openVerseAt(pos.lang, it.ch, it.v)}
                   >
-                    <VerseText
-                      text={it.text}
-                      lang={pos.lang}
-                      showFurigana={prefs.furigana}
-                      highlights={it.ann?.highlights?.filter((h) => h.lang === pos.lang)}
-                    />{' '}
+                    {/* Flow mode has no verse numbers, so without this the chapter nav
+                        would scroll to a place with nothing to see. */}
+                    {it.first && <span className="fchap" dir="ltr">{it.ch}</span>}
+                    <VerseText text={it.text} lang={pos.lang} showFurigana={prefs.furigana} highlights={it.hl} />{' '}
                   </span>
                 ))}
               </p>
             ))}
           </div>
         ) : (
-          <div className={`cols cols-${langsToShow.length}`}>
-            {langsToShow.map((l) => (
-              <section key={l} className="col" lang={LANG_META[l].htmlLang}>
-                {(wide || canTTS) && (
-                  <div className="colhead">
-                    {wide && <span>{LANG_META[l].label} · {LANG_META[l].edition}</span>}
-                    {canTTS && (
-                      <button
-                        className={`colplay ${playingLang === l ? 'on' : ''}`}
-                        title={playingLang === l ? 'Stop' : `Play chapter (${LANG_META[l].label})`}
-                        onClick={() => (playingLang === l ? stopAudio() : playChapter(l))}
-                      >
-                        {playingLang === l ? '⏹' : '▶'} {LANG_META[l].edition}
-                      </button>
-                    )}
-                  </div>
-                )}
-                <ol className="verses">
-                  {chapter?.verses.map((v) => {
-                    const ref = vref(pos.slug, pos.chapter, v.v)
-                    const ann = store[ref]
-                    const spk = speaking?.ch === pos.chapter && speaking?.v === v.v && speaking?.lang === l
-                    return (
-                      <li
-                        key={v.v}
-                        id={`v-${l}-${v.v}`}
-                        className={`verse ${flashVerse === v.v && pos.lang === l ? 'flash' : ''} ${spk ? 'speaking' : ''}`}
-                      >
-                        <button className="vn" title="Verse actions" onClick={() => openVerseAt(l, pos.chapter, v.v)}>
-                          {v.v}
-                        </button>
-                        {canTTS && (
-                          <button
-                            className={`vplay ${spk ? 'on' : ''}`}
-                            title={spk ? 'Stop' : 'Play verse'}
-                            onClick={() => (spk ? stopAudio() : playVerse(l, pos.chapter, v.v, v[l]))}
-                          >
-                            {spk ? '⏹' : '▶'}
-                          </button>
-                        )}
-                        {ann?.note && (
-                          <button className="mk note" title="Note" onClick={() => setNoteRef(ref)}>
-                            ✎
-                          </button>
-                        )}
-                        <span
-                          className="vt"
-                          onClick={() => window.getSelection()?.isCollapsed && openVerseAt(l, pos.chapter, v.v)}
+          <div className={`cols cols-${langsToShow.length} ${aligned ? 'aligned' : ''}`} style={colsStyle}>
+            {langsToShow.map((l) => {
+              const m = BY_ID[l]
+              const playable = canTTS && !noVoice.has(l)
+              return (
+                <section key={l} className="col" lang={m.htmlLang} dir={m.dir}>
+                  {(wide || playable) && (
+                    <div className="colhead">
+                      {wide && <span>{m.label} · {m.edition}</span>}
+                      {playable && (
+                        <button
+                          className={`colplay ${playingLang === l ? 'on' : ''}`}
+                          title={playingLang === l ? t('stop') : `${t('play_chapter')} — ${m.label}`}
+                          onClick={() => (playingLang === l ? stopAudio() : playChapter(l))}
                         >
-                          <VerseText
-                            text={v[l]}
-                            lang={l}
-                            showFurigana={prefs.furigana}
-                            highlights={ann?.highlights?.filter((h) => h.lang === l)}
-                          />
-                        </span>
-                      </li>
-                    )
-                  })}
-                </ol>
-              </section>
-            ))}
+                          {playingLang === l ? '⏹' : '▶'} {m.edition}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  <ol className="verses">
+                    {chapter?.verses.map((v) => {
+                      const ref = vref(pos.slug, pos.chapter, v.v)
+                      const ann = store[ref]
+                      const spk = speaking?.ch === pos.chapter && speaking?.v === v.v && speaking?.lang === l
+                      const text = v.text[l]
+                      return (
+                        <li
+                          key={v.v}
+                          id={`v-${l}-${v.v}`}
+                          className={`verse ${flashVerse === v.v && pos.lang === l ? 'flash' : ''} ${spk ? 'speaking' : ''}`}
+                        >
+                          <button className="vn" title={t('verse_actions')} onClick={() => openVerseAt(l, pos.chapter, v.v)}>
+                            {v.v}
+                          </button>
+                          {playable && text && (
+                            <button
+                              className={`vplay ${spk ? 'on' : ''}`}
+                              title={spk ? t('stop') : t('play_verse')}
+                              onClick={() => (spk ? stopAudio() : playVerse(l, pos.chapter, v.v, text))}
+                            >
+                              {spk ? '⏹' : '▶'}
+                            </button>
+                          )}
+                          {ann?.note && (
+                            <button className="mk note" title={t('note')} onClick={() => setNoteRef(ref)}>
+                              ✎
+                            </button>
+                          )}
+                          <span
+                            className="vt"
+                            onClick={() => window.getSelection()?.isCollapsed && openVerseAt(l, pos.chapter, v.v)}
+                          >
+                            <VerseText
+                              text={text ?? ''}
+                              lang={l}
+                              showFurigana={prefs.furigana}
+                              highlights={ann?.highlights?.filter((h) => h.lang === l)}
+                            />
+                          </span>
+                        </li>
+                      )
+                    })}
+                  </ol>
+                </section>
+              )
+            })}
           </div>
         )}
 
-        {!flow && (
-          <nav className="chapnav">
-            <button onClick={() => goChapter(-1)} disabled={bookIdx === 0 && pos.chapter <= 1}>← Prev</button>
-            <span className="chaplabel">{data?.en} {pos.chapter}</span>
-            <button
-              onClick={() => goChapter(1)}
-              disabled={bookIdx === index.length - 1 && data != null && pos.chapter >= data.chapters.length}
-            >
-              Next →
-            </button>
-          </nav>
-        )}
+        <nav className="chapnav">
+          <button onClick={() => goChapter(-1)} disabled={bookIdx <= 0 && pos.chapter <= 1}>
+            {t('prev')}
+          </button>
+          <span className="chaplabel">{title} {pos.chapter}</span>
+          <button onClick={() => goChapter(1)} disabled={bookIdx === index.length - 1 && pos.chapter >= chapterCount}>
+            {t('next')}
+          </button>
+        </nav>
 
         <footer className="attrib">
-          English: King James Version (public domain) · Français: Bible King James
-          Française © Nadine L. Stratford, reproduite sans modification · 日本語:
-          文語訳聖書 (明治元訳・大正改訳, public domain)
+          <button className="liclink" onClick={() => setLicencesOpen(true)}>{t('licences')}</button>
+          {' · '}
+          <a href={REPO_URL} target="_blank" rel="noreferrer noopener">{t('source_code')}</a>
         </footer>
       </main>
 
@@ -725,6 +999,7 @@ export default function App() {
           rect={sel.rect}
           dock={wide ? 'float' : 'bottom'}
           hasHL={selHasHL}
+          t={t}
           onColor={doColor}
           onNote={() => {
             if (selRef) setNoteRef(selRef)
@@ -739,37 +1014,64 @@ export default function App() {
 
       <Settings
         open={settingsOpen}
+        t={t}
+        ui={prefs.ui}
         theme={prefs.theme}
         size={prefs.size}
         furigana={prefs.furigana}
+        align={prefs.align}
         rate={prefs.rate}
         voice={prefs.voice}
         swipe={prefs.swipe}
         flow={prefs.flow}
+        stopAtChapterEnd={prefs.stopAtChapterEnd}
         columns={prefs.columns}
         ttsOn={canTTS}
+        noVoice={noVoice}
+        onUi={(l) => setPref({ ui: l })}
         onColumns={(c) => setPref({ columns: c })}
-        onTheme={(t) => setPref({ theme: t })}
+        onTheme={(x) => setPref({ theme: x })}
         onSize={(s) => setPref({ size: s })}
         onFurigana={(f) => setPref({ furigana: f })}
+        onAlign={(v) => setPref({ align: v })}
         onRate={(r) => setPref({ rate: r })}
         onVoice={(g) => setPref({ voice: g })}
         onSwipe={(v) => setPref({ swipe: v })}
         onFlow={(v) => setPref({ flow: v })}
+        onStopAtChapterEnd={(v) => setPref({ stopAtChapterEnd: v })}
         onExport={exportAnnotations}
         onImport={importAnnotations}
+        onCopyInvite={() => copyInvite()}
+        onLicences={() => setLicencesOpen(true)}
         onClose={() => setSettingsOpen(false)}
       />
 
+      <LicencesSheet open={licencesOpen} t={t} repoUrl={REPO_URL} onClose={() => setLicencesOpen(false)} />
+
       <Drawer
         open={drawerOpen}
+        t={t}
+        ui={prefs.ui}
         items={drawerItems}
+        hasAny={savedCount > 0}
+        sort={sort}
+        asc={asc}
+        thisBook={thisBook}
+        tagFilter={tagFilter}
+        tags={tags}
+        onSort={setSort}
+        onAsc={setAsc}
+        onThisBook={setThisBook}
+        onToggleTag={(tag) =>
+          setTagFilter((prev) => (prev.includes(tag) ? prev.filter((x) => x !== tag) : [...prev, tag]))
+        }
+        onMove={moveNote}
         onJump={(ref) => {
-          const { slug, ch, v } = parseRef(ref)
-          go({ slug, chapter: ch, verse: v })
+          const p = parseRef(ref)
+          go({ slug: p.slug, chapter: p.ch, verse: p.v })
           setDrawerOpen(false)
         }}
-        onDelete={(ref) => remove(ref)}
+        onDelete={(ref) => setConfirmDelete(ref)}
         onClose={() => setDrawerOpen(false)}
       />
 
@@ -777,9 +1079,11 @@ export default function App() {
         open={navOpen}
         index={index}
         current={pos.slug}
+        ui={prefs.ui}
+        t={t}
         onNavigate={(slug, ch) => {
           go({ slug, chapter: ch })
-          window.scrollTo({ top: 0 })
+          if (!flow) window.scrollTo({ top: 0 })
           setNavOpen(false)
         }}
         onClose={() => setNavOpen(false)}
@@ -788,6 +1092,9 @@ export default function App() {
       <SearchSheet
         open={searchOpen}
         index={index}
+        columns={prefs.columns}
+        ui={prefs.ui}
+        t={t}
         onNavigate={(slug, ch, v, lang) => {
           go({ slug, chapter: ch, verse: v, lang })
           setSearchOpen(false)
@@ -797,12 +1104,30 @@ export default function App() {
 
       <VerseSheet
         data={verseSheet}
+        columns={prefs.columns}
         showFurigana={prefs.furigana}
+        highlights={verseSheet ? highlightsFor(verseSheet.ch, verseSheet.v) : {}}
+        t={t}
         onCopyText={() =>
           verseSheet &&
-          copyVerseText(verseSheet.lang, verseSheet.slug, verseSheet.ch, verseSheet.v, verseSheet[verseSheet.lang])
+          verseSheet.text[verseSheet.lang] &&
+          copyVerseText(verseSheet.lang, verseSheet.ch, verseSheet.v, verseSheet.text[verseSheet.lang]!)
         }
         onCopyLink={() => verseSheet && copyVerseLink(verseSheet.lang, verseSheet.v)}
+        onCopyInvite={() => verseSheet && copyInvite(verseSheet.v)}
+        onHighlight={(lang, color) => {
+          if (!verseSheet) return
+          const text = verseSheet.text[lang]
+          if (!text) return
+          const ref = vref(verseSheet.slug, verseSheet.ch, verseSheet.v)
+          // Whole-verse highlight: the sheet has no selection to work from.
+          clearHighlightsIn(ref, lang, 0, Number.MAX_SAFE_INTEGER)
+          addHighlight(ref, { lang, start: 0, end: displayLength(text, lang), color })
+        }}
+        onClearHighlight={(lang) =>
+          verseSheet &&
+          clearHighlightsIn(vref(verseSheet.slug, verseSheet.ch, verseSheet.v), lang, 0, Number.MAX_SAFE_INTEGER)
+        }
         onPlay={() => {
           if (verseSheet) playFrom(verseSheet.lang, verseSheet.ch, verseSheet.v)
           setVerseSheet(null)
@@ -814,24 +1139,54 @@ export default function App() {
         onClose={() => setVerseSheet(null)}
       />
 
+      <InviteSheet
+        invite={invite}
+        refLabel={
+          invite
+            ? `${bookName(index.find((b) => b.slug === invite.slug), prefs.ui)} ${invite.chapter}${invite.verse ? `:${invite.verse}` : ''}`
+            : ''
+        }
+        t={t}
+        onAccept={acceptInvite}
+        onDecline={declineInvite}
+      />
+
       {noteRef && (
         <NoteEditor
           label={labelFor(noteRef)}
           value={store[noteRef]?.note ?? ''}
-          onSave={(text) => {
+          tags={store[noteRef]?.tags ?? []}
+          createdAt={store[noteRef]?.createdAt}
+          updatedAt={store[noteRef]?.updatedAt}
+          t={t}
+          ui={prefs.ui}
+          onSave={(text, newTags) => {
             setNote(noteRef, text)
+            setTags(noteRef, newTags)
             setNoteRef(null)
           }}
-          onDelete={() => {
-            remove(noteRef)
-            setNoteRef(null)
-          }}
+          onDelete={() => setConfirmDelete(noteRef)}
           onClose={() => setNoteRef(null)}
         />
       )}
 
+      {confirmDelete && (
+        <ConfirmSheet
+          title={t('confirm_delete_title')}
+          body={t('confirm_delete_body', { ref: labelFor(confirmDelete) })}
+          confirmLabel={t('delete')}
+          t={t}
+          onConfirm={() => {
+            remove(confirmDelete)
+            if (noteRef === confirmDelete) setNoteRef(null)
+            setConfirmDelete(null)
+          }}
+          onClose={() => setConfirmDelete(null)}
+        />
+      )}
+
       {flow && playingLang && (
-        <button className="audiofab" onClick={stopAudio} title="Stop audio" aria-label="Stop audio">
+        <button className="audiofab" onClick={stopAudio} title={t('stop_audio')} aria-label={t('stop_audio')}>
           ⏹
         </button>
       )}
@@ -839,4 +1194,13 @@ export default function App() {
       {toast && <div className="toast" role="status">{toast}</div>}
     </div>
   )
+}
+
+/** Length of a verse in displayed-base coordinates — the space highlight offsets
+ *  live in, which is not the raw stored length once markup is stripped. */
+function displayLength(text: string, lang: Lang): number {
+  const markup = BY_ID[lang].markup
+  if (markup === 'ruby') return text.replace(/\{\{([^|}]*)\|[^}]+\}\}/g, '$1').length
+  if (markup === 'kjv') return text.replace(/[{}]/g, '').length
+  return text.length
 }

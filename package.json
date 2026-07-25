@@ -5,6 +5,7 @@
   "type": "module",
   "description": "Offline PWA to read the Bible in English (KJV), French (KJF) and classical Japanese (文語訳, with furigana).",
   "scripts": {
+    "fetch": "node scripts/fetch-sources.mjs",
     "data": "node scripts/build-data.mjs",
     "dev": "vite",
     "build": "npm run data && tsc --noEmit && vite build",

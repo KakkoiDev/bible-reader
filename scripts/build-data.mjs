@@ -1,30 +1,41 @@
-// Build aligned per-book JSON from the three Markdown Bibles in ../data-src.
-// Output: ../public/data/index.json + ../public/data/<slug>.json
+// Build the reader's JSON from the verse-numbered Markdown in ../data-src.
+//
+// Output:
+//   ../public/data/index.json        book list: slug, per-chapter verse counts, localized names
+//   ../public/data/<id>/<slug>.json  one edition of one book
+//   ../public/data/paragraphs.json   flow-mode paragraph breaks (copied through)
+//
+// One file per edition per book is what lets the app download only the editions a
+// reader has switched on — with 11 editions, a combined file would make opening any
+// book pull eight translations nobody asked for.
+//
 // Run: node scripts/build-data.mjs
-import { readFileSync, writeFileSync, mkdirSync, readdirSync, rmSync, copyFileSync, existsSync } from 'node:fs'
+import { readFileSync, writeFileSync, mkdirSync, rmSync, copyFileSync, existsSync, statSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { SOURCES, BOOK_ORDER, NATIVE_NAMES } from './sources.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const SRC = resolve(__dirname, '../data-src')
 const OUT = resolve(__dirname, '../public/data')
+const DEFAULT_ON = new Set(['en', 'ja', 'fr'])
 
-/** Parse one MD file into { enName -> { ja, chapters: Map<ch, Map<v, text>> } } and a book order. */
+/** Parse one edition's Markdown into Map<englishName, { native, chapters }>. */
 function parseMd(file) {
-  const books = new Map() // enName -> {ja, chapters: Map}
-  const order = []
+  const books = new Map()
   let cur = null
   let ch = null
   for (const raw of readFileSync(resolve(SRC, file), 'utf8').split('\n')) {
     if (raw.startsWith('## ') && !raw.startsWith('###')) {
       const heading = raw.slice(3).trim()
-      // Bungo: "詩篇 (Psalms)"  |  KJV/KJF: "Genesis"
+      // "詩篇 (Psalms)" → native + English;  "Genesis" → English only
       const m = heading.match(/^(.*?)\s*\(([^)]+)\)\s*$/)
       const en = (m ? m[2] : heading).trim()
-      const ja = m ? m[1].trim() : ''
-      if (!books.has(en)) { books.set(en, { ja, chapters: new Map() }); order.push(en) }
-      else if (ja) books.get(en).ja = ja
-      cur = books.get(en); ch = null
+      const native = m ? m[1].trim() : ''
+      if (!books.has(en)) books.set(en, { native, chapters: new Map() })
+      else if (native) books.get(en).native = native
+      cur = books.get(en)
+      ch = null
       continue
     }
     if (raw.startsWith('### ')) {
@@ -34,18 +45,10 @@ function parseMd(file) {
       continue
     }
     const vm = raw.match(/^\*\*(\d+)\*\*\s+(.*?)\s*$/)
-    if (vm && cur && ch != null) {
-      cur.chapters.get(ch).set(parseInt(vm[1], 10), vm[2])
-    }
+    if (vm && cur && ch != null) cur.chapters.get(ch).set(parseInt(vm[1], 10), vm[2])
   }
-  return { books, order }
+  return books
 }
-
-const kjv = parseMd('kjv.md')   // English names + canonical order
-const kjf = parseMd('kjf.md')
-const bungo = parseMd('bungo.md') // supplies Japanese names
-
-const slug = (en) => en.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
 
 // KJV cleanup for the reader: drop translator marginal notes — any {…} group
 // containing a colon or "…" (e.g. "{firmament: Heb. expansion}") — while keeping
@@ -57,50 +60,101 @@ const cleanKjv = (t) =>
     .replace(/\s{2,}/g, ' ')
     .trim()
 
+const slugOf = (en) => en.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+
+// ---- load every edition ----
+const editions = []
+for (const src of SOURCES) {
+  const file = src.file || `${src.id}.md`
+  if (!existsSync(resolve(SRC, file))) {
+    console.warn(`  ! ${src.id}: data-src/${file} missing — run \`npm run fetch -- ${src.id}\`. Skipped.`)
+    continue
+  }
+  editions.push({ ...src, file, books: parseMd(file) })
+}
+if (!editions.some((e) => e.id === 'en')) throw new Error('the English edition is required as the alignment spine')
+
 rmSync(OUT, { recursive: true, force: true })
 mkdirSync(OUT, { recursive: true })
+for (const e of editions) mkdirSync(resolve(OUT, e.id), { recursive: true })
 
+// ---- emit one file per edition per book, plus the shared index ----
 const index = []
-for (const en of kjv.order) {
-  const kb = kjv.books.get(en)
-  const fb = kjf.books.get(en)
-  const jb = bungo.books.get(en)
-  const ja = jb?.ja || ''
-  // union of chapters, then union of verses per chapter
-  const chNums = new Set([
-    ...(kb?.chapters.keys() || []),
-    ...(fb?.chapters.keys() || []),
-    ...(jb?.chapters.keys() || []),
-  ])
-  const chapters = []
-  for (const c of [...chNums].sort((a, b) => a - b)) {
-    const ek = kb?.chapters.get(c), fk = fb?.chapters.get(c), jk = jb?.chapters.get(c)
-    const vNums = new Set([
-      ...(ek?.keys() || []), ...(fk?.keys() || []), ...(jk?.keys() || []),
-    ])
-    const verses = [...vNums].sort((a, b) => a - b).map((v) => ({
-      v,
-      en: cleanKjv(ek?.get(v) || ''),
-      fr: fk?.get(v) || '',
-      ja: jk?.get(v) || '',
-    }))
-    chapters.push({ n: c, verses })
+const stats = new Map(editions.map((e) => [e.id, { books: 0, verses: 0, bytes: 0 }]))
+
+for (const en of BOOK_ORDER) {
+  const slug = slugOf(en)
+  const present = editions.filter((e) => e.books.has(en) && e.books.get(en).chapters.size)
+  if (!present.length) {
+    console.warn(`  ! ${en}: no edition has this book. Skipped.`)
+    continue
   }
-  const sl = slug(en)
-  writeFileSync(resolve(OUT, `${sl}.json`), JSON.stringify({ slug: sl, en, ja, chapters }))
-  index.push({ slug: sl, en, ja, chapters: chapters.length })
+
+  // Canonical chapter count and per-chapter verse ceiling: the union across every
+  // edition, so a row exists wherever *any* edition has text. Editions missing a
+  // row render the placeholder — which is how Greek (NT) and Hebrew (OT) show their
+  // half-coverage, and how a verse split differently stays reachable.
+  const chapterNums = new Set()
+  for (const e of present) for (const c of e.books.get(en).chapters.keys()) chapterNums.add(c)
+  const lastChapter = Math.max(...chapterNums)
+  const verseCounts = []
+  for (let c = 1; c <= lastChapter; c++) {
+    let max = 0
+    for (const e of present) {
+      const vs = e.books.get(en).chapters.get(c)
+      if (vs) for (const v of vs.keys()) if (v > max) max = v
+    }
+    verseCounts.push(max)
+  }
+
+  const names = {}
+  for (const e of editions) {
+    const name = e.books.get(en)?.native || NATIVE_NAMES[e.id]?.[en]
+    if (name) names[e.id] = name
+  }
+  names.en = en
+
+  for (const e of present) {
+    const book = e.books.get(en)
+    const chapters = []
+    for (let c = 1; c <= lastChapter; c++) {
+      const vs = book.chapters.get(c)
+      if (!vs) continue
+      const verses = []
+      for (const v of [...vs.keys()].sort((a, z) => a - z)) {
+        const t = e.clean === 'kjv' ? cleanKjv(vs.get(v)) : vs.get(v)
+        if (t) verses.push({ v, t })
+      }
+      if (verses.length) chapters.push({ n: c, verses })
+    }
+    if (!chapters.length) continue
+    const path = resolve(OUT, e.id, `${slug}.json`)
+    writeFileSync(path, JSON.stringify({ chapters }))
+    const s = stats.get(e.id)
+    s.books++
+    s.verses += chapters.reduce((a, c) => a + c.verses.length, 0)
+    s.bytes += statSync(path).size
+  }
+
+  index.push({ slug, chapters: verseCounts, names })
 }
+
 writeFileSync(resolve(OUT, 'index.json'), JSON.stringify(index))
 
 // Paragraph boundaries for flow/reading mode (derived from WEB USFM, by reference).
 if (existsSync(resolve(SRC, 'paragraphs.json'))) copyFileSync(resolve(SRC, 'paragraphs.json'), resolve(OUT, 'paragraphs.json'))
 
-// summary
-const files = readdirSync(OUT).filter((f) => f !== 'index.json')
-let totalVerses = 0
-for (const b of index) {
-  const d = JSON.parse(readFileSync(resolve(OUT, `${b.slug}.json`), 'utf8'))
-  totalVerses += d.chapters.reduce((s, c) => s + c.verses.length, 0)
+// ---- summary ----
+const mb = (n) => `${(n / 1e6).toFixed(1)} MB`
+const idxKb = (statSync(resolve(OUT, 'index.json')).size / 1024).toFixed(0)
+console.log(`\nBooks: ${index.length}   Editions: ${editions.length}   index.json: ${idxKb} KB\n`)
+console.log('  id     books  verses     size   default')
+for (const e of editions) {
+  const s = stats.get(e.id)
+  console.log(
+    `  ${e.id.padEnd(6)}${String(s.books).padStart(5)} ${String(s.verses).padStart(7)} ${mb(s.bytes).padStart(9)}   ${DEFAULT_ON.has(e.id) ? 'on' : 'off'}`,
+  )
 }
-console.log(`Books: ${index.length}, files: ${files.length}, aligned verse rows: ${totalVerses}`)
-console.log('Sample:', index[0].en, '/', index[18].en, index[18].ja, `(${index[18].chapters} ch)`)
+const total = [...stats.values()].reduce((a, s) => a + s.bytes, 0)
+const shipped = editions.filter((e) => DEFAULT_ON.has(e.id)).reduce((a, e) => a + stats.get(e.id).bytes, 0)
+console.log(`\n  ${mb(total)} total · ${mb(shipped)} precached (default editions) · rest fetched on demand`)

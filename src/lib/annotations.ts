@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import type { Lang } from './types'
+import type { Lang } from './versions'
 
 export type HColor = 'yellow' | 'green' | 'blue' | 'pink' | 'purple'
 export const COLORS: HColor[] = ['yellow', 'green', 'blue', 'pink', 'purple']
@@ -14,6 +14,13 @@ export interface HRange {
 export interface Ann {
   note?: string
   highlights?: HRange[]
+  tags?: string[]
+  /** Epoch ms. Absent on entries saved before timestamps existed — shown as "—"
+   *  rather than backfilled, so the drawer never claims a date it doesn't know. */
+  createdAt?: number
+  updatedAt?: number
+  /** Position in the reader's hand-arranged order (drawer's "Custom" sort). */
+  order?: number
 }
 export type Store = Record<string, Ann>
 
@@ -31,7 +38,7 @@ const load = (): Store => {
     return {}
   }
 }
-const isEmpty = (a: Ann) => !a.note && !(a.highlights && a.highlights.length)
+const isEmpty = (a: Ann) => !a.note && !(a.highlights && a.highlights.length) && !(a.tags && a.tags.length)
 
 export function useAnnotations() {
   const [store, setStore] = useState<Store>(load)
@@ -39,12 +46,17 @@ export function useAnnotations() {
     localStorage.setItem(KEY, JSON.stringify(store))
   }, [store])
 
+  /** Every mutation stamps `updatedAt`, and `createdAt` the first time. */
   const update = useCallback((ref: string, fn: (a: Ann) => Ann) => {
     setStore((prev) => {
       const next = { ...prev }
-      const res = fn(prev[ref] ? { ...prev[ref] } : {})
+      const before = prev[ref]
+      const res = fn(before ? { ...before } : {})
       if (isEmpty(res)) delete next[ref]
-      else next[ref] = res
+      else {
+        const now = Date.now()
+        next[ref] = { ...res, createdAt: before?.createdAt ?? res.createdAt ?? now, updatedAt: now }
+      }
       return next
     })
   }, [])
@@ -84,6 +96,32 @@ export function useAnnotations() {
     (ref: string, note: string) => update(ref, (a) => ({ ...a, note: note.trim() || undefined })),
     [update],
   )
+  const setTags = useCallback(
+    (ref: string, tags: string[]) =>
+      update(ref, (a) => ({ ...a, tags: tags.length ? [...new Set(tags)] : undefined })),
+    [update],
+  )
 
-  return { store, addHighlight, clearHighlightsIn, setNote, remove, importStore }
+  /** Rewrite the hand-arranged order for the whole list, in the given ref order. */
+  const setOrder = useCallback(
+    (refs: string[]) =>
+      setStore((prev) => {
+        const next = { ...prev }
+        refs.forEach((ref, i) => {
+          if (next[ref]) next[ref] = { ...next[ref], order: i }
+        })
+        return next
+      }),
+    [],
+  )
+
+  return { store, addHighlight, clearHighlightsIn, setNote, setTags, setOrder, remove, importStore }
 }
+
+/** Every tag in use, alphabetical — drives the drawer's filter chips. */
+export const allTags = (store: Store): string[] =>
+  [...new Set(Object.values(store).flatMap((a) => a.tags || []))].sort((a, b) =>
+    a.localeCompare(b, undefined, { sensitivity: 'base' }),
+  )
+
+export const normalizeTag = (t: string) => t.trim().replace(/\s+/g, ' ').slice(0, 40)

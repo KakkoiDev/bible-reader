@@ -41,6 +41,7 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  overflow: hidden;
   padding: calc(env(safe-area-inset-top) + 8px) 12px 8px;
   background: color-mix(in srgb, var(--bg) 86%, transparent);
   backdrop-filter: blur(8px);
@@ -141,10 +142,10 @@ body {
   font-size: 11px;
   font-weight: 600;
   vertical-align: super;
-  margin-right: 5px;
+  margin-inline-end: 5px;
   user-select: none;
 }
-:lang(ja).col .verse { line-height: 2.1; }
+.col:lang(ja) .verse { line-height: 2.1; }
 .supplied { font-style: italic; }
 .missing { color: var(--muted); }
 ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-serif; }
@@ -206,14 +207,17 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
   font-size: 11px;
   font-weight: 600;
   vertical-align: super;
-  margin-right: 4px;
+  margin-inline-end: 4px;
   background: none;
   border: 0;
   padding: 0;
   cursor: pointer;
 }
 .vn:hover { text-decoration: underline; }
-.mk { font-size: 12px; margin-right: 4px; background: none; border: 0; padding: 0; cursor: default; vertical-align: super; }
+/* Latin digits inside Arabic/Hebrew verses would otherwise be reordered by the
+   bidi algorithm and drift away from the verse they label. */
+.vn, .vplay, .fchap { unicode-bidi: isolate; }
+.mk { font-size: 12px; margin-inline-end: 4px; background: none; border: 0; padding: 0; cursor: default; vertical-align: super; }
 .mk.note { cursor: pointer; }
 .verse.flash {
   background: var(--accent-bg);
@@ -256,11 +260,11 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  margin-left: 5px;
+  margin-inline-start: 5px;
   vertical-align: middle;
   border: 1px solid rgba(0, 0, 0, 0.12);
 }
-.dtag { margin-left: 6px; font-size: 11px; color: var(--muted); }
+.dtag { margin-inline-start: 6px; font-size: 11px; color: var(--muted); }
 
 /* ---------- audio: play buttons + spoken highlighting ---------- */
 .vplay {
@@ -268,8 +272,8 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
   color: var(--muted);
   background: none;
   border: 0;
-  padding: 0 4px 0 0;
-  margin-right: 2px;
+  padding-inline-end: 4px;
+  margin-inline-end: 2px;
   cursor: pointer;
   vertical-align: super;
 }
@@ -292,7 +296,7 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
 .hl-purple { background: rgba(167, 139, 250, 0.48); }
 
 /* ---------- header tool buttons ---------- */
-.tools { display: flex; gap: 2px; }
+.tools { display: flex; gap: 2px; flex: 0 0 auto; }
 .icon {
   font-size: 16px;
   background: none;
@@ -355,21 +359,25 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
 }
 .sheet.note { width: min(520px, 94vw); }
 .drawer {
-  margin-left: auto;
+  margin-inline-start: auto;
   height: 100%;
   width: min(420px, 90vw);
   background: var(--card);
-  border-left: 1px solid var(--line);
-  padding: 16px calc(env(safe-area-inset-right) + 16px) 16px 16px;
+  border-inline-start: 1px solid var(--line);
+  padding-block: 16px;
+  padding-inline: 16px calc(env(safe-area-inset-right) + 16px);
   overflow: auto;
   box-shadow: -12px 0 40px rgba(0, 0, 0, 0.3);
 }
+/* The drawer slides in from the inline-end edge, so in RTL its shadow must
+   fall the other way. */
+[dir='rtl'] .drawer { box-shadow: 12px 0 40px rgba(0, 0, 0, 0.3); }
 .sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; font-family: system-ui, sans-serif; font-size: 16px; }
 .srow { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; font-family: system-ui, sans-serif; font-size: 14px; border-top: 1px solid var(--line); }
 .srow input[type='checkbox'] { accent-color: var(--accent); width: 18px; height: 18px; }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
-.seg button { font-family: system-ui, sans-serif; font-size: 13px; padding: 6px 13px; background: var(--card); color: var(--fg); border: 0; border-left: 1px solid var(--line); cursor: pointer; text-transform: capitalize; }
-.seg button:first-child { border-left: 0; }
+.seg button { font-family: system-ui, sans-serif; font-size: 13px; padding: 6px 13px; background: var(--card); color: var(--fg); border: 0; border-inline-start: 1px solid var(--line); cursor: pointer; text-transform: capitalize; }
+.seg button:first-child { border-inline-start: 0; }
 .seg button.on { background: var(--accent); color: #fff; }
 .notearea { width: 100%; min-height: 150px; box-sizing: border-box; font-family: system-ui, sans-serif; font-size: 15px; padding: 11px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--fg); resize: vertical; }
 .noteact { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
@@ -378,7 +386,7 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
 .ghost { font-family: system-ui, sans-serif; font-size: 14px; padding: 8px 14px; background: none; color: var(--muted); border: 1px solid var(--line); border-radius: 10px; cursor: pointer; }
 .dlist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .dlist li { display: flex; align-items: center; gap: 8px; }
-.dref { flex: 1; text-align: left; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; cursor: pointer; display: flex; flex-direction: column; gap: 3px; font-family: system-ui, sans-serif; }
+.dref { flex: 1; text-align: start; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; cursor: pointer; display: flex; flex-direction: column; gap: 3px; font-family: system-ui, sans-serif; }
 .dlabel { font-size: 14px; color: var(--fg); }
 .dnote { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .empty { color: var(--muted); font-family: system-ui, sans-serif; font-size: 14px; line-height: 1.6; }
@@ -394,7 +402,11 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
   border-radius: 10px;
   padding: 7px 12px;
   cursor: pointer;
-  max-width: 60vw;
+  /* Shrinkable, with min-width:0 so the ellipsis actually engages. A fixed
+     max-width:60vw let the button plus the three tool icons exceed a 360px
+     viewport, which overflowed the bar instead of truncating the title. */
+  flex: 0 1 auto;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -429,7 +441,7 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
 .bkbtn {
   font-family: system-ui, sans-serif;
   font-size: 13px;
-  text-align: left;
+  text-align: start;
   padding: 8px 10px;
   background: var(--bg);
   color: var(--fg);
@@ -455,7 +467,7 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
 .vt { cursor: pointer; }
 .audiofab {
   position: fixed;
-  right: calc(env(safe-area-inset-right) + 16px);
+  inset-inline-end: calc(env(safe-area-inset-right) + 16px);
   bottom: calc(env(safe-area-inset-bottom) + 18px);
   z-index: 78;
   width: 52px;
@@ -476,7 +488,7 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
 .colrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; }
 .colrow.off { opacity: 0.55; }
 .collabel { font-family: system-ui, sans-serif; font-size: 14px; }
-.collabel small { color: var(--muted); font-size: 11px; margin-left: 4px; }
+.collabel small { color: var(--muted); font-size: 11px; margin-inline-start: 4px; }
 .colctl { display: inline-flex; gap: 4px; }
 .colrow .mini { padding: 4px 9px; font-size: 12px; }
 .colrow .mini:disabled { opacity: 0.4; cursor: default; }
@@ -516,3 +528,193 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
   z-index: 80;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
 }
+
+/* ---------- aligned verses across editions (subgrid) ---------- */
+/* Each column is a subgrid of the same row track list, so verse N occupies one
+   shared row in every column and all translations of a verse start at the same
+   height. The row template is set inline in JSX because CSS `repeat()` will not
+   accept a custom property as its count. */
+@supports (grid-template-rows: subgrid) {
+  .cols.aligned > .col {
+    display: grid;
+    grid-row: 1 / -1;
+    grid-template-rows: subgrid;
+  }
+  .cols.aligned > .col > .colhead { grid-row: 1 }
+  .cols.aligned > .col > .verses {
+    display: grid;
+    grid-row: 2 / -1;
+    grid-template-rows: subgrid;
+  }
+  /* Rows share a baseline band, so the per-verse bottom margin has to go or the
+     tallest cell decides the gap for everyone. */
+  .cols.aligned .verse { margin-bottom: 0; padding-bottom: 2px; }
+}
+
+/* ---------- flow mode: inline chapter marker ---------- */
+.fchap {
+  font-family: system-ui, sans-serif;
+  font-size: 0.62em;
+  font-weight: 700;
+  color: var(--accent);
+  background: var(--accent-bg);
+  border-radius: 5px;
+  padding: 1px 5px;
+  margin-inline-end: 5px;
+  vertical-align: 0.15em;
+}
+
+/* ---------- settings: grouped sections ---------- */
+.sgroup {
+  font-family: system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 18px 0 -4px;
+  padding-top: 10px;
+  border-top: 2px solid var(--line);
+}
+.sgroup:first-of-type { margin-top: 4px; }
+.srow.about { justify-content: flex-start; gap: 8px; flex-wrap: wrap; }
+.collabel .cnote {
+  display: inline-block;
+  margin-inline-start: 6px;
+  font-size: 10px;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 0 4px;
+}
+
+/* ---------- texts & licences ---------- */
+.sheet.licences { width: min(620px, 94vw); }
+.liclist { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.liclist li {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.licname { font-size: 16px; }
+.licname small { font-family: system-ui, sans-serif; font-size: 11px; color: var(--muted); margin-inline-start: 6px; }
+.lictext { font-family: system-ui, sans-serif; font-size: 12px; line-height: 1.6; color: var(--muted); }
+.licrepo { font-family: system-ui, sans-serif; font-size: 13px; margin: 14px 0 0; }
+.licrepo a, .attrib a { color: var(--accent); }
+.liclink {
+  font: inherit;
+  font-family: system-ui, sans-serif;
+  font-size: 11px;
+  color: var(--accent);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  text-decoration: underline;
+}
+.attrib { text-align: center; }
+
+/* ---------- confirm ---------- */
+.confirm-back { z-index: 90; }
+.sheet.confirm { width: min(400px, 92vw); }
+.danger {
+  font-family: system-ui, sans-serif;
+  font-size: 14px;
+  padding: 8px 16px;
+  background: #c0392b;
+  color: #fff;
+  border: 0;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+/* ---------- invite ---------- */
+.sheet.invite { width: min(430px, 92vw); }
+.invlist { list-style: none; margin: 12px 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
+.invlist li {
+  padding: 8px 11px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 15px;
+}
+.invlist small { font-family: system-ui, sans-serif; font-size: 11px; color: var(--muted); margin-inline-start: 6px; }
+
+/* ---------- saved drawer: filters, tags, reorder ---------- */
+.dfilters {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 0 12px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+}
+.dfrow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.dfrow.tagrow { align-items: flex-start; }
+.dflabel { font-family: system-ui, sans-serif; font-size: 12px; color: var(--muted); min-width: 44px; }
+.dfilters .seg button { padding: 5px 9px; font-size: 12px; }
+.dcheck {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: system-ui, sans-serif;
+  font-size: 13px;
+  cursor: pointer;
+}
+.dcheck input { accent-color: var(--accent); width: 16px; height: 16px; }
+.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: system-ui, sans-serif;
+  font-size: 11px;
+  padding: 3px 8px;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.chip.on { color: #fff; background: var(--accent); border-color: var(--accent); }
+.chip.static { cursor: default; }
+.chips.small .chip { font-size: 10px; padding: 2px 7px; }
+.chipx { background: none; border: 0; color: inherit; padding: 0; font-size: 10px; cursor: pointer; line-height: 1; }
+.dmove { display: flex; flex-direction: column; gap: 2px; }
+.dmove .mini { padding: 2px 6px; font-size: 11px; line-height: 1.2; }
+.dmove .mini:disabled { opacity: 0.35; cursor: default; }
+.dmeta { font-family: system-ui, sans-serif; font-size: 10.5px; color: var(--muted); margin: 2px 0 0; }
+
+/* ---------- note editor: tag entry ---------- */
+.tagedit { display: flex; flex-direction: column; gap: 7px; margin-top: 10px; }
+.taginput {
+  font-family: system-ui, sans-serif;
+  font-size: 13px;
+  padding: 7px 10px;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+/* ---------- verse sheet: per-edition highlight controls ---------- */
+.clang { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.clang .cnote {
+  margin-inline-start: 6px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 0 4px;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.hlctl { display: inline-flex; align-items: center; gap: 4px; }
+.swatch.mini-sw { width: 15px; height: 15px; }
+.abtn.tiny { padding: 1px 6px; font-size: 12px; }
+.noteact.wrap { flex-wrap: wrap; }
+
+/* ---------- RTL: the floating toolbar is positioned in raw pixels ---------- */
+[dir='rtl'] .atoolbar.bottom { transform: translateX(50%); }

@@ -1,17 +1,18 @@
-export type Lang = 'en' | 'ja' | 'fr'
+export type { Lang } from './versions'
+import type { Lang } from './versions'
 
 export interface IndexItem {
   slug: string
-  en: string
-  ja: string
-  chapters: number
+  /** Verse ceiling per chapter — `chapters[0]` is chapter 1. Length = chapter count. */
+  chapters: number[]
+  /** Book name per edition; `en` is always present. */
+  names: Partial<Record<Lang, string>> & { en: string }
 }
 
+/** One row of a chapter: the verse number plus whichever editions have text for it. */
 export interface Verse {
   v: number
-  en: string
-  fr: string
-  ja: string
+  text: Partial<Record<Lang, string>>
 }
 
 export interface Chapter {
@@ -19,18 +20,10 @@ export interface Chapter {
   verses: Verse[]
 }
 
-export interface BookData {
-  slug: string
-  en: string
-  ja: string
-  chapters: Chapter[]
+/** Shape of public/data/<id>/<slug>.json. */
+export interface EditionBook {
+  chapters: { n: number; verses: { v: number; t: string }[] }[]
 }
 
-// Reading ring order for the mobile swipe: English → Japanese → French → …
-export const RING: Lang[] = ['en', 'ja', 'fr']
-
-export const LANG_META: Record<Lang, { label: string; edition: string; htmlLang: string }> = {
-  en: { label: 'English', edition: 'KJV', htmlLang: 'en' },
-  ja: { label: '日本語', edition: '文語訳', htmlLang: 'ja' },
-  fr: { label: 'Français', edition: 'KJF', htmlLang: 'fr' },
-}
+export const bookName = (b: IndexItem | undefined, lang: Lang): string =>
+  (b && (b.names[lang] || b.names.en)) || ''

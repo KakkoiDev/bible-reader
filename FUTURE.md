@@ -43,10 +43,14 @@ Works identically on every device.
 Relevant existing code: `src/lib/tts.ts` (would gain a "pre-generated" mode),
 `src/lib/highlight.ts` (`setWordHighlight` reused as-is).
 
-## 2. Search
+## 2. Search — *shipped*
 
-Full-text search across the three editions (verse + reference lookup, e.g.
-"John 3:16" or a phrase). Could be a prebuilt index shipped with the data.
+Full-text search plus reference lookup in any edition's language. The index is
+built lazily, per edition, over only the editions a reader has enabled
+(`src/lib/search.ts`) — indexing all eleven at once would be ~340k verse records.
+
+Still open: a **prebuilt** index shipped with the data, which would remove the
+first-search delay on large enabled sets.
 
 ## 3. Cross-references & study notes
 
@@ -59,13 +63,55 @@ Currently annotations live in `localStorage` (per device/browser). Add export to
 JSON/Markdown, and optionally sync across devices (would need a backend or a
 user-provided store like a gist / file).
 
-## 5. More editions
+## 5. More editions — *shipped (eleven)*
 
-The data pipeline is edition-agnostic (`scripts/build-data.mjs`). Adding a
-modern Japanese (口語訳) or another French/English edition is mostly sourcing +
-a column. Useful for comparing the archaic text against a plain-language one.
+The pipeline is driven by a manifest (`scripts/sources.mjs`), so adding an edition
+is one entry plus `npm run fetch && npm run data`. Eleven ship today.
+
+Still worth adding:
+
+- **口語訳** (modern Japanese) to read against the 文語訳 — the plain-language
+  contrast the original note wanted.
+- **文理和合譯本**, the Classical Chinese Union Version. It is the truest register
+  match to the KJV and 文語訳 (the 和合本 we ship is the vernacular 1919 text), and
+  it is public domain — getbible id `chiunl`.
+- A **Septuagint** to give the Greek column an Old Testament (`grclxx` on eBible is
+  public domain), which would also make the Greek edition full-canon.
+
+### Portuguese licence follow-up
+
+The Almeida Atualizada module we use claims GPL for a 1959 text normally held under
+Sociedade Bíblica do Brasil copyright. This was raised and accepted at the time, but
+it is the one edition whose licence is not clean. Swapping it is a one-line change in
+`scripts/sources.mjs` — candidates are `livretr` (Bíblia Livre – Textus Receptus,
+CC BY 3.0 BR, and TR-based like the KJV) or eBible's `porbrbsl` (public domain).
 
 ## 6. Reading plans / daily verse
 
 Scheduled reading plans, a "verse of the day", streaks — leaning on the existing
 resume + deep-link machinery.
+
+## 7. Native review of the UI translations
+
+`src/lib/i18n.ts` carries ~95 chrome strings in eleven languages. English, French
+and Japanese are first-class. The other eight — 繁體/简体中文, Português, Español,
+العربية, Tagalog, Ελληνικά, עברית — are serviceable but were not written by native
+speakers, and should get a review pass before this is promoted anywhere public.
+Missing keys fall back to English per key, so a partial correction is safe to land.
+
+## 8. Verse-level alignment for Hebrew
+
+Rows are matched by verse number, which is wrong for the 137 Old Testament chapters
+where the Hebrew and English chapter divisions differ (see README). A reference
+mapping table (Hebrew ↔ KJV versification) would let the Hebrew column line up with
+the rest instead of drifting. The data to build one is in the WLC itself; the work is
+the mapping, not the plumbing.
+
+## 9. Retire or rewrite the old verify scripts
+
+`scripts/verify2.mjs`–`verify9.mjs` are diagnostic one-offs from earlier sessions.
+They target port 4180 and several assert against removed UI (a header `.furi`
+checkbox) or a superseded architecture (`CSS.highlights.get('hl-yellow')`, from
+before persistent highlights became DOM spans). Their still-valid coverage —
+export/import round trip, continuous playback, verse-sheet behaviour — is worth
+folding into `verify10.mjs` and deleting the rest.

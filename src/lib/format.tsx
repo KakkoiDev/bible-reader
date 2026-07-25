@@ -1,5 +1,5 @@
 import { Fragment, type ReactNode } from 'react'
-import type { Lang } from './types'
+import { BY_ID, type Lang } from './versions'
 
 // A verse rendered as tokens carrying their base-text position, so persistent
 // highlights can be applied as real DOM spans (which — unlike the CSS Custom
@@ -20,7 +20,8 @@ const KJV_ITALIC = /\{([^}]+)\}/g
 
 function tokenize(text: string, lang: Lang): Token[] {
   const out: Token[] = []
-  if (lang === 'ja') {
+  const markup = BY_ID[lang].markup
+  if (markup === 'ruby') {
     let i = 0
     let pos = 0
     let m: RegExpExecArray | null
@@ -36,7 +37,7 @@ function tokenize(text: string, lang: Lang): Token[] {
       i = m.index + m[0].length
     }
     if (i < text.length) out.push({ kind: 'text', text: text.slice(i), pos, len: text.length - i })
-  } else if (lang === 'en') {
+  } else if (markup === 'kjv') {
     let i = 0
     let pos = 0
     let m: RegExpExecArray | null

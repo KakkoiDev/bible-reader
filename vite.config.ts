@@ -13,10 +13,10 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'icons/*.png'],
       manifest: {
-        name: 'Bible · EN · 日本語 · FR',
+        name: 'Bible · 11 editions',
         short_name: 'Bible',
         description:
-          'Read the Bible in English (KJV), French (KJF) and classical Japanese (文語訳) with furigana. Works offline.',
+          'Read the Bible in parallel across 11 editions — KJV, 文語訳 (furigana), KJF, 和合本, Almeida, Reina-Valera, Van Dyck, Ang Dating Biblia, Textus Receptus and the Westminster Leningrad Codex. Works offline.',
         theme_color: '#1e1b4b',
         background_color: '#1e1b4b',
         display: 'standalone',
@@ -29,10 +29,29 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // Full offline: precache the app shell AND every per-book JSON so the
-        // whole Bible is available offline immediately after install.
-        globPatterns: ['**/*.{js,css,html,svg,png,woff2,json}'],
+        // Precache the app shell, the book index, and only the editions that are
+        // visible by default (en/ja/fr, ~18 MB). Precaching all eleven would force
+        // ~55 MB onto every install for translations most readers never switch on.
+        globPatterns: [
+          '**/*.{js,css,html,svg,png,woff2}',
+          'data/index.json',
+          'data/paragraphs.json',
+          'data/{en,ja,fr}/*.json',
+        ],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
+        // The other eight editions are cached the first time they're read, and stay
+        // available offline from then on.
+        runtimeCaching: [
+          {
+            urlPattern: ({ url }) => /\/data\/[a-z]+\/[a-z0-9-]+\.json$/.test(url.pathname),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'bible-editions',
+              expiration: { maxEntries: 800 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+        ],
       },
     }),
   ],

@@ -1,0 +1,202 @@
+// The single source of truth for which editions exist and how each behaves.
+//
+// Ids double as URL segments (#/john/3/en/16), localStorage keys for highlights,
+// and data directories (public/data/<id>/). The original three keep their plain
+// language codes so links shared before this change, and every saved annotation,
+// still resolve.
+
+export type Lang = 'en' | 'ja' | 'fr' | 'zht' | 'zhs' | 'pt' | 'es' | 'ar' | 'tl' | 'el' | 'he'
+
+/** How a verse's stored text is marked up — drives tokenizing in format.tsx. */
+export type Markup =
+  | 'kjv' // {supplied words} rendered italic
+  | 'ruby' // {{漢字|かな}} furigana
+  | 'plain'
+
+/** Which half of the canon an edition actually contains. */
+export type Coverage = 'all' | 'ot' | 'nt'
+
+export interface VersionMeta {
+  id: Lang
+  /** Native language name, shown in the version picker and language ring. */
+  label: string
+  /** Short edition name — the badge under the label. */
+  edition: string
+  /** Full edition name, used when citing a copied verse. */
+  fullName: string
+  htmlLang: string
+  dir: 'ltr' | 'rtl'
+  /** BCP47 tag handed to the Web Speech API. */
+  speech: string
+  markup: Markup
+  coverage: Coverage
+  /** Visible for a first-time reader. Everything added later is opt-in. */
+  defaultOn: boolean
+  /** Attribution line for the footer. */
+  attribution: string
+}
+
+export const VERSIONS: VersionMeta[] = [
+  {
+    id: 'en',
+    label: 'English',
+    edition: 'KJV',
+    fullName: 'King James Version (KJV)',
+    htmlLang: 'en',
+    dir: 'ltr',
+    speech: 'en-US',
+    markup: 'kjv',
+    coverage: 'all',
+    defaultOn: true,
+    attribution: 'English: King James Version (1611), public domain',
+  },
+  {
+    id: 'ja',
+    label: '日本語',
+    edition: '文語訳',
+    fullName: '文語訳聖書',
+    htmlLang: 'ja',
+    dir: 'ltr',
+    speech: 'ja-JP',
+    markup: 'ruby',
+    coverage: 'all',
+    defaultOn: true,
+    attribution: '日本語: 文語訳聖書 (明治元訳・大正改訳), public domain',
+  },
+  {
+    id: 'fr',
+    label: 'Français',
+    edition: 'KJF',
+    fullName: 'Bible King James Française (KJF)',
+    htmlLang: 'fr',
+    dir: 'ltr',
+    speech: 'fr-FR',
+    markup: 'plain',
+    coverage: 'all',
+    defaultOn: true,
+    attribution:
+      'Français: Bible King James Française © Nadine L. Stratford, reproduite sans modification',
+  },
+  {
+    id: 'zht',
+    label: '繁體中文',
+    edition: '和合本',
+    fullName: '新標點和合本',
+    htmlLang: 'zh-Hant',
+    dir: 'ltr',
+    speech: 'zh-TW',
+    markup: 'plain',
+    coverage: 'all',
+    defaultOn: false,
+    attribution: '繁體中文: 新標點和合本 (1919), public domain',
+  },
+  {
+    id: 'zhs',
+    label: '简体中文',
+    edition: '和合本',
+    fullName: '新标点和合本',
+    htmlLang: 'zh-Hans',
+    dir: 'ltr',
+    speech: 'zh-CN',
+    markup: 'plain',
+    coverage: 'all',
+    defaultOn: false,
+    attribution: '简体中文: 新标点和合本 (1919), public domain',
+  },
+  {
+    id: 'pt',
+    label: 'Português',
+    edition: 'Almeida',
+    fullName: 'João Ferreira de Almeida, Atualizada',
+    htmlLang: 'pt',
+    dir: 'ltr',
+    speech: 'pt-BR',
+    markup: 'plain',
+    coverage: 'all',
+    defaultOn: false,
+    attribution: 'Português: João Ferreira de Almeida, Atualizada',
+  },
+  {
+    id: 'es',
+    label: 'Español',
+    edition: 'RV1909',
+    fullName: 'Reina-Valera 1909',
+    htmlLang: 'es',
+    dir: 'ltr',
+    speech: 'es-ES',
+    markup: 'kjv',
+    coverage: 'all',
+    defaultOn: false,
+    attribution: 'Español: Reina-Valera (1909), public domain',
+  },
+  {
+    id: 'ar',
+    label: 'العربية',
+    edition: 'فان دايك',
+    fullName: 'ترجمة سميث وفان دايك',
+    htmlLang: 'ar',
+    dir: 'rtl',
+    speech: 'ar-SA',
+    markup: 'plain',
+    coverage: 'all',
+    defaultOn: false,
+    attribution: 'العربية: ترجمة سميث وفان دايك (1865), public domain',
+  },
+  {
+    id: 'tl',
+    label: 'Tagalog',
+    edition: 'ADB 1905',
+    fullName: 'Ang Dating Biblia (1905)',
+    htmlLang: 'tl',
+    dir: 'ltr',
+    speech: 'fil-PH',
+    markup: 'plain',
+    coverage: 'all',
+    defaultOn: false,
+    attribution: 'Tagalog: Ang Dating Biblia (1905), public domain',
+  },
+  {
+    id: 'el',
+    label: 'Ἑλληνική',
+    edition: 'TR',
+    fullName: 'Textus Receptus',
+    htmlLang: 'grc',
+    dir: 'ltr',
+    speech: 'el-GR',
+    markup: 'plain',
+    coverage: 'nt',
+    defaultOn: false,
+    attribution: 'Ἑλληνική: Textus Receptus — New Testament only, public domain',
+  },
+  {
+    id: 'he',
+    label: 'עברית',
+    edition: 'WLC',
+    fullName: 'Westminster Leningrad Codex',
+    htmlLang: 'hbo',
+    dir: 'rtl',
+    speech: 'he-IL',
+    markup: 'plain',
+    coverage: 'ot',
+    defaultOn: false,
+    // Measured against the KJV at build time: 137 of 929 Old Testament chapters
+    // have a different verse count, because the Hebrew and English traditions draw
+    // chapter boundaries differently (Numbers 16–17, Leviticus 5–6, Exodus 7–8 are
+    // the well-known cases). Rows are matched by verse number, so in those chapters
+    // the Hebrew column will not line up with the others. Stated rather than hidden.
+    attribution:
+      'עברית: Westminster Leningrad Codex — Old Testament only, public domain. Hebrew chapter and verse divisions differ from the English in roughly one OT chapter in seven, so parallel rows do not always correspond.',
+  },
+]
+
+export const BY_ID = Object.fromEntries(VERSIONS.map((v) => [v.id, v])) as Record<Lang, VersionMeta>
+export const VERSION_IDS: Lang[] = VERSIONS.map((v) => v.id)
+export const DEFAULT_COLUMNS: Lang[] = VERSIONS.filter((v) => v.defaultOn).map((v) => v.id)
+
+export const isLang = (x: unknown): x is Lang => typeof x === 'string' && x in BY_ID
+
+/** Old Testament is books 0–38 of the canonical order. */
+export const coversBook = (id: Lang, bookIndex: number) => {
+  const c = BY_ID[id].coverage
+  return c === 'all' || (c === 'ot' ? bookIndex < 39 : bookIndex >= 39)
+}

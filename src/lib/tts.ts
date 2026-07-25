@@ -1,20 +1,21 @@
 // Runtime text-to-speech via the browser's Web Speech API. Zero storage, works
 // in the PWA. Japanese is spoken from the furigana readings (not the kanji) so
 // the classical 文語 text is pronounced correctly.
-import type { Lang } from './types'
+import { BY_ID, type Lang } from './versions'
 
 export const ttsSupported = () => typeof window !== 'undefined' && 'speechSynthesis' in window
 
-const LANG_TAG: Record<Lang, string> = { en: 'en-US', ja: 'ja-JP', fr: 'fr-FR' }
+const langTag = (lang: Lang) => BY_ID[lang].speech
 
 /** Convert stored verse text into something a modern TTS voice reads correctly. */
 export function speechText(text: string, lang: Lang): string {
-  if (lang === 'ja')
+  const markup = BY_ID[lang].markup
+  if (markup === 'ruby')
     return text
       .replace(/\{\{[^|}]*\|([^}]+)\}\}/g, '$1') // {{漢字|かな}} → かな (correct reading)
       .replace(/[〔〕]/g, ' ')
       .trim()
-  if (lang === 'en') return text.replace(/[{}]/g, '') // drop KJV supplied-word braces
+  if (markup === 'kjv') return text.replace(/[{}]/g, '') // drop supplied-word braces
   return text
 }
 
@@ -33,9 +34,23 @@ const FEMALE = [
   'female', 'samantha', 'victoria', 'karen', 'moira', 'tessa', 'fiona', 'susan', 'zira', 'aria', 'jenny',
   'amelie', 'amélie', 'audrey', 'marie', 'kyoko', 'haruka', 'ayumi', 'nanami', 'sara',
 ]
-function pickVoice(lang: Lang, gender: Gender): SpeechSynthesisVoice | undefined {
+/** Voices matching an edition's spoken language, best match first.
+ *  Matched on the BCP47 tag from the registry, not the edition id — `zht` is
+ *  spoken by a `zh-TW` voice, and Koine Greek by whatever `el` voice exists. */
+function voicesFor(lang: Lang): SpeechSynthesisVoice[] {
   const all = cached.length ? cached : ttsSupported() ? speechSynthesis.getVoices() : []
-  const list = all.filter((v) => v.lang === LANG_TAG[lang] || v.lang?.startsWith(lang))
+  const tag = langTag(lang)
+  const base = tag.split('-')[0].toLowerCase()
+  const exact = all.filter((v) => v.lang?.replace('_', '-').toLowerCase() === tag.toLowerCase())
+  const loose = all.filter((v) => v.lang?.replace('_', '-').toLowerCase().split('-')[0] === base)
+  return [...exact, ...loose.filter((v) => !exact.includes(v))]
+}
+
+/** Whether this device can actually speak an edition — no voice, no play button. */
+export const hasVoice = (lang: Lang) => voicesFor(lang).length > 0
+
+function pickVoice(lang: Lang, gender: Gender): SpeechSynthesisVoice | undefined {
+  const list = voicesFor(lang)
   if (!list.length) return undefined
   const want = gender === 'female' ? FEMALE : MALE
   const other = gender === 'female' ? MALE : FEMALE
@@ -80,7 +95,7 @@ export function speakVerses(
     const it = items[i]
     const spoken = speechText(it.text, lang)
     const u = new SpeechSynthesisUtterance(spoken)
-    u.lang = LANG_TAG[lang]
+    u.lang = langTag(lang)
     if (voice) u.voice = voice
     u.rate = rate
     u.onstart = () => {
