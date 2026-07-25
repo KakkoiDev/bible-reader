@@ -457,7 +457,7 @@ export function Drawer({
   const modes: SortMode[] = ['book', 'created', 'updated', 'custom']
   return (
     <div className="sheet-backdrop" onClick={onClose}>
-      <aside className="drawer" onClick={(e) => e.stopPropagation()}>
+      <div className="sheet saved" onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
           <b>{t('saved')}</b>
           <button className="icon" onClick={onClose} aria-label={t('close')}>✕</button>
@@ -593,7 +593,7 @@ export function Drawer({
             ))}
           </ul>
         )}
-      </aside>
+      </div>
     </div>
   )
 }

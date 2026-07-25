@@ -206,11 +206,14 @@ console.log('\nRight-to-left (Arabic UI + Arabic/Hebrew text)')
   check('Arabic text rendered', /[؀-ۿ]/.test(arText), arText.slice(0, 40))
   const heText = await page.locator('#v-he-1 .vt').innerText()
   check('Hebrew text rendered', /[֐-׿]/.test(heText), heText.slice(0, 40))
-  // drawer should open against the inline-end edge, which is the left in RTL
+  // The saved panel is a centered sheet like every other panel, so in RTL there is
+  // no edge to get wrong; assert it is actually centred.
   await page.locator('.tools .icon').nth(1).click()
-  await page.waitForSelector('.drawer')
-  const d = await page.locator('.drawer').boundingBox()
-  check('drawer opens on the left in RTL', d.x < 5, `x=${Math.round(d.x)}`)
+  await page.waitForSelector('.sheet.saved')
+  const d = await page.locator('.sheet.saved').boundingBox()
+  const vw = await page.evaluate(() => document.documentElement.clientWidth)
+  check('saved panel is centred in RTL', Math.abs((d.x + d.width / 2) - vw / 2) <= 2,
+    `centre ${Math.round(d.x + d.width / 2)} vs ${vw / 2}`)
   await page.screenshot({ path: `${OUT}/10-rtl.png` })
   await ctx.close()
 }
@@ -495,7 +498,7 @@ console.log('\nNotes drawer')
   await page.waitForTimeout(200)
 
   await page.locator('.tools .icon').nth(1).click()
-  await page.waitForSelector('.drawer')
+  await page.waitForSelector('.sheet.saved')
   check('note listed', (await page.locator('.dlist li').count()) === 1)
   check('tags shown on the note', (await page.locator('.dlist .chip.static').count()) === 2)
   check('updated timestamp shown', /\d/.test(await page.locator('.dmeta').first().innerText()))
@@ -513,7 +516,7 @@ console.log('\nNotes drawer')
   await page.reload({ waitUntil: 'networkidle' })
   await page.waitForSelector('.verse')
   await page.locator('.tools .icon').nth(1).click()
-  await page.waitForSelector('.drawer')
+  await page.waitForSelector('.sheet.saved')
   check('tags on no note survive a reload', (await page.locator('.dfrow.tagrow .chip').count()) === 4,
     (await page.locator('.dfrow.tagrow .chip').allInnerTexts()).map((x) => x.trim()).join(' | '))
 
@@ -821,6 +824,40 @@ console.log('\nCopy convention: no em-dash on the frontend')
     check(`ui=${ui} no em-dash in chrome`, found.length === 0, found.join(' / ') || 'clean')
     await ctx.close()
   }
+}
+
+// ---------- 12d. every panel uses the same shell ----------
+console.log('\nPanel consistency')
+{
+  const { ctx, page } = await open({ ...BASE, ui: 'en', columns: ['en'] }, { hash: '#/john/3/en' })
+  await page.waitForSelector('.verse')
+  const opens = [
+    ['search', async () => page.locator('.tools .icon').nth(0).click()],
+    ['saved', async () => page.locator('.tools .icon').nth(1).click()],
+    ['settings', async () => page.locator('.tools .icon').nth(2).click()],
+    ['navigator', async () => page.locator('.navbtn').click()],
+    ['verse', async () => page.locator('#v-en-16 .vn').click()],
+    ['licences', async () => page.locator('.attrib .liclink').click()],
+  ]
+  const results = []
+  for (const [name, open_] of opens) {
+    await open_()
+    await page.waitForSelector('.sheet-backdrop')
+    await page.waitForTimeout(200)
+    const r = await page.evaluate(() => {
+      const el = document.querySelector('.sheet-backdrop > *')
+      const b = el.getBoundingClientRect()
+      const vw = document.documentElement.clientWidth
+      return { shell: el.classList.contains('sheet'), tag: el.tagName,
+               centred: Math.abs(b.x + b.width / 2 - vw / 2) <= 2 }
+    })
+    results.push(`${name}:${r.shell && r.centred ? 'ok' : `${r.tag} shell=${r.shell} centred=${r.centred}`}`)
+    await page.keyboard.press('Escape')
+    await page.waitForTimeout(200)
+  }
+  const bad = results.filter((x) => !x.endsWith(':ok'))
+  check('all six panels are centred .sheet shells', bad.length === 0, bad.join(', ') || results.join(' '))
+  await ctx.close()
 }
 
 // ---------- 13. splash lists every edition ----------

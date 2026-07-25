@@ -259,7 +259,7 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
   max-width: calc(100vw - 20px);
 }
 
-/* ---------- drawer highlight color dots ---------- */
+/* ---------- saved panel: highlight colour dots ---------- */
 .dot {
   display: inline-block;
   width: 9px;
@@ -349,7 +349,7 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
 .abtn.on { background: var(--accent-bg); border-color: var(--accent); }
 .abtn.wide { padding: 7px 13px; }
 
-/* ---------- sheets / drawer / note editor ---------- */
+/* ---------- sheets / note editor ---------- */
 .sheet-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.4); z-index: 70; display: flex; }
 .sheet {
   margin: auto;
@@ -363,20 +363,11 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
   box-shadow: 0 14px 44px rgba(0, 0, 0, 0.32);
 }
 .sheet.note { width: min(520px, 94vw); }
-.drawer {
-  margin-inline-start: auto;
-  height: 100%;
-  width: min(420px, 90vw);
-  background: var(--card);
-  border-inline-start: 1px solid var(--line);
-  padding-block: 16px;
-  padding-inline: 16px calc(env(safe-area-inset-right) + 16px);
-  overflow: auto;
-  box-shadow: -12px 0 40px rgba(0, 0, 0, 0.3);
-}
-/* The drawer slides in from the inline-end edge, so in RTL its shadow must
-   fall the other way. */
-[dir='rtl'] .drawer { box-shadow: 12px 0 40px rgba(0, 0, 0, 0.3); }
+/* The saved panel used to be a right-edge drawer, the only panel that wasn't a
+   centered sheet. It shares the sheet shell now, which also means it no longer
+   needs its own RTL handling for the shadow and border side. It is given the wider
+   width because of its filter header. */
+.sheet.saved { width: min(560px, 94vw); }
 /* gap matters: the close button's hover background sat flush against the search
    input's border without it, which read as the two controls bleeding together. */
 .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; font-family: system-ui, sans-serif; font-size: 16px; }
@@ -664,7 +655,7 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
 }
 .invlist small { font-family: system-ui, sans-serif; font-size: 11px; color: var(--muted); margin-inline-start: 6px; }
 
-/* ---------- saved drawer: filters, tags, reorder ---------- */
+/* ---------- saved panel: filters, tags, reorder ---------- */
 .dfilters {
   display: flex;
   flex-direction: column;
@@ -856,5 +847,5 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
 .tagedit-toggle { margin-inline-start: auto; }
 .tagedit-toggle.on { color: var(--accent); border-color: var(--accent); }
 
-/* ---------- drawer: create-tag field appears in edit mode ---------- */
+/* ---------- saved panel: create-tag field appears in edit mode ---------- */
 .dfrow.tagrow .taginput { flex-basis: 100%; font-size: 12px; padding: 6px 9px; }
