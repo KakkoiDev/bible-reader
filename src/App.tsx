@@ -3,7 +3,7 @@ import type { Chapter, EditionBook, IndexItem } from './lib/types'
 import { bookName } from './lib/types'
 import { BY_ID, DEFAULT_COLUMNS, VERSION_IDS, coversBook, isLang, type Lang } from './lib/versions'
 import { VerseText, type HL } from './lib/format'
-import { useAnnotations, vref, parseRef, allTags, type HColor } from './lib/annotations'
+import { useAnnotations, vref, parseRef, allTags, countTagged, type HColor } from './lib/annotations'
 import { selectionContext, setWordHighlight, clearWordHighlight } from './lib/highlight'
 import {
   ttsSupported,
@@ -155,9 +155,12 @@ export default function App() {
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   // Set to the verse to share (or 0 for the chapter) while the builder is open.
   const [inviteFor, setInviteFor] = useState<number | null>(null)
+  // Tag pending global deletion, awaiting confirmation.
+  const [confirmTag, setConfirmTag] = useState<string | null>(null)
   const canTTS = ttsSupported()
 
-  const { store, addHighlight, clearHighlightsIn, setNote, setTags, setOrder, remove, importStore } = useAnnotations()
+  const { store, addHighlight, clearHighlightsIn, setNote, setTags, removeTag, setOrder, remove, importStore } =
+    useAnnotations()
   const [sel, setSel] = useState<{ lang: Lang; ch: number; v: number; start: number; end: number; rect: DOMRect } | null>(null)
   const [noteRef, setNoteRef] = useState<string | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -718,6 +721,7 @@ export default function App() {
       if (e.key !== 'Escape') return
       const layers: [boolean, () => void][] = [
         [confirmDelete !== null, () => setConfirmDelete(null)],
+        [confirmTag !== null, () => setConfirmTag(null)],
         [noteRef !== null, () => setNoteRef(null)],
         [verseSheet !== null, () => setVerseSheet(null)],
         [inviteFor !== null, () => setInviteFor(null)],
@@ -907,8 +911,10 @@ export default function App() {
           {title} {pos.chapter} <span className="caret">▾</span>
         </button>
         <div className="tools">
+          {/* Composing an invite lives in the verse sheet, not here: you share a
+              passage rather than a bare chapter, and the header is reserved for the
+              actions a reader uses routinely. */}
           <button className="icon" title={t('search')} onClick={() => setSearchOpen(true)}>🔍</button>
-          <button className="icon" title={t('copy_invite')} onClick={() => setInviteFor(0)}>🔗</button>
           <button className="icon" title={t('saved_aria')} onClick={() => setDrawerOpen(true)}>🔖</button>
           <button className="icon" title={t('settings')} onClick={() => setSettingsOpen(true)}>⚙</button>
         </div>
@@ -1137,6 +1143,7 @@ export default function App() {
         onToggleTag={(tag) =>
           setTagFilter((prev) => (prev.includes(tag) ? prev.filter((x) => x !== tag) : [...prev, tag]))
         }
+        onDeleteTag={(tag) => setConfirmTag(tag)}
         onMove={moveNote}
         onJump={(ref) => {
           const p = parseRef(ref)
@@ -1216,6 +1223,7 @@ export default function App() {
           label={labelFor(noteRef)}
           value={store[noteRef]?.note ?? ''}
           tags={store[noteRef]?.tags ?? []}
+          knownTags={tags}
           createdAt={store[noteRef]?.createdAt}
           updatedAt={store[noteRef]?.updatedAt}
           t={t}
@@ -1242,6 +1250,21 @@ export default function App() {
             setConfirmDelete(null)
           }}
           onClose={() => setConfirmDelete(null)}
+        />
+      )}
+
+      {confirmTag && (
+        <ConfirmSheet
+          title={t('delete_tag_title')}
+          body={t('delete_tag_body', { tag: confirmTag, n: countTagged(store, confirmTag) })}
+          confirmLabel={t('delete')}
+          t={t}
+          onConfirm={() => {
+            removeTag(confirmTag)
+            setTagFilter((prev) => prev.filter((x) => x !== confirmTag))
+            setConfirmTag(null)
+          }}
+          onClose={() => setConfirmTag(null)}
         />
       )}
 

@@ -47,6 +47,7 @@ console.log('\nHeader overflow (360px, long localized book name)')
   const bar = await page.locator('.bar').evaluate((el) => ({ scroll: el.scrollWidth, client: el.clientWidth }))
   const body = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }))
   check('.bar does not overflow', bar.scroll <= bar.client, `scrollWidth ${bar.scroll} vs clientWidth ${bar.client}`)
+  check('header keeps to three routine actions', (await page.locator('.tools .icon').count()) === 3)
   check('page does not scroll horizontally', body.scroll <= body.client, `${body.scroll} vs ${body.client}`)
   await page.screenshot({ path: `${OUT}/10-header-mobile.png` })
   await ctx.close()
@@ -134,7 +135,7 @@ console.log('\nRight-to-left (Arabic UI + Arabic/Hebrew text)')
   const heText = await page.locator('#v-he-1 .vt').innerText()
   check('Hebrew text rendered', /[֐-׿]/.test(heText), heText.slice(0, 40))
   // drawer should open against the inline-end edge, which is the left in RTL
-  await page.locator('.tools .icon').nth(2).click()
+  await page.locator('.tools .icon').nth(1).click()
   await page.waitForSelector('.drawer')
   const d = await page.locator('.drawer').boundingBox()
   check('drawer opens on the left in RTL', d.x < 5, `x=${Math.round(d.x)}`)
@@ -242,11 +243,16 @@ console.log('\nInvite links')
   // Sending: the builder picks which editions to share, and their order.
   const { ctx: c2, page: p2 } = await open({ ...BASE, ui: 'en', columns: ['en', 'ja'] }, { hash: '#/matthew/15/en' })
   await p2.waitForSelector('.verse')
-  await p2.locator('.tools .icon').nth(1).click()   // share
+  await p2.locator('#v-en-3 .vn').click()
+  await p2.waitForSelector('.verse-sheet')
+  await p2.locator('.verse-sheet .noteact .mini').nth(3).click()   // Copy invite
   await p2.waitForSelector('.sheet.invite')
   check('builder lists the sender’s editions first', (await p2.locator('.sheet.invite .colrow:not(.off)').count()) === 2)
   check('builder offers the other nine', (await p2.locator('.sheet.invite .colrow.off').count()) === 9)
   check('builder marks which edition it opens in', (await p2.locator('.sheet.invite .opens').count()) === 1)
+  check('builder is reached from the verse, carrying the reference',
+    /15:3/.test(await p2.locator('.sheet.invite .opens').innerText()),
+    await p2.locator('.sheet.invite .opens').innerText())
   // add Arabic, then move it to the top so the link opens in it
   await p2.locator('.sheet.invite .colrow.off', { hasText: 'العربية' }).locator('.mini').click()
   await p2.waitForTimeout(150)
@@ -358,18 +364,51 @@ console.log('\nNotes drawer')
   await page.locator('.verse-sheet .primary').click()
   await page.waitForSelector('.notearea')
   await page.locator('.notearea').fill('God so loved the world')
-  await page.locator('.taginput').fill('study')
+  // comma-separated entry creates several at once
+  await page.locator('.taginput').fill('study, prayer')
   await page.keyboard.press('Enter')
-  check('tag chip added in the editor', (await page.locator('.tagedit .chip').count()) === 1)
+  const active = await page.locator('.tagedit .chip.on').allInnerTexts()
+  check('comma separated entry creates two tags', active.length === 2, active.map(x => x.replace('✕','').trim()).join(' + '))
   await page.locator('.sheet.note .primary').click()
   await page.waitForTimeout(250)
 
-  await page.locator('.tools .icon').nth(2).click()
+  // A second note should offer the first note's tags as dimmed, clickable chips.
+  await page.locator('#v-en-17 .vn').click()
+  await page.waitForSelector('.verse-sheet')
+  await page.locator('.verse-sheet .primary').click()
+  await page.waitForSelector('.notearea')
+  const dim = await page.locator('.tagedit .chip.dim').allInnerTexts()
+  check('existing tags offered as dimmed chips', dim.length === 2, dim.join(' + '))
+  await page.locator('.tagedit .chip.dim').first().click()
+  await page.waitForTimeout(150)
+  check('clicking a dimmed chip applies it', (await page.locator('.tagedit .chip.on').count()) === 1)
+  await page.locator('.tagedit .chip.on').first().click()
+  await page.waitForTimeout(150)
+  check('clicking it again removes it', (await page.locator('.tagedit .chip.on').count()) === 0)
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(200)
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(200)
+
+  await page.locator('.tools .icon').nth(1).click()
   await page.waitForSelector('.drawer')
   check('note listed', (await page.locator('.dlist li').count()) === 1)
-  check('tag shown on the note', (await page.locator('.dlist .chip.static').count()) === 1)
+  check('tags shown on the note', (await page.locator('.dlist .chip.static').count()) === 2)
   check('updated timestamp shown', /\d/.test(await page.locator('.dmeta').first().innerText()))
-  check('tag filter chip offered', (await page.locator('.dfrow.tagrow .chip').count()) === 1)
+  check('tag filter chips offered', (await page.locator('.dfrow.tagrow .chip').count()) === 2)
+
+  // A misspelled tag can be deleted everywhere, with a confirmation naming the count.
+  await page.locator('.tagedit-toggle').click()
+  await page.waitForTimeout(150)
+  check('edit mode reveals a delete on each tag', (await page.locator('.dfrow.tagrow .chipx').count()) === 2)
+  await page.locator('.dfrow.tagrow .chipx').first().click()
+  await page.waitForSelector('.sheet.confirm')
+  const body = await page.locator('.sheet.confirm .empty').innerText()
+  check('confirmation names the tag and how many notes', /prayer|study/.test(body) && /\d/.test(body), body)
+  await page.locator('.sheet.confirm .danger').click()
+  await page.waitForTimeout(300)
+  check('tag removed everywhere', (await page.locator('.dfrow.tagrow .chip').count()) === 1)
+  check('the note itself survives', (await page.locator('.dlist li').count()) === 1)
 
   await page.locator('.dfilters .seg button').nth(3).click() // Custom
   check('reorder arrows appear in custom mode', (await page.locator('.dmove').count()) === 1)
@@ -439,7 +478,7 @@ console.log('\nSettings: stop at chapter end + licences sheet')
 {
   const { ctx, page } = await open({ ...BASE, ui: 'en', columns: ['en'] })
   await page.waitForSelector('.verse')
-  await page.locator('.tools .icon').nth(3).click()
+  await page.locator('.tools .icon').nth(2).click()
   await page.waitForSelector('.sheet')
   const groups = await page.locator('.sgroup').allInnerTexts()
   check('settings are grouped', groups.length >= 3, groups.join(' | '))
@@ -455,6 +494,41 @@ console.log('\nSettings: stop at chapter end + licences sheet')
     return out
   })
   check('UI language, versions, align, furigana, swipe all in that group', langGroupRows.length >= 5, `${langGroupRows.length} rows`)
+
+  // Group headings must have real room beneath them, and must not sit between two
+  // hairlines: .sgroup once had a negative bottom margin, which pulled the first
+  // row's border up over the label.
+  const spacing = await page.evaluate(() =>
+    [...document.querySelectorAll('.sheet .sgroup')].map((g) => {
+      const n = g.nextElementSibling
+      const first = n.querySelector('span, .collabel') || n
+      return {
+        group: g.textContent.trim(),
+        gap: +(first.getBoundingClientRect().top - g.getBoundingClientRect().bottom).toFixed(1),
+        doubleRule: getComputedStyle(n).borderTopWidth !== '0px',
+      }
+    }),
+  )
+  const tight = spacing.filter((x) => x.gap < 8)
+  check('every group heading has >=8px beneath it', tight.length === 0,
+    tight.length ? tight.map((x) => `${x.group}:${x.gap}px`).join(', ') : spacing.map((x) => `${x.group}:${x.gap}px`).join(', '))
+  const doubled = spacing.filter((x) => x.doubleRule)
+  check('no group heading is followed by a second rule', doubled.length === 0,
+    doubled.map((x) => x.group).join(', ') || 'clean')
+
+  // In an LTR UI every version row must read name-then-badge, including the RTL
+  // editions: without <bdi> the Arabic label dragged its badge across the row.
+  const rowOrder = await page.evaluate(() =>
+    [...document.querySelectorAll('.sheet .colrow')].map((r) => {
+      const name = r.querySelector('.collabel bdi')
+      const badge = r.querySelector('.collabel small')
+      if (!name || !badge) return null
+      return { name: name.textContent, nameLeft: name.getBoundingClientRect().left, badgeLeft: badge.getBoundingClientRect().left }
+    }).filter(Boolean),
+  )
+  const wrongOrder = rowOrder.filter((r) => r.nameLeft > r.badgeLeft)
+  check('every version row reads name then badge', wrongOrder.length === 0,
+    wrongOrder.map((r) => r.name).join(', ') || `${rowOrder.length} rows consistent`)
 
   await page.keyboard.press('Escape')
   await page.waitForTimeout(200)
@@ -500,7 +574,7 @@ console.log('\nCopy convention: no em-dash on the frontend')
     const { ctx, page } = await open({ ...BASE, ui, columns: ['en', 'el', 'he'] }, { hash: '#/genesis/1/en' })
     await page.waitForSelector('.verse')
     // Open each panel so its copy is in the DOM, closing with Escape between.
-    for (const i of [3, 2, 0]) {
+    for (const i of [2, 1, 0]) {
       await page.locator('.tools .icon').nth(i).click()
       await page.waitForTimeout(250)
       const seen = await page.evaluate(() => {

@@ -68,7 +68,10 @@ const en = {
   note_placeholder: 'Write a note…',
   save: 'Save',
   delete: 'Delete',
-  add_tag: 'Add a tag…',
+  add_tag: 'Add tags, comma separated…',
+  manage_tags: 'Edit tags',
+  delete_tag_title: 'Delete this tag?',
+  delete_tag_body: 'Removes "{tag}" from {n} note(s). The notes themselves stay.',
   created: 'Created',
   updated: 'Updated',
   unknown: 'not recorded',
@@ -141,7 +144,7 @@ const ja: Dict = {
   saved: '保存済み', saved_empty: 'まだ何もありません。本文を選んでハイライト、または節にノートを追加してください。',
   sort: '並び順', sort_book: '書順', sort_created: '作成日', sort_updated: '更新日', sort_custom: '手動',
   ascending: '昇順', descending: '降順', this_book: 'この書のみ', tags: 'タグ', no_matches: '条件に合うノートがありません。',
-  note_placeholder: 'ノートを書く…', save: '保存', delete: '削除', add_tag: 'タグを追加…',
+  note_placeholder: 'ノートを書く…', save: '保存', delete: '削除',
   created: '作成', updated: '更新', unknown: '·',
   play: '再生', copy_text: '本文をコピー', copy_link: 'リンクをコピー', note: 'ノート', add_note: 'ノートを追加',
   highlight: 'ハイライト', remove_highlight: 'ハイライトを削除', verse_actions: '節の操作',
@@ -157,7 +160,8 @@ const ja: Dict = {
   licences: '底本と著作権', licences_intro: '本アプリは以下の版を収録しています。帰属および利用条件は原文のまま掲載し、翻訳していません。',
   group_reading: '表示', group_languages: '言語と訳', group_audio: '音声', group_data: 'ノートとデータ',
   coverage_nt_only: 'この版は新約聖書のみを収録しています。', coverage_ot_only: 'この版は旧約聖書のみを収録しています。',
-  invite_build_title: '共有する訳', invite_build_body: '共有する訳と並び順を選んでください。箇所は最初の訳で開きます。', invite_applied: '{versions} を表示中', undo: '元に戻す'
+  invite_build_title: '共有する訳', invite_build_body: '共有する訳と並び順を選んでください。箇所は最初の訳で開きます。', invite_applied: '{versions} を表示中', undo: '元に戻す',
+  add_tag: 'タグを追加（カンマ区切り）…', manage_tags: 'タグを編集', delete_tag_title: 'このタグを削除しますか？', delete_tag_body: '「{tag}」を {n} 件のノートから削除します。ノート自体は残ります。',
 }
 
 const fr: Dict = {
@@ -178,8 +182,7 @@ const fr: Dict = {
   sort: 'Trier', sort_book: 'Livre', sort_created: 'Création', sort_updated: 'Modification', sort_custom: 'Manuel',
   ascending: 'Croissant', descending: 'Décroissant', this_book: 'Ce livre uniquement', tags: 'Étiquettes',
   no_matches: 'Aucune note ne correspond à ces filtres.',
-  note_placeholder: 'Écrire une note…', save: 'Enregistrer', delete: 'Supprimer',
-  add_tag: 'Ajouter une étiquette…', created: 'Créée', updated: 'Modifiée', unknown: '·',
+  note_placeholder: 'Écrire une note…', save: 'Enregistrer', delete: 'Supprimer', created: 'Créée', updated: 'Modifiée', unknown: '·',
   play: 'Lire', copy_text: 'Copier le texte', copy_link: 'Copier le lien', note: 'Note',
   add_note: 'Ajouter une note', highlight: 'Surligner', remove_highlight: 'Retirer le surlignage',
   verse_actions: 'Actions du verset', play_verse: 'Lire le verset', play_chapter: 'Lire le chapitre', stop: 'Arrêter',
@@ -195,7 +198,8 @@ const fr: Dict = {
   licences: 'Textes et licences', licences_intro: "Cette application reproduit les éditions suivantes. Les mentions d'attribution et de licence sont citées telles quelles et ne sont pas traduites.",
   group_reading: 'Lecture', group_languages: 'Langues et versions', group_audio: 'Audio', group_data: 'Notes et données',
   coverage_nt_only: 'Cette édition ne contient que le Nouveau Testament.', coverage_ot_only: 'Cette édition ne contient que l’Ancien Testament.',
-  invite_build_title: 'Versions à partager', invite_build_body: "Choisissez les versions à partager et leur ordre. Le passage s'ouvre dans la première.", invite_applied: 'Affichage de {versions}', undo: 'Annuler'
+  invite_build_title: 'Versions à partager', invite_build_body: "Choisissez les versions à partager et leur ordre. Le passage s'ouvre dans la première.", invite_applied: 'Affichage de {versions}', undo: 'Annuler',
+  add_tag: 'Ajouter des étiquettes, séparées par des virgules…', manage_tags: 'Modifier les étiquettes', delete_tag_title: 'Supprimer cette étiquette ?', delete_tag_body: 'Retire « {tag} » de {n} note(s). Les notes elles-mêmes sont conservées.',
 }
 
 const zht: Dict = {
@@ -212,7 +216,7 @@ const zht: Dict = {
   saved: '已儲存', saved_empty: '尚無內容。請標記經文或為節加上筆記。',
   sort: '排序', sort_book: '書卷', sort_created: '建立時間', sort_updated: '更新時間', sort_custom: '自訂',
   ascending: '遞增', descending: '遞減', this_book: '僅本書卷', tags: '標籤', no_matches: '沒有符合條件的筆記。',
-  note_placeholder: '寫下筆記…', save: '儲存', delete: '刪除', add_tag: '新增標籤…',
+  note_placeholder: '寫下筆記…', save: '儲存', delete: '刪除',
   created: '建立', updated: '更新', unknown: '·',
   play: '朗讀', copy_text: '複製經文', copy_link: '複製連結', note: '筆記', add_note: '新增筆記',
   highlight: '標記', remove_highlight: '移除標記', verse_actions: '節的操作',
@@ -228,7 +232,8 @@ const zht: Dict = {
   licences: '底本與版權', licences_intro: '本應用收錄以下譯本。署名與授權條款按原文列出，未經翻譯。',
   group_reading: '閱讀', group_languages: '語言與譯本', group_audio: '朗讀', group_data: '筆記與資料',
   coverage_nt_only: '此譯本僅收錄新約。', coverage_ot_only: '此譯本僅收錄舊約。',
-  invite_build_title: '分享的譯本', invite_build_body: '選擇要分享的譯本與排列順序。經文會以第一個譯本開啟。', invite_applied: '正在顯示 {versions}', undo: '復原'
+  invite_build_title: '分享的譯本', invite_build_body: '選擇要分享的譯本與排列順序。經文會以第一個譯本開啟。', invite_applied: '正在顯示 {versions}', undo: '復原',
+  add_tag: '新增標籤，以逗號分隔…', manage_tags: '編輯標籤', delete_tag_title: '要刪除這個標籤嗎？', delete_tag_body: '將「{tag}」從 {n} 則筆記中移除。筆記本身會保留。',
 }
 
 const zhs: Dict = {
@@ -245,7 +250,7 @@ const zhs: Dict = {
   saved: '已保存', saved_empty: '暂无内容。请标记经文或为节添加笔记。',
   sort: '排序', sort_book: '书卷', sort_created: '创建时间', sort_updated: '更新时间', sort_custom: '自定义',
   ascending: '升序', descending: '降序', this_book: '仅本书卷', tags: '标签', no_matches: '没有符合条件的笔记。',
-  note_placeholder: '写下笔记…', save: '保存', delete: '删除', add_tag: '添加标签…',
+  note_placeholder: '写下笔记…', save: '保存', delete: '删除',
   created: '创建', updated: '更新', unknown: '·',
   play: '朗读', copy_text: '复制经文', copy_link: '复制链接', note: '笔记', add_note: '添加笔记',
   highlight: '标记', remove_highlight: '移除标记', verse_actions: '节的操作',
@@ -261,7 +266,8 @@ const zhs: Dict = {
   licences: '底本与版权', licences_intro: '本应用收录以下译本。署名与授权条款按原文列出，未经翻译。',
   group_reading: '阅读', group_languages: '语言与译本', group_audio: '朗读', group_data: '笔记与数据',
   coverage_nt_only: '此译本仅收录新约。', coverage_ot_only: '此译本仅收录旧约。',
-  invite_build_title: '分享的译本', invite_build_body: '选择要分享的译本与排列顺序。经文会以第一个译本打开。', invite_applied: '正在显示 {versions}', undo: '撤销'
+  invite_build_title: '分享的译本', invite_build_body: '选择要分享的译本与排列顺序。经文会以第一个译本打开。', invite_applied: '正在显示 {versions}', undo: '撤销',
+  add_tag: '添加标签，以逗号分隔…', manage_tags: '编辑标签', delete_tag_title: '要删除这个标签吗？', delete_tag_body: '将“{tag}”从 {n} 条笔记中移除。笔记本身会保留。',
 }
 
 const pt: Dict = {
@@ -282,7 +288,7 @@ const pt: Dict = {
   sort: 'Ordenar', sort_book: 'Livro', sort_created: 'Criação', sort_updated: 'Atualização', sort_custom: 'Manual',
   ascending: 'Crescente', descending: 'Decrescente', this_book: 'Somente este livro', tags: 'Etiquetas',
   no_matches: 'Nenhuma nota corresponde a estes filtros.',
-  note_placeholder: 'Escreva uma nota…', save: 'Salvar', delete: 'Excluir', add_tag: 'Adicionar etiqueta…',
+  note_placeholder: 'Escreva uma nota…', save: 'Salvar', delete: 'Excluir',
   created: 'Criada', updated: 'Atualizada', unknown: '·',
   play: 'Ouvir', copy_text: 'Copiar texto', copy_link: 'Copiar link', note: 'Nota', add_note: 'Adicionar nota',
   highlight: 'Destacar', remove_highlight: 'Remover destaque', verse_actions: 'Ações do versículo',
@@ -300,7 +306,8 @@ const pt: Dict = {
   licences: 'Textos e licenças', licences_intro: 'Este leitor reproduz as edições a seguir. A atribuição e os termos de licença são citados na íntegra e não são traduzidos.',
   group_reading: 'Leitura', group_languages: 'Idiomas e versões', group_audio: 'Áudio', group_data: 'Notas e dados',
   coverage_nt_only: 'Esta edição contém apenas o Novo Testamento.', coverage_ot_only: 'Esta edição contém apenas o Antigo Testamento.',
-  invite_build_title: 'Versões a compartilhar', invite_build_body: 'Escolha as versões a compartilhar e a ordem delas. A passagem abre na primeira.', invite_applied: 'Mostrando {versions}', undo: 'Desfazer'
+  invite_build_title: 'Versões a compartilhar', invite_build_body: 'Escolha as versões a compartilhar e a ordem delas. A passagem abre na primeira.', invite_applied: 'Mostrando {versions}', undo: 'Desfazer',
+  add_tag: 'Adicionar etiquetas, separadas por vírgulas…', manage_tags: 'Editar etiquetas', delete_tag_title: 'Excluir esta etiqueta?', delete_tag_body: 'Remove "{tag}" de {n} nota(s). As notas permanecem.',
 }
 
 const es: Dict = {
@@ -321,7 +328,7 @@ const es: Dict = {
   sort: 'Ordenar', sort_book: 'Libro', sort_created: 'Creación', sort_updated: 'Actualización',
   sort_custom: 'Manual', ascending: 'Ascendente', descending: 'Descendente',
   this_book: 'Solo este libro', tags: 'Etiquetas', no_matches: 'Ninguna nota coincide con estos filtros.',
-  note_placeholder: 'Escribe una nota…', save: 'Guardar', delete: 'Eliminar', add_tag: 'Añadir etiqueta…',
+  note_placeholder: 'Escribe una nota…', save: 'Guardar', delete: 'Eliminar',
   created: 'Creada', updated: 'Actualizada', unknown: '·',
   play: 'Escuchar', copy_text: 'Copiar texto', copy_link: 'Copiar enlace', note: 'Nota',
   add_note: 'Añadir nota', highlight: 'Resaltar', remove_highlight: 'Quitar resaltado',
@@ -340,7 +347,8 @@ const es: Dict = {
   licences: 'Textos y licencias', licences_intro: 'Este lector reproduce las siguientes ediciones. La atribución y los términos de licencia se citan literalmente y no se traducen.',
   group_reading: 'Lectura', group_languages: 'Idiomas y versiones', group_audio: 'Audio', group_data: 'Notas y datos',
   coverage_nt_only: 'Esta edición contiene solo el Nuevo Testamento.', coverage_ot_only: 'Esta edición contiene solo el Antiguo Testamento.',
-  invite_build_title: 'Versiones para compartir', invite_build_body: 'Elige las versiones que quieres compartir y su orden. El pasaje se abre en la primera.', invite_applied: 'Mostrando {versions}', undo: 'Deshacer'
+  invite_build_title: 'Versiones para compartir', invite_build_body: 'Elige las versiones que quieres compartir y su orden. El pasaje se abre en la primera.', invite_applied: 'Mostrando {versions}', undo: 'Deshacer',
+  add_tag: 'Añadir etiquetas, separadas por comas…', manage_tags: 'Editar etiquetas', delete_tag_title: '¿Eliminar esta etiqueta?', delete_tag_body: 'Quita «{tag}» de {n} nota(s). Las notas se conservan.',
 }
 
 const ar: Dict = {
@@ -361,7 +369,7 @@ const ar: Dict = {
   sort: 'الترتيب', sort_book: 'السفر', sort_created: 'تاريخ الإنشاء', sort_updated: 'تاريخ التحديث',
   sort_custom: 'مخصص', ascending: 'تصاعدي', descending: 'تنازلي', this_book: 'هذا السفر فقط',
   tags: 'الوسوم', no_matches: 'لا ملاحظات تطابق هذه المرشحات.',
-  note_placeholder: 'اكتب ملاحظة…', save: 'حفظ', delete: 'حذف', add_tag: 'أضف وسمًا…',
+  note_placeholder: 'اكتب ملاحظة…', save: 'حفظ', delete: 'حذف',
   created: 'أُنشئت', updated: 'حُدِّثت', unknown: '·',
   play: 'تشغيل', copy_text: 'نسخ النص', copy_link: 'نسخ الرابط', note: 'ملاحظة', add_note: 'إضافة ملاحظة',
   highlight: 'تظليل', remove_highlight: 'إزالة التظليل', verse_actions: 'إجراءات العدد',
@@ -378,7 +386,8 @@ const ar: Dict = {
   licences: 'النصوص والتراخيص', licences_intro: 'يعرض هذا التطبيق الترجمات الآتية. تُذكر بيانات النسبة وشروط الترخيص كما هي دون ترجمة.',
   group_reading: 'القراءة', group_languages: 'اللغات والترجمات', group_audio: 'الصوت', group_data: 'الملاحظات والبيانات',
   coverage_nt_only: 'تحتوي هذه الترجمة على العهد الجديد فقط.', coverage_ot_only: 'تحتوي هذه الترجمة على العهد القديم فقط.',
-  invite_build_title: 'الترجمات المشتركة', invite_build_body: 'اختر الترجمات التي تريد مشاركتها وترتيبها. يُفتح المقطع بالترجمة الأولى.', invite_applied: 'يتم عرض {versions}', undo: 'تراجع'
+  invite_build_title: 'الترجمات المشتركة', invite_build_body: 'اختر الترجمات التي تريد مشاركتها وترتيبها. يُفتح المقطع بالترجمة الأولى.', invite_applied: 'يتم عرض {versions}', undo: 'تراجع',
+  add_tag: 'أضف وسومًا مفصولة بفواصل…', manage_tags: 'تحرير الوسوم', delete_tag_title: 'حذف هذا الوسم؟', delete_tag_body: 'يُزال «{tag}» من {n} ملاحظة. تبقى الملاحظات نفسها.',
 }
 
 const tl: Dict = {
@@ -399,7 +408,7 @@ const tl: Dict = {
   sort: 'Uriin', sort_book: 'Aklat', sort_created: 'Ginawa', sort_updated: 'Binago', sort_custom: 'Manwal',
   ascending: 'Pataas', descending: 'Pababa', this_book: 'Aklat na ito lamang', tags: 'Mga tag',
   no_matches: 'Walang talang tumutugma sa mga filter.',
-  note_placeholder: 'Sumulat ng tala…', save: 'I-save', delete: 'Tanggalin', add_tag: 'Magdagdag ng tag…',
+  note_placeholder: 'Sumulat ng tala…', save: 'I-save', delete: 'Tanggalin',
   created: 'Ginawa', updated: 'Binago', unknown: '·',
   play: 'Pakinggan', copy_text: 'Kopyahin ang teksto', copy_link: 'Kopyahin ang link', note: 'Tala',
   add_note: 'Magdagdag ng tala', highlight: 'I-highlight', remove_highlight: 'Alisin ang highlight',
@@ -418,7 +427,8 @@ const tl: Dict = {
   licences: 'Mga teksto at lisensya', licences_intro: 'Ipinapakita ng reader na ito ang mga sumusunod na edisyon. Ang atribusyon at mga tuntunin ng lisensya ay sinipi nang buo at hindi isinasalin.',
   group_reading: 'Pagbasa', group_languages: 'Mga wika at bersyon', group_audio: 'Audio', group_data: 'Mga tala at data',
   coverage_nt_only: 'Bagong Tipan lamang ang nilalaman ng edisyong ito.', coverage_ot_only: 'Lumang Tipan lamang ang nilalaman ng edisyong ito.',
-  invite_build_title: 'Mga bersyong ibabahagi', invite_build_body: 'Piliin ang mga bersyong ibabahagi at ang pagkakasunod-sunod nila. Bubukas ang bahagi sa una.', invite_applied: 'Ipinapakita ang {versions}', undo: 'I-undo'
+  invite_build_title: 'Mga bersyong ibabahagi', invite_build_body: 'Piliin ang mga bersyong ibabahagi at ang pagkakasunod-sunod nila. Bubukas ang bahagi sa una.', invite_applied: 'Ipinapakita ang {versions}', undo: 'I-undo',
+  add_tag: 'Magdagdag ng mga tag, hiwalayin ng kuwit…', manage_tags: 'I-edit ang mga tag', delete_tag_title: 'Tanggalin ang tag na ito?', delete_tag_body: 'Aalisin ang "{tag}" sa {n} tala. Mananatili ang mga tala.',
 }
 
 // Modern Greek chrome; the text itself stays Koine.
@@ -443,8 +453,7 @@ const el: Dict = {
   sort_custom: 'Χειροκίνητη', ascending: 'Αύξουσα', descending: 'Φθίνουσα',
   this_book: 'Μόνο αυτό το βιβλίο', tags: 'Ετικέτες',
   no_matches: 'Καμία σημείωση δεν ταιριάζει με τα φίλτρα.',
-  note_placeholder: 'Γράψτε μια σημείωση…', save: 'Αποθήκευση', delete: 'Διαγραφή',
-  add_tag: 'Προσθήκη ετικέτας…', created: 'Δημιουργήθηκε', updated: 'Ενημερώθηκε', unknown: '·',
+  note_placeholder: 'Γράψτε μια σημείωση…', save: 'Αποθήκευση', delete: 'Διαγραφή', created: 'Δημιουργήθηκε', updated: 'Ενημερώθηκε', unknown: '·',
   play: 'Αναπαραγωγή', copy_text: 'Αντιγραφή κειμένου', copy_link: 'Αντιγραφή συνδέσμου',
   note: 'Σημείωση', add_note: 'Προσθήκη σημείωσης', highlight: 'Επισήμανση',
   remove_highlight: 'Αφαίρεση επισήμανσης', verse_actions: 'Ενέργειες στίχου',
@@ -462,7 +471,8 @@ const el: Dict = {
   licences: 'Κείμενα και άδειες', licences_intro: 'Η εφαρμογή αναπαράγει τις παρακάτω εκδόσεις. Η απόδοση και οι όροι άδειας παρατίθενται αυτολεξεί και δεν μεταφράζονται.',
   group_reading: 'Ανάγνωση', group_languages: 'Γλώσσες και εκδόσεις', group_audio: 'Ήχος', group_data: 'Σημειώσεις και δεδομένα',
   coverage_nt_only: 'Η έκδοση αυτή περιέχει μόνο την Καινή Διαθήκη.', coverage_ot_only: 'Η έκδοση αυτή περιέχει μόνο την Παλαιά Διαθήκη.',
-  invite_build_title: 'Εκδόσεις για κοινοποίηση', invite_build_body: 'Επιλέξτε τις εκδόσεις που θα κοινοποιηθούν και τη σειρά τους. Το χωρίο ανοίγει στην πρώτη.', invite_applied: 'Εμφανίζονται {versions}', undo: 'Αναίρεση'
+  invite_build_title: 'Εκδόσεις για κοινοποίηση', invite_build_body: 'Επιλέξτε τις εκδόσεις που θα κοινοποιηθούν και τη σειρά τους. Το χωρίο ανοίγει στην πρώτη.', invite_applied: 'Εμφανίζονται {versions}', undo: 'Αναίρεση',
+  add_tag: 'Προσθήκη ετικετών, χωρισμένων με κόμμα…', manage_tags: 'Επεξεργασία ετικετών', delete_tag_title: 'Διαγραφή αυτής της ετικέτας;', delete_tag_body: 'Αφαιρεί «{tag}» από {n} σημείωση/σημειώσεις. Οι σημειώσεις παραμένουν.',
 }
 
 // Modern Hebrew chrome; the text itself stays the Masoretic consonantal tradition.
@@ -484,7 +494,7 @@ const he: Dict = {
   sort: 'מיון', sort_book: 'ספר', sort_created: 'נוצר', sort_updated: 'עודכן', sort_custom: 'ידני',
   ascending: 'עולה', descending: 'יורד', this_book: 'ספר זה בלבד', tags: 'תגיות',
   no_matches: 'אין הערות שמתאימות לסינון.',
-  note_placeholder: 'כתוב הערה…', save: 'שמור', delete: 'מחק', add_tag: 'הוסף תגית…',
+  note_placeholder: 'כתוב הערה…', save: 'שמור', delete: 'מחק',
   created: 'נוצר', updated: 'עודכן', unknown: '·',
   play: 'נגן', copy_text: 'העתק טקסט', copy_link: 'העתק קישור', note: 'הערה', add_note: 'הוסף הערה',
   highlight: 'הדגש', remove_highlight: 'הסר הדגשה', verse_actions: 'פעולות פסוק',
@@ -501,7 +511,8 @@ const he: Dict = {
   licences: 'טקסטים ורישיונות', licences_intro: 'הקורא הזה מציג את המהדורות הבאות. הייחוס ותנאי הרישיון מובאים כלשונם ואינם מתורגמים.',
   group_reading: 'קריאה', group_languages: 'שפות וגרסאות', group_audio: 'שמע', group_data: 'הערות ונתונים',
   coverage_nt_only: 'מהדורה זו כוללת את הברית החדשה בלבד.', coverage_ot_only: 'מהדורה זו כוללת את התנ״ך בלבד.',
-  invite_build_title: 'גרסאות לשיתוף', invite_build_body: 'בחר את הגרסאות לשיתוף ואת סדרן. הקטע ייפתח בגרסה הראשונה.', invite_applied: 'מוצג {versions}', undo: 'בטל'
+  invite_build_title: 'גרסאות לשיתוף', invite_build_body: 'בחר את הגרסאות לשיתוף ואת סדרן. הקטע ייפתח בגרסה הראשונה.', invite_applied: 'מוצג {versions}', undo: 'בטל',
+  add_tag: 'הוסף תגיות, מופרדות בפסיקים…', manage_tags: 'עריכת תגיות', delete_tag_title: 'למחוק את התגית?', delete_tag_body: 'מסיר «{tag}» מ־{n} הערות. ההערות עצמן נשמרות.',
 }
 
 const STRINGS: Record<Lang, Dict> = { en, ja, fr, zht, zhs, pt, es, ar, tl, el, he }

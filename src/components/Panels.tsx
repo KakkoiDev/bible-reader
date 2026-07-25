@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { COLORS, normalizeTag, type HColor } from '../lib/annotations'
+import { COLORS, parseTags, type HColor } from '../lib/annotations'
 import { BY_ID, VERSIONS, type Lang } from '../lib/versions'
 import type { T } from '../lib/i18n'
 
@@ -157,8 +157,11 @@ export function Settings({
     const m = BY_ID[id]
     const note = coverageNote(t, id)
     return (
-      <span className="collabel" lang={m.htmlLang} dir={m.dir}>
-        {m.label} <small>{m.edition}</small>
+      // <bdi> isolates the native name so an Arabic or Hebrew label doesn't drag the
+      // edition badge to the other side of the row: the row keeps the UI's direction,
+      // the name keeps its own.
+      <span className="collabel">
+        <bdi lang={m.htmlLang} dir={m.dir}>{m.label}</bdi> <small>{m.edition}</small>
         {note && <small className="cnote">{note}</small>}
         {ttsOn && noVoice.has(id) && <small className="cnote">{t('no_voice')}</small>}
       </span>
@@ -332,8 +335,8 @@ export function LicencesSheet({
         <ul className="liclist">
           {VERSIONS.map((v) => (
             <li key={v.id}>
-              <span className="licname" lang={v.htmlLang} dir={v.dir}>
-                {v.label} <small>{v.edition}</small>
+              <span className="licname">
+                <bdi lang={v.htmlLang} dir={v.dir}>{v.label}</bdi> <small>{v.edition}</small>
               </span>
               {/* Each attribution starts with its own language's name, so let the
                   browser pick the paragraph direction per line rather than
@@ -413,6 +416,7 @@ export function Drawer({
   onAsc,
   onThisBook,
   onToggleTag,
+  onDeleteTag,
   onMove,
   onJump,
   onDelete,
@@ -434,11 +438,17 @@ export function Drawer({
   onAsc: (v: boolean) => void
   onThisBook: (v: boolean) => void
   onToggleTag: (tag: string) => void
+  /** Remove a tag from every note that carries it. */
+  onDeleteTag: (tag: string) => void
   onMove: (ref: string, delta: 1 | -1) => void
   onJump: (ref: string) => void
   onDelete: (ref: string) => void
   onClose: () => void
 }) {
+  const [editTags, setEditTags] = useState(false)
+  useEffect(() => {
+    if (!open) setEditTags(false)
+  }, [open])
   if (!open) return null
   const modes: SortMode[] = ['book', 'created', 'updated', 'custom']
   return (
@@ -478,16 +488,33 @@ export function Drawer({
             <div className="dfrow tagrow">
               <span className="dflabel">{t('tags')}</span>
               <div className="chips">
-                {tags.map((tag) => (
-                  <button
-                    key={tag}
-                    className={`chip ${tagFilter.includes(tag) ? 'on' : ''}`}
-                    onClick={() => onToggleTag(tag)}
-                  >
-                    {tag}
-                  </button>
-                ))}
+                {tags.map((tag) =>
+                  editTags ? (
+                    // In edit mode a chip deletes the tag everywhere, which is how a
+                    // misspelling gets fixed without opening each note.
+                    <span key={tag} className="chip on">
+                      {tag}
+                      <button className="chipx" onClick={() => onDeleteTag(tag)} aria-label={`${t('delete')}: ${tag}`}>
+                        ✕
+                      </button>
+                    </span>
+                  ) : (
+                    <button
+                      key={tag}
+                      className={`chip ${tagFilter.includes(tag) ? 'on' : ''}`}
+                      onClick={() => onToggleTag(tag)}
+                    >
+                      {tag}
+                    </button>
+                  ),
+                )}
               </div>
+              <button
+                className={`mini tagedit-toggle ${editTags ? 'on' : ''}`}
+                onClick={() => setEditTags(!editTags)}
+              >
+                {editTags ? t('save') : t('manage_tags')}
+              </button>
             </div>
           )}
         </div>
@@ -543,6 +570,7 @@ export function NoteEditor({
   label,
   value,
   tags,
+  knownTags,
   createdAt,
   updatedAt,
   t,
@@ -554,6 +582,8 @@ export function NoteEditor({
   label: string
   value: string
   tags: string[]
+  /** Every tag already in use, offered as autocomplete. */
+  knownTags: string[]
   createdAt?: number
   updatedAt?: number
   t: T
@@ -568,9 +598,11 @@ export function NoteEditor({
   useEffect(() => setText(value), [value])
   useEffect(() => setList(tags), [tags])
 
+  // Commit whatever is typed: "study, prayer" enters as two tags, and duplicates
+  // are ignored rather than rejected.
   const addTag = () => {
-    const tag = normalizeTag(draft)
-    if (tag && !list.includes(tag)) setList([...list, tag])
+    const fresh = parseTags(draft).filter((x) => !list.includes(x))
+    if (fresh.length) setList([...list, ...fresh])
     setDraft('')
   }
   const saved = useMemo(() => createdAt || updatedAt, [createdAt, updatedAt])
@@ -590,23 +622,37 @@ export function NoteEditor({
           autoFocus
         />
         <div className="tagedit">
+          {/* Every tag in use is shown here: the ones on this note are lit, the rest
+              are dimmed. Clicking toggles, so tagging is usually a tap and the field
+              below is only needed to coin a new one. */}
           <div className="chips">
             {list.map((tag) => (
-              <span key={tag} className="chip on">
+              <button key={tag} className="chip on" onClick={() => setList(list.filter((x) => x !== tag))}>
                 {tag}
-                <button className="chipx" onClick={() => setList(list.filter((x) => x !== tag))} aria-label={t('delete')}>
-                  ✕
-                </button>
-              </span>
+                <span className="chipx" aria-hidden="true">✕</span>
+              </button>
             ))}
+            {knownTags
+              .filter((x) => !list.includes(x))
+              .map((tag) => (
+                <button key={tag} className="chip dim" onClick={() => setList([...list, tag])}>
+                  {tag}
+                </button>
+              ))}
           </div>
           <input
             className="taginput"
             value={draft}
             placeholder={t('add_tag')}
-            onChange={(e) => setDraft(e.target.value)}
+            autoComplete="off"
+            onChange={(e) => {
+              const v = e.target.value
+              setDraft(v)
+              // A trailing comma commits, so "study, prayer" enters as two tags.
+              if (v.endsWith(',')) setTimeout(addTag, 0)
+            }}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ',') {
+              if (e.key === 'Enter') {
                 e.preventDefault()
                 addTag()
               }

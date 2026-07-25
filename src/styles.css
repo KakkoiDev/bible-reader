@@ -574,11 +574,17 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
   letter-spacing: 0.07em;
   text-transform: uppercase;
   color: var(--muted);
-  margin: 18px 0 -4px;
-  padding-top: 10px;
+  margin: 26px 0 0;
+  padding: 12px 0 4px;
   border-top: 2px solid var(--line);
 }
-.sgroup:first-of-type { margin-top: 4px; }
+.sgroup:first-of-type { margin-top: 6px; }
+/* The heading is itself the divider for the group, so the first row underneath must
+   not draw a second rule: two hairlines 13px apart with the label wedged between
+   them read as a mistake, and the label had no room to breathe. */
+.sgroup + .srow,
+.sgroup + .collist { border-top: 0; }
+.sgroup + .srow { padding-top: 10px; }
 .srow.about { justify-content: flex-start; gap: 8px; flex-wrap: wrap; }
 .collabel .cnote {
   display: inline-block;
@@ -830,3 +836,10 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
   color: var(--accent);
 }
 .sheet.invite .colrow { flex-wrap: wrap; }
+
+/* ---------- tag chips: dimmed = in use elsewhere, click to apply ---------- */
+.chip.dim { color: var(--muted); background: transparent; border-style: dashed; }
+.chip.dim:hover { color: var(--fg); border-style: solid; }
+.chip.on .chipx { opacity: 0.7; font-size: 9px; }
+.tagedit-toggle { margin-inline-start: auto; }
+.tagedit-toggle.on { color: var(--accent); border-color: var(--accent); }

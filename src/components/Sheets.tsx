@@ -310,9 +310,9 @@ export function InviteBuilder({
     const m = BY_ID[id]
     const note = coverageNote(t, id)
     return (
-      <span className="collabel" lang={m.htmlLang} dir={m.dir}>
-        {m.label} <small>{m.edition}</small>
-        {note && <small className="cnote" dir="auto">{note}</small>}
+      <span className="collabel">
+        <bdi lang={m.htmlLang} dir={m.dir}>{m.label}</bdi> <small>{m.edition}</small>
+        {note && <small className="cnote">{note}</small>}
       </span>
     )
   }

@@ -102,6 +102,25 @@ export function useAnnotations() {
     [update],
   )
 
+  /** Drop a tag from every note that carries it, for fixing a misspelling. The
+   *  notes survive; only entries whose tag was their sole content are removed. */
+  const removeTag = useCallback(
+    (tag: string) =>
+      setStore((prev) => {
+        const next = { ...prev }
+        const now = Date.now()
+        for (const [ref, a] of Object.entries(prev)) {
+          if (!a.tags?.includes(tag)) continue
+          const tags = a.tags.filter((x) => x !== tag)
+          const res: Ann = { ...a, tags: tags.length ? tags : undefined, updatedAt: now }
+          if (isEmpty(res)) delete next[ref]
+          else next[ref] = res
+        }
+        return next
+      }),
+    [],
+  )
+
   /** Rewrite the hand-arranged order for the whole list, in the given ref order. */
   const setOrder = useCallback(
     (refs: string[]) =>
@@ -115,7 +134,7 @@ export function useAnnotations() {
     [],
   )
 
-  return { store, addHighlight, clearHighlightsIn, setNote, setTags, setOrder, remove, importStore }
+  return { store, addHighlight, clearHighlightsIn, setNote, setTags, removeTag, setOrder, remove, importStore }
 }
 
 /** Every tag in use, alphabetical — drives the drawer's filter chips. */
@@ -125,3 +144,11 @@ export const allTags = (store: Store): string[] =>
   )
 
 export const normalizeTag = (t: string) => t.trim().replace(/\s+/g, ' ').slice(0, 40)
+
+/** Split a typed string into tags on commas, so "study, prayer" enters as two. */
+export const parseTags = (raw: string): string[] =>
+  raw.split(',').map(normalizeTag).filter(Boolean)
+
+/** How many notes carry a tag, for the delete confirmation. */
+export const countTagged = (store: Store, tag: string) =>
+  Object.values(store).filter((a) => a.tags?.includes(tag)).length
