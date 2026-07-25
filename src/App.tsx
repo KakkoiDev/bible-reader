@@ -185,7 +185,6 @@ export default function App() {
               <small>{LANG_META[l].edition}</small>
             </button>
           ))}
-          <span className="swipehint">swipe ↔</span>
         </div>
       )}
 

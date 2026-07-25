@@ -98,14 +98,6 @@ body {
   background: var(--accent-bg);
   border-color: color-mix(in srgb, var(--accent) 30%, transparent);
 }
-.swipehint {
-  align-self: center;
-  font-family: system-ui, sans-serif;
-  font-size: 11px;
-  color: var(--muted);
-  padding-left: 4px;
-  white-space: nowrap;
-}
 
 /* reader */
 .reader {
