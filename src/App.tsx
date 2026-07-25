@@ -14,6 +14,7 @@ import {
   type Size,
   type DrawerItem,
 } from './components/Panels'
+import { SearchSheet, Navigator, VerseSheet, type VerseSheetData } from './components/Sheets'
 
 const BASE = import.meta.env.BASE_URL
 const SWIPE_MIN = 45
@@ -88,6 +89,11 @@ export default function App() {
   const [toast, setToast] = useState<string | null>(null)
   const [speaking, setSpeaking] = useState<{ v: number; lang: Lang } | null>(null)
   const [playingLang, setPlayingLang] = useState<Lang | null>(null)
+  const [autoNext, setAutoNext] = useState<Lang | null>(null)
+  const [pending, setPending] = useState<{ slug: string; chapter: number; lang: Lang } | null>(null)
+  const [navOpen, setNavOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [verseSheet, setVerseSheet] = useState<(VerseSheetData & { slug: string; ch: number; v: number }) | null>(null)
   const canTTS = ttsSupported()
 
   const { store, addHighlight, clearHighlightsIn, setNote, remove, importStore } = useAnnotations()
@@ -167,32 +173,41 @@ export default function App() {
   useEffect(() => {
     primeVoices()
   }, [])
+  const genRef = useRef(0) // bumped on stop/new-play so stale callbacks are ignored
   const stopAudio = useCallback(() => {
+    genRef.current++
     stopSpeaking()
     clearWordHighlight()
     setSpeaking(null)
     setPlayingLang(null)
+    setAutoNext(null)
+    setPending(null)
   }, [])
   const speakList = useCallback(
-    (lang: Lang, verses: { v: number; text: string }[]) => {
+    (lang: Lang, verses: { v: number; text: string }[], continuous: boolean) => {
       if (!canTTS || !verses.length) return
+      const gen = ++genRef.current
       setPlayingLang(lang)
       setSpeaking(null)
       clearWordHighlight()
       speakVerses(verses, lang, prefs.rate, prefs.voice, {
         onVerse: (v) => {
+          if (gen !== genRef.current) return
           setSpeaking({ v, lang })
           clearWordHighlight()
           document.getElementById(`v-${lang}-${v}`)?.scrollIntoView({ block: 'center' })
         },
         onWord: (v, s, e) => {
+          if (gen !== genRef.current) return
           const el = document.getElementById(`v-${lang}-${v}`)?.querySelector('.vt')
           if (el) setWordHighlight(el, s, e)
         },
         onDone: () => {
+          if (gen !== genRef.current) return
           clearWordHighlight()
           setSpeaking(null)
           setPlayingLang(null)
+          if (continuous) setAutoNext(lang) // advance to the next chapter
         },
       })
     },
@@ -212,13 +227,44 @@ export default function App() {
           }
         }
       }
-      speakList(lang, chapter.verses.filter((v) => v.v >= start).map((v) => ({ v: v.v, text: v[lang] })))
+      speakList(lang, chapter.verses.filter((v) => v.v >= start).map((v) => ({ v: v.v, text: v[lang] })), true)
     },
     [chapter, speakList],
   )
-  const playVerse = useCallback((lang: Lang, v: number, text: string) => speakList(lang, [{ v, text }]), [speakList])
-  // stop audio when leaving the current chapter/language
-  useEffect(() => () => stopAudio(), [pos.slug, pos.chapter, pos.lang, stopAudio])
+  const playVerse = useCallback((lang: Lang, v: number, text: string) => speakList(lang, [{ v, text }], false), [speakList])
+  useEffect(() => () => stopSpeaking(), []) // stop on unmount
+
+  // user navigation stops audio; auto-advance (below) uses navigate() directly so it doesn't
+  const go = useCallback(
+    (next: { slug?: string; chapter?: number; lang?: Lang; verse?: number }) => {
+      stopAudio()
+      navigate(next)
+    },
+    [stopAudio, navigate],
+  )
+  // continuous playback: when a chapter ends, move to the next chapter/book and keep playing
+  useEffect(() => {
+    if (autoNext == null || !data) return
+    const lang = autoNext
+    setAutoNext(null)
+    const at = data.chapters.findIndex((c) => c.n === pos.chapter)
+    let target: { slug: string; chapter: number; lang: Lang } | null = null
+    if (at < data.chapters.length - 1) target = { slug: pos.slug, chapter: data.chapters[at + 1].n, lang }
+    else if (bookIdx < index.length - 1) target = { slug: index[bookIdx + 1].slug, chapter: 1, lang }
+    if (target) {
+      setPending(target)
+      navigate({ slug: target.slug, chapter: target.chapter })
+      window.scrollTo({ top: 0 })
+    }
+  }, [autoNext, data, pos.slug, pos.chapter, bookIdx, index, navigate])
+  useEffect(() => {
+    if (!pending || !chapter) return
+    if (pos.slug === pending.slug && pos.chapter === pending.chapter && chapter.n === pending.chapter) {
+      const lang = pending.lang
+      setPending(null)
+      speakList(lang, chapter.verses.map((v) => ({ v: v.v, text: v[lang] })), true)
+    }
+  }, [pending, chapter, pos.slug, pos.chapter, speakList])
 
   // scroll to flashed verse once rendered; auto-clear the flash
   useEffect(() => {
@@ -286,34 +332,59 @@ export default function App() {
       if (!data) return
       const at = data.chapters.findIndex((c) => c.n === pos.chapter)
       const nx = at + delta
-      if (nx >= 0 && nx < data.chapters.length) navigate({ chapter: data.chapters[nx].n })
-      else if (nx < 0 && bookIdx > 0) navigate({ slug: index[bookIdx - 1].slug, chapter: 999 })
-      else if (nx >= data.chapters.length && bookIdx < index.length - 1) navigate({ slug: index[bookIdx + 1].slug, chapter: 1 })
+      if (nx >= 0 && nx < data.chapters.length) go({ chapter: data.chapters[nx].n })
+      else if (nx < 0 && bookIdx > 0) go({ slug: index[bookIdx - 1].slug, chapter: 999 })
+      else if (nx >= data.chapters.length && bookIdx < index.length - 1) go({ slug: index[bookIdx + 1].slug, chapter: 1 })
       else return
       window.scrollTo({ top: 0 })
     },
-    [data, pos.chapter, bookIdx, index, navigate],
+    [data, pos.chapter, bookIdx, index, go],
   )
   const cycleLang = useCallback(
     (dir: 1 | -1) => {
       const i = RING.indexOf(pos.lang)
-      navigate({ lang: RING[(i + dir + RING.length) % RING.length], verse: flashVerse ?? undefined })
+      go({ lang: RING[(i + dir + RING.length) % RING.length], verse: flashVerse ?? undefined })
     },
-    [pos.lang, flashVerse, navigate],
+    [pos.lang, flashVerse, go],
   )
 
-  const linkVerse = useCallback(
+  // Copy a shareable link to a verse (does not move you or stop audio).
+  const copyVerseLink = useCallback(
     async (lang: Lang, v: number) => {
-      navigate({ lang, verse: v })
       const url = `${location.origin}${location.pathname}${buildHash(pos.slug, pos.chapter, lang, v)}`
       try {
         await navigator.clipboard.writeText(url)
         setToast('Verse link copied')
       } catch {
-        setToast('Verse linked — copy from the address bar')
+        setToast('Could not copy the link')
       }
     },
-    [navigate, pos.slug, pos.chapter],
+    [pos.slug, pos.chapter],
+  )
+  const copyVerseText = useCallback(async (label: string, en: string, fr: string, ja: string) => {
+    const plainEn = en.replace(/[{}]/g, '')
+    const plainJa = ja.replace(/\{\{([^|}]*)\|[^}]+\}\}/g, '$1')
+    const text = `${label}\nKJV: ${plainEn}\n文語訳: ${plainJa}\nKJF: ${fr}`
+    try {
+      await navigator.clipboard.writeText(text)
+      setToast('Verse text copied')
+    } catch {
+      setToast('Could not copy the text')
+    }
+  }, [])
+  const openVerseSheet = useCallback(
+    (lang: Lang, vv: { v: number; en: string; fr: string; ja: string }) =>
+      setVerseSheet({
+        label: `${data?.en} ${pos.chapter}:${vv.v}`,
+        lang,
+        en: vv.en,
+        fr: vv.fr,
+        ja: vv.ja,
+        slug: pos.slug,
+        ch: pos.chapter,
+        v: vv.v,
+      }),
+    [data, pos.slug, pos.chapter],
   )
   useEffect(() => {
     if (!toast) return
@@ -421,23 +492,11 @@ export default function App() {
   return (
     <div className="app">
       <header className="bar">
-        <div className="pickers">
-          <select className="sel book" value={pos.slug} onChange={(e) => navigate({ slug: e.target.value, chapter: 1 })}>
-            {index.map((b) => (
-              <option key={b.slug} value={b.slug}>
-                {b.en}
-              </option>
-            ))}
-          </select>
-          <select className="sel chap" value={pos.chapter} onChange={(e) => navigate({ chapter: Number(e.target.value) })}>
-            {data?.chapters.map((c) => (
-              <option key={c.n} value={c.n}>
-                {c.n}
-              </option>
-            ))}
-          </select>
-        </div>
+        <button className="navbtn" onClick={() => setNavOpen(true)}>
+          {data?.en} {pos.chapter} <span className="caret">▾</span>
+        </button>
         <div className="tools">
+          <button className="icon" title="Search" onClick={() => setSearchOpen(true)}>🔍</button>
           <button className="icon" title="Saved (notes & highlights)" onClick={() => setDrawerOpen(true)}>🔖</button>
           <button className="icon" title="Settings" onClick={() => setSettingsOpen(true)}>⚙</button>
         </div>
@@ -451,7 +510,7 @@ export default function App() {
               role="tab"
               aria-selected={l === pos.lang}
               className={`ringtab ${l === pos.lang ? 'active' : ''}`}
-              onClick={() => navigate({ lang: l, verse: flashVerse ?? undefined })}
+              onClick={() => go({ lang: l, verse: flashVerse ?? undefined })}
             >
               <span lang={LANG_META[l].htmlLang}>{LANG_META[l].label}</span>
               <small>{LANG_META[l].edition}</small>
@@ -503,7 +562,7 @@ export default function App() {
                           speaking?.v === v.v && speaking?.lang === l ? 'speaking' : ''
                         }`}
                       >
-                        <button className="vn" title="Copy link to this verse" onClick={() => linkVerse(l, v.v)}>
+                        <button className="vn" title="Verse actions" onClick={() => openVerseSheet(l, v)}>
                           {v.v}
                         </button>
                         {canTTS &&
@@ -601,11 +660,49 @@ export default function App() {
         items={drawerItems}
         onJump={(ref) => {
           const { slug, ch, v } = parseRef(ref)
-          navigate({ slug, chapter: ch, verse: v })
+          go({ slug, chapter: ch, verse: v })
           setDrawerOpen(false)
         }}
         onDelete={(ref) => remove(ref)}
         onClose={() => setDrawerOpen(false)}
+      />
+
+      <Navigator
+        open={navOpen}
+        index={index}
+        current={pos.slug}
+        onNavigate={(slug, ch) => {
+          go({ slug, chapter: ch })
+          window.scrollTo({ top: 0 })
+          setNavOpen(false)
+        }}
+        onClose={() => setNavOpen(false)}
+      />
+
+      <SearchSheet
+        open={searchOpen}
+        index={index}
+        onNavigate={(slug, ch, v) => {
+          go({ slug, chapter: ch, verse: v })
+          setSearchOpen(false)
+        }}
+        onClose={() => setSearchOpen(false)}
+      />
+
+      <VerseSheet
+        data={verseSheet}
+        showFurigana={prefs.furigana}
+        onCopyText={() => verseSheet && copyVerseText(verseSheet.label, verseSheet.en, verseSheet.fr, verseSheet.ja)}
+        onCopyLink={() => verseSheet && copyVerseLink(verseSheet.lang, verseSheet.v)}
+        onPlay={() => {
+          if (verseSheet) playVerse(verseSheet.lang, verseSheet.v, verseSheet[verseSheet.lang])
+          setVerseSheet(null)
+        }}
+        onNote={() => {
+          if (verseSheet) setNoteRef(vref(verseSheet.slug, verseSheet.ch, verseSheet.v))
+          setVerseSheet(null)
+        }}
+        onClose={() => setVerseSheet(null)}
       />
 
       {noteRef && (
