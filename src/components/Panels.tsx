@@ -62,18 +62,24 @@ export function Settings({
   theme,
   size,
   furigana,
+  rate,
+  ttsOn,
   onTheme,
   onSize,
   onFurigana,
+  onRate,
   onClose,
 }: {
   open: boolean
   theme: Theme
   size: Size
   furigana: boolean
+  rate: number
+  ttsOn: boolean
   onTheme: (t: Theme) => void
   onSize: (s: Size) => void
   onFurigana: (f: boolean) => void
+  onRate: (r: number) => void
   onClose: () => void
 }) {
   if (!open) return null
@@ -108,6 +114,18 @@ export function Settings({
           <span>Furigana (日本語)</span>
           <input type="checkbox" checked={furigana} onChange={(e) => onFurigana(e.target.checked)} />
         </label>
+        {ttsOn && (
+          <div className="srow">
+            <span>Audio speed</span>
+            <div className="seg">
+              {([0.75, 1, 1.25] as number[]).map((r) => (
+                <button key={r} className={rate === r ? 'on' : ''} onClick={() => onRate(r)}>
+                  {r}×
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

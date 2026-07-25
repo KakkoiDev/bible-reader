@@ -65,7 +65,7 @@ await page.waitForSelector('.atoolbar')
 await page.locator('.atoolbar .abtn').nth(1).click() // 🔖 bookmark
 await page.waitForTimeout(120)
 const bkMk = await page.locator('#v-en-3 .mk').first().count()
-await page.locator('.tools .icon').first().click() // open drawer
+await page.locator('.tools .icon[title="Bookmarks & notes"]').click() // open drawer
 await page.waitForSelector('.drawer')
 const drawerCount = await page.locator('.dlist li').count()
 await page.screenshot({ path: `${OUT}/c-drawer.png` })
@@ -74,7 +74,7 @@ await page.waitForTimeout(200)
 log(`3 BOOKMARK   marker=${bkMk}  drawerItems=${drawerCount}  drawerClosed=${(await page.locator('.drawer').count()) === 0}`)
 
 // 4) SETTINGS: theme + font size
-await page.locator('.tools .icon').nth(1).click()
+await page.locator('.tools .icon[title="Settings"]').click()
 await page.waitForSelector('.sheet')
 await page.locator('.seg').first().getByText('dark', { exact: true }).click()
 await page.locator('.seg').nth(1).getByText('L', { exact: true }).click()
@@ -106,7 +106,7 @@ await page.waitForSelector('.atoolbar')
 await page.locator('.atoolbar .sw-blue').click()
 await page.waitForTimeout(120)
 const hlWithFuri = await hlNames()
-await page.locator('.tools .icon').nth(1).click()
+await page.locator('.tools .icon[title="Settings"]').click()
 await page.locator('.srow input[type=checkbox]').uncheck() // furigana off
 await page.waitForTimeout(150)
 await page.locator('.sheet .icon').click()

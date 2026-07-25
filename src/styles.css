@@ -221,6 +221,27 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
   transition: background 0.8s ease, box-shadow 0.8s ease;
 }
 
+/* ---------- audio: play buttons + spoken highlighting ---------- */
+.vplay {
+  font-size: 9px;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  padding: 0 4px 0 0;
+  margin-right: 2px;
+  cursor: pointer;
+  vertical-align: super;
+}
+.vplay:hover,
+.vplay.on { color: var(--accent); }
+.icon.playing { color: var(--accent); }
+.verse.speaking {
+  background: var(--accent-bg);
+  border-radius: 8px;
+  box-shadow: 0 0 0 6px var(--accent-bg);
+}
+::highlight(hl-speaking) { background: rgba(99, 102, 241, 0.5); color: inherit; }
+
 /* ---------- highlights (CSS Custom Highlight API) ---------- */
 ::highlight(hl-yellow) { background: rgba(250, 204, 21, 0.4); }
 ::highlight(hl-green) { background: rgba(52, 211, 153, 0.38); }

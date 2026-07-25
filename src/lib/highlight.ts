@@ -90,6 +90,20 @@ export function rebuildHighlights(items: { el: Element; h: HRange }[]) {
   }
 }
 
+/** Highlight the word currently being spoken (ephemeral, its own layer). */
+export function setWordHighlight(el: Element, start: number, end: number) {
+  const css = cssAny()
+  if (!css || !supportsHighlight()) return
+  const r = rangeFromOffsets(el, start, end)
+  const Ctor = (globalThis as any).Highlight
+  if (r) css.highlights.set('hl-speaking', new Ctor(r))
+  else css.highlights.delete('hl-speaking')
+}
+export function clearWordHighlight() {
+  const css = cssAny()
+  if (css && supportsHighlight()) css.highlights.delete('hl-speaking')
+}
+
 /** Which verse/lang does the current selection belong to? Reads `.verse` id `v-<lang>-<n>`. */
 export function selectionContext(reader: Element): {
   vt: Element

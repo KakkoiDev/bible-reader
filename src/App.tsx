@@ -3,7 +3,8 @@ import type { BookData, IndexItem, Lang } from './lib/types'
 import { LANG_META, RING } from './lib/types'
 import { VerseText } from './lib/format'
 import { useAnnotations, vref, parseRef, type HColor } from './lib/annotations'
-import { rebuildHighlights, selectionContext } from './lib/highlight'
+import { rebuildHighlights, selectionContext, setWordHighlight, clearWordHighlight } from './lib/highlight'
+import { ttsSupported, primeVoices, speakVerses, stopSpeaking } from './lib/tts'
 import {
   Toolbar,
   Settings,
@@ -26,6 +27,7 @@ interface Prefs {
   theme: Theme
   size: Size
   furigana: boolean
+  rate: number
 }
 
 // ---- URL hash: #/<slug>/<chapter>/<lang>[/<verse>] ----
@@ -50,9 +52,9 @@ const buildHash = (slug: string, chapter: number, lang: Lang, verse?: number) =>
 
 const loadPrefs = (): Prefs => {
   try {
-    return { theme: 'system', size: 'md', furigana: true, ...JSON.parse(localStorage.getItem('prefs') || '{}') }
+    return { theme: 'system', size: 'md', furigana: true, rate: 1, ...JSON.parse(localStorage.getItem('prefs') || '{}') }
   } catch {
-    return { theme: 'system', size: 'md', furigana: true }
+    return { theme: 'system', size: 'md', furigana: true, rate: 1 }
   }
 }
 const loadLastRead = (): { slug: string; chapter: number; lang: Lang; verse: number } | null => {
@@ -81,6 +83,9 @@ export default function App() {
   const [wide, setWide] = useState(() => matchMedia('(min-width: 900px)').matches)
   const [loading, setLoading] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  const [speaking, setSpeaking] = useState<{ v: number; lang: Lang } | null>(null)
+  const [playing, setPlaying] = useState(false)
+  const canTTS = ttsSupported()
 
   const { store, addHighlight, clearHighlightsIn, toggleBookmark, setNote, remove } = useAnnotations()
   const [sel, setSel] = useState<{ lang: Lang; v: number; start: number; end: number; rect: DOMRect } | null>(null)
@@ -154,6 +159,62 @@ export default function App() {
     [data, pos.chapter],
   )
   const langsToShow: Lang[] = wide ? RING : [pos.lang]
+
+  // ---- audio (Web Speech) ----
+  useEffect(() => {
+    primeVoices()
+  }, [])
+  const stopAudio = useCallback(() => {
+    stopSpeaking()
+    clearWordHighlight()
+    setSpeaking(null)
+    setPlaying(false)
+  }, [])
+  const speakList = useCallback(
+    (lang: Lang, verses: { v: number; text: string }[]) => {
+      if (!canTTS || !verses.length) return
+      setPlaying(true)
+      setSpeaking(null)
+      clearWordHighlight()
+      speakVerses(verses, lang, prefs.rate, {
+        onVerse: (v) => {
+          setSpeaking({ v, lang })
+          clearWordHighlight()
+          document.getElementById(`v-${lang}-${v}`)?.scrollIntoView({ block: 'center' })
+        },
+        onWord: (v, s, e) => {
+          const el = document.getElementById(`v-${lang}-${v}`)?.querySelector('.vt')
+          if (el) setWordHighlight(el, s, e)
+        },
+        onDone: () => {
+          clearWordHighlight()
+          setSpeaking(null)
+          setPlaying(false)
+        },
+      })
+    },
+    [canTTS, prefs.rate],
+  )
+  const playChapter = useCallback(() => {
+    if (!chapter) return
+    const els = readerRef.current?.querySelectorAll(`[id^="v-${pos.lang}-"]`)
+    let start = chapter.verses[0]?.v ?? 1
+    if (els) {
+      for (const el of els) {
+        if (el.getBoundingClientRect().bottom > 96) {
+          start = Number(/-(\d+)$/.exec(el.id)?.[1] ?? start)
+          break
+        }
+      }
+    }
+    speakList(
+      pos.lang,
+      chapter.verses.filter((v) => v.v >= start).map((v) => ({ v: v.v, text: v[pos.lang] })),
+    )
+  }, [chapter, pos.lang, speakList])
+  const playVerse = useCallback((lang: Lang, v: number, text: string) => speakList(lang, [{ v, text }]), [speakList])
+  // stop audio when leaving the current chapter/language
+  useEffect(() => () => stopAudio(), [pos.slug, pos.chapter, pos.lang, stopAudio])
 
   // scroll to flashed verse once rendered; auto-clear the flash
   useEffect(() => {
@@ -352,6 +413,15 @@ export default function App() {
           </select>
         </div>
         <div className="tools">
+          {canTTS && (
+            <button
+              className={`icon ${playing ? 'playing' : ''}`}
+              title={playing ? 'Stop audio' : 'Play chapter'}
+              onClick={() => (playing ? stopAudio() : playChapter())}
+            >
+              {playing ? '⏹' : '▶'}
+            </button>
+          )}
           <button className="icon" title="Bookmarks & notes" onClick={() => setDrawerOpen(true)}>🔖</button>
           <button className="icon" title="Settings" onClick={() => setSettingsOpen(true)}>⚙</button>
         </div>
@@ -400,11 +470,22 @@ export default function App() {
                       <li
                         key={v.v}
                         id={`v-${l}-${v.v}`}
-                        className={`verse ${flashVerse === v.v && pos.lang === l ? 'flash' : ''}`}
+                        className={`verse ${flashVerse === v.v && pos.lang === l ? 'flash' : ''} ${
+                          speaking?.v === v.v && speaking?.lang === l ? 'speaking' : ''
+                        }`}
                       >
                         <button className="vn" title="Copy link to this verse" onClick={() => linkVerse(l, v.v)}>
                           {v.v}
                         </button>
+                        {canTTS && (
+                          <button
+                            className={`vplay ${speaking?.v === v.v && speaking?.lang === l ? 'on' : ''}`}
+                            title="Play verse"
+                            onClick={() => playVerse(l, v.v, v[l])}
+                          >
+                            ▶
+                          </button>
+                        )}
                         {ann?.bookmark && <span className="mk" title="Bookmarked">🔖</span>}
                         {ann?.note && (
                           <button className="mk note" title="Note" onClick={() => setNoteRef(ref)}>
@@ -467,9 +548,12 @@ export default function App() {
         theme={prefs.theme}
         size={prefs.size}
         furigana={prefs.furigana}
+        rate={prefs.rate}
+        ttsOn={canTTS}
         onTheme={(t) => setPref({ theme: t })}
         onSize={(s) => setPref({ size: s })}
         onFurigana={(f) => setPref({ furigana: f })}
+        onRate={(r) => setPref({ rate: r })}
         onClose={() => setSettingsOpen(false)}
       />
 
