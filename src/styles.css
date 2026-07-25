@@ -1,0 +1,191 @@
+:root {
+  --bg: #faf8f4;
+  --fg: #1f2430;
+  --muted: #8a8f9c;
+  --line: #e7e2d8;
+  --accent: #4338ca;
+  --accent-bg: #eceafe;
+  --card: #ffffff;
+  --supplied: #9a8f7a;
+  font-family: ui-serif, Georgia, 'Times New Roman', 'Yu Mincho', 'Hiragino Mincho ProN', serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #14131a;
+    --fg: #e9e6df;
+    --muted: #8c8a95;
+    --line: #2a2833;
+    --accent: #a9a2ff;
+    --accent-bg: #211f3a;
+    --card: #1b1a23;
+    --supplied: #9a93a8;
+  }
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--fg);
+  -webkit-text-size-adjust: 100%;
+}
+
+.app { min-height: 100dvh; }
+
+/* top bar */
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: calc(env(safe-area-inset-top) + 8px) 12px 8px;
+  background: color-mix(in srgb, var(--bg) 86%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--line);
+}
+.pickers { display: flex; gap: 8px; }
+.sel {
+  font: inherit;
+  font-size: 15px;
+  padding: 7px 10px;
+  color: var(--fg);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  max-width: 52vw;
+}
+.sel.chap { width: 4.6em; }
+.furi {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: system-ui, sans-serif;
+  font-size: 13px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.furi input { accent-color: var(--accent); }
+
+/* language ring (mobile) */
+.langring {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  padding: 8px 12px;
+  overflow-x: auto;
+}
+.ringtab {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 6px 4px;
+  font-family: system-ui, sans-serif;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.ringtab span { font-size: 15px; }
+.ringtab small { font-size: 10px; opacity: 0.7; }
+.ringtab.active {
+  color: var(--accent);
+  background: var(--accent-bg);
+  border-color: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.swipehint {
+  align-self: center;
+  font-family: system-ui, sans-serif;
+  font-size: 11px;
+  color: var(--muted);
+  padding-left: 4px;
+  white-space: nowrap;
+}
+
+/* reader */
+.reader {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 8px 18px calc(env(safe-area-inset-bottom) + 40px);
+  touch-action: pan-y;
+}
+.ref {
+  font-size: 22px;
+  font-weight: 600;
+  margin: 14px 2px 10px;
+}
+.status { color: var(--muted); }
+
+.cols { display: grid; gap: 26px; }
+.cols-1 { grid-template-columns: 1fr; }
+.cols-3 { grid-template-columns: repeat(3, 1fr); }
+.colhead {
+  font-family: system-ui, sans-serif;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding-bottom: 8px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+}
+
+.verses { list-style: none; margin: 0; padding: 0; }
+.verse {
+  line-height: 1.9;
+  font-size: 19px;
+  margin: 0 0 2px;
+  text-indent: 0;
+}
+.vn {
+  color: var(--accent);
+  font-family: system-ui, sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  vertical-align: super;
+  margin-right: 5px;
+  user-select: none;
+}
+:lang(ja).col .verse { line-height: 2.1; }
+.supplied { color: var(--supplied); font-style: italic; }
+.missing { color: var(--muted); }
+ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-serif; }
+
+/* chapter nav */
+.chapnav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 34px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.chapnav button {
+  font: inherit;
+  font-family: system-ui, sans-serif;
+  font-size: 15px;
+  padding: 9px 16px;
+  color: var(--fg);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+}
+.chapnav button:disabled { opacity: 0.4; cursor: default; }
+.chaplabel { color: var(--muted); font-size: 14px; }
+
+.attrib {
+  margin-top: 28px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  font-family: system-ui, sans-serif;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--muted);
+}
