@@ -408,13 +408,18 @@ export default function App() {
     },
     [pos.slug, pos.chapter],
   )
-  const copyVerseText = useCallback(async (label: string, en: string, fr: string, ja: string) => {
-    const plainEn = en.replace(/[{}]/g, '')
-    const plainJa = ja.replace(/\{\{([^|}]*)\|[^}]+\}\}/g, '$1')
-    const text = `${label}\nKJV: ${plainEn}\n文語訳: ${plainJa}\nKJF: ${fr}`
+  const copyVerseText = useCallback(async (lang: Lang, label: string, text: string) => {
+    const plain =
+      lang === 'en'
+        ? text.replace(/[{}]/g, '')
+        : lang === 'ja'
+          ? text.replace(/\{\{([^|}]*)\|[^}]+\}\}/g, '$1')
+          : text
+    const version =
+      lang === 'en' ? 'King James Version (KJV)' : lang === 'ja' ? '文語訳聖書' : 'Bible King James Française (KJF)'
     try {
-      await navigator.clipboard.writeText(text)
-      setToast('Verse text copied')
+      await navigator.clipboard.writeText(`"${plain}" [${label}] ${version}`)
+      setToast('Verse copied')
     } catch {
       setToast('Could not copy the text')
     }
@@ -780,7 +785,7 @@ export default function App() {
       <VerseSheet
         data={verseSheet}
         showFurigana={prefs.furigana}
-        onCopyText={() => verseSheet && copyVerseText(verseSheet.label, verseSheet.en, verseSheet.fr, verseSheet.ja)}
+        onCopyText={() => verseSheet && copyVerseText(verseSheet.lang, verseSheet.label, verseSheet[verseSheet.lang])}
         onCopyLink={() => verseSheet && copyVerseLink(verseSheet.lang, verseSheet.v)}
         onPlay={() => {
           if (verseSheet) playFrom(verseSheet.lang, verseSheet.ch, verseSheet.v)
