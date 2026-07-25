@@ -3,7 +3,7 @@ import type { Chapter, EditionBook, IndexItem } from './lib/types'
 import { bookName } from './lib/types'
 import { BY_ID, DEFAULT_COLUMNS, VERSION_IDS, coversBook, isLang, type Lang } from './lib/versions'
 import { VerseText, type HL } from './lib/format'
-import { useAnnotations, vref, parseRef, allTags, countTagged, type HColor } from './lib/annotations'
+import { useAnnotations, vref, parseRef, countTagged, type HColor } from './lib/annotations'
 import { selectionContext, setWordHighlight, clearWordHighlight } from './lib/highlight'
 import {
   ttsSupported,
@@ -159,8 +159,21 @@ export default function App() {
   const [confirmTag, setConfirmTag] = useState<string | null>(null)
   const canTTS = ttsSupported()
 
-  const { store, addHighlight, clearHighlightsIn, setNote, setTags, removeTag, setOrder, remove, importStore } =
-    useAnnotations()
+  const {
+    store,
+    tags,
+    vocab,
+    addHighlight,
+    clearHighlightsIn,
+    setNote,
+    setTags,
+    createTags,
+    removeTag,
+    setOrder,
+    remove,
+    importStore,
+    importVocab,
+  } = useAnnotations()
   const [sel, setSel] = useState<{ lang: Lang; ch: number; v: number; start: number; end: number; rect: DOMRect } | null>(null)
   const [noteRef, setNoteRef] = useState<string | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -782,7 +795,15 @@ export default function App() {
   }
 
   const exportAnnotations = useCallback(() => {
-    const payload = { app: 'bible-reader', type: 'annotations', version: 1, exportedAt: new Date().toISOString(), data: store }
+    const payload = {
+      app: 'bible-reader',
+      type: 'annotations',
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      data: store,
+      // Carried so a tag set that isn't attached to anything yet survives the trip.
+      tags: vocab,
+    }
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -792,7 +813,7 @@ export default function App() {
     URL.revokeObjectURL(url)
     const n = Object.keys(store).length
     say(n ? t('exported_n', { n }) : t('nothing_to_export'))
-  }, [store, t, say])
+  }, [store, vocab, t, say])
 
   const importAnnotations = useCallback(
     (file: File) => {
@@ -803,6 +824,7 @@ export default function App() {
           const data = parsed && parsed.type === 'annotations' && parsed.data ? parsed.data : parsed
           if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('bad')
           importStore(data)
+          if (Array.isArray(parsed?.tags)) importVocab(parsed.tags.filter((x: unknown) => typeof x === 'string'))
           say(t('imported_n', { n: Object.keys(data).length }))
         } catch {
           say(t('import_failed'))
@@ -811,7 +833,7 @@ export default function App() {
       reader.onerror = () => say(t('import_failed'))
       reader.readAsText(file)
     },
-    [importStore, t],
+    [importStore, importVocab, t, say],
   )
 
   const labelFor = useCallback(
@@ -822,7 +844,6 @@ export default function App() {
     [index, prefs.ui],
   )
 
-  const tags = useMemo(() => allTags(store), [store])
   const savedCount = useMemo(
     () => Object.values(store).filter((a) => a.note || a.highlights?.length || a.tags?.length).length,
     [store],
@@ -916,7 +937,9 @@ export default function App() {
               actions a reader uses routinely. */}
           <button className="icon" title={t('search')} onClick={() => setSearchOpen(true)}>🔍</button>
           <button className="icon" title={t('saved_aria')} onClick={() => setDrawerOpen(true)}>🔖</button>
-          <button className="icon" title={t('settings')} onClick={() => setSettingsOpen(true)}>⚙</button>
+          {/* U+2699 defaults to text presentation, so the bare gear rendered small and
+              monochrome beside the two emoji. VS16 forces the emoji form. */}
+          <button className="icon" title={t('settings')} onClick={() => setSettingsOpen(true)}>⚙️</button>
         </div>
       </header>
 
@@ -1017,6 +1040,15 @@ export default function App() {
                           key={v.v}
                           id={`v-${l}-${v.v}`}
                           className={`verse ${flashVerse === v.v && pos.lang === l ? 'flash' : ''} ${spk ? 'speaking' : ''}`}
+                          // The whole row opens the verse, not just the glyphs: beside a
+                          // short verse there is a lot of empty column, and tapping it and
+                          // getting nothing reads as a broken control on a phone.
+                          onClick={(e) => {
+                            // The controls inside keep their own behaviour.
+                            if ((e.target as HTMLElement).closest('button')) return
+                            if (!window.getSelection()?.isCollapsed) return
+                            openVerseAt(l, pos.chapter, v.v)
+                          }}
                         >
                           <button className="vn" title={t('verse_actions')} onClick={() => openVerseAt(l, pos.chapter, v.v)}>
                             {v.v}
@@ -1035,10 +1067,7 @@ export default function App() {
                               ✎
                             </button>
                           )}
-                          <span
-                            className="vt"
-                            onClick={() => window.getSelection()?.isCollapsed && openVerseAt(l, pos.chapter, v.v)}
-                          >
+                          <span className="vt">
                             <VerseText
                               text={text ?? ''}
                               lang={l}
@@ -1144,6 +1173,7 @@ export default function App() {
           setTagFilter((prev) => (prev.includes(tag) ? prev.filter((x) => x !== tag) : [...prev, tag]))
         }
         onDeleteTag={(tag) => setConfirmTag(tag)}
+        onCreateTags={createTags}
         onMove={moveNote}
         onJump={(ref) => {
           const p = parseRef(ref)

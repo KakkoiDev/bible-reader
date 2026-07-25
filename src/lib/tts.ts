@@ -116,7 +116,15 @@ export function speakVerses(
     if (voice) u.voice = voice
     u.rate = rate
     u.onstart = () => {
-      if (myGen === genToken) hooks.onVerse(it.v)
+      // A stale utterance must be silenced, not merely ignored. cancel() does not
+      // reliably drop an utterance the engine has already dispatched, so one that
+      // starts after a stop would otherwise speak in full while we quietly declined
+      // to move the highlight - audible as a stray syllable seconds later.
+      if (myGen !== genToken) {
+        speechSynthesis.cancel()
+        return
+      }
+      hooks.onVerse(it.v)
     }
     if (hooks.onWord && lang !== 'ja') {
       u.onboundary = (e) => {
@@ -144,5 +152,26 @@ export function speakVerses(
 let genToken = 0
 export function stopSpeaking() {
   genToken++
-  if (ttsSupported()) speechSynthesis.cancel()
+  if (!ttsSupported()) return
+  // A paused synth can wedge and resume later, so lift the pause before cancelling.
+  try {
+    speechSynthesis.resume()
+  } catch {
+    /* not all engines implement resume */
+  }
+  speechSynthesis.cancel()
+  // Cancel again on the next tick: an utterance dispatched in the same turn can
+  // slip past the first call and start speaking afterwards.
+  setTimeout(() => {
+    if (ttsSupported()) speechSynthesis.cancel()
+  }, 0)
+}
+
+// Leaving the page or backgrounding the tab must not leave speech queued to resume.
+if (typeof window !== 'undefined' && ttsSupported()) {
+  const hush = () => stopSpeaking()
+  window.addEventListener('pagehide', hush)
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') hush()
+  })
 }

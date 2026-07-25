@@ -374,7 +374,10 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
 /* The drawer slides in from the inline-end edge, so in RTL its shadow must
    fall the other way. */
 [dir='rtl'] .drawer { box-shadow: 12px 0 40px rgba(0, 0, 0, 0.3); }
-.sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; font-family: system-ui, sans-serif; font-size: 16px; }
+/* gap matters: the close button's hover background sat flush against the search
+   input's border without it, which read as the two controls bleeding together. */
+.sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; font-family: system-ui, sans-serif; font-size: 16px; }
+.sheet-head .icon { flex: none; }
 .srow { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; font-family: system-ui, sans-serif; font-size: 14px; border-top: 1px solid var(--line); }
 .srow input[type='checkbox'] { accent-color: var(--accent); width: 18px; height: 18px; }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
@@ -466,7 +469,10 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
 .fverse { cursor: pointer; }
 .fverse.flash { background: var(--accent-bg); border-radius: 6px; box-shadow: 0 0 0 4px var(--accent-bg); transition: background 0.8s ease, box-shadow 0.8s ease; }
 .fverse.speaking { background: var(--accent-bg); border-radius: 6px; box-shadow: 0 0 0 4px var(--accent-bg); }
-.vt { cursor: pointer; }
+.verse { cursor: pointer; }
+/* The tap target is the row, so give it a little reach past the text without
+   disturbing the aligned-row rhythm. */
+.verse .vt { cursor: pointer; }
 .audiofab {
   position: fixed;
   inset-inline-end: calc(env(safe-area-inset-right) + 16px);
@@ -843,3 +849,6 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
 .chip.on .chipx { opacity: 0.7; font-size: 9px; }
 .tagedit-toggle { margin-inline-start: auto; }
 .tagedit-toggle.on { color: var(--accent); border-color: var(--accent); }
+
+/* ---------- drawer: create-tag field appears in edit mode ---------- */
+.dfrow.tagrow .taginput { flex-basis: 100%; font-size: 12px; padding: 6px 9px; }

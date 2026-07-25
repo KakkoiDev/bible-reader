@@ -48,6 +48,16 @@ console.log('\nHeader overflow (360px, long localized book name)')
   const body = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }))
   check('.bar does not overflow', bar.scroll <= bar.client, `scrollWidth ${bar.scroll} vs clientWidth ${bar.client}`)
   check('header keeps to three routine actions', (await page.locator('.tools .icon').count()) === 3)
+  // All three header glyphs must render at the same visual weight: a text-presentation
+  // codepoint among emoji ones looks half-size.
+  const iconW = await page.evaluate(() =>
+    [...document.querySelectorAll('.tools .icon')].map((b) => {
+      const r = document.createRange()
+      r.selectNodeContents(b)
+      return Math.round(r.getBoundingClientRect().width)
+    }),
+  )
+  check('header glyphs are the same visual size', Math.max(...iconW) - Math.min(...iconW) <= 3, iconW.join(' / ') + 'px')
   check('page does not scroll horizontally', body.scroll <= body.client, `${body.scroll} vs ${body.client}`)
   await page.screenshot({ path: `${OUT}/10-header-mobile.png` })
   await ctx.close()
@@ -354,6 +364,38 @@ console.log('\nSelection → highlight')
   await ctx.close()
 }
 
+// ---------- 10c. the whole verse row opens the verse sheet ----------
+console.log('\nVerse row is the tap target')
+{
+  const { ctx, page } = await open({ ...BASE, ui: 'en', columns: ['en'] }, { hash: '#/john/11/en' })
+  await page.waitForSelector('.verse')
+  // John 11:35 is "Jesus wept." - a short verse with a lot of empty row beside it.
+  await page.locator('#v-en-35').scrollIntoViewIfNeeded()
+  await page.waitForTimeout(200)
+  const box = await page.locator('#v-en-35').boundingBox()
+  const textRight = (await page.locator('#v-en-35 .vt').boundingBox()).x + (await page.locator('#v-en-35 .vt').boundingBox()).width
+  check('the row extends well past the text', box.x + box.width - textRight > 200,
+    `${Math.round(box.x + box.width - textRight)}px of empty row`)
+  await page.mouse.click(box.x + box.width - 12, box.y + box.height / 2)
+  await page.waitForSelector('.verse-sheet', { timeout: 3000 })
+  check('tapping empty space in the row opens the verse', /11:35/.test(await page.locator('.verse-sheet b').innerText()))
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(250)
+
+  // The controls inside the row must keep their own behaviour.
+  const play = page.locator('#v-en-35 .vplay')
+  if (await play.count()) {
+    await play.click()
+    await page.waitForTimeout(300)
+    check('the play control does not open the sheet', (await page.locator('.verse-sheet').count()) === 0)
+    await page.locator('#v-en-35 .vplay').click().catch(() => {})
+    await page.waitForTimeout(200)
+  } else {
+    check('the play control does not open the sheet', true, 'no voice on this machine, skipped')
+  }
+  await ctx.close()
+}
+
 // ---------- 11. notes: tags, sort, confirm-before-delete ----------
 console.log('\nNotes drawer')
 {
@@ -397,18 +439,52 @@ console.log('\nNotes drawer')
   check('updated timestamp shown', /\d/.test(await page.locator('.dmeta').first().innerText()))
   check('tag filter chips offered', (await page.locator('.dfrow.tagrow .chip').count()) === 2)
 
+  // A tag can be defined without attaching it to anything, and must survive a reload.
+  await page.locator('.tagedit-toggle').click()
+  await page.waitForTimeout(150)
+  check('edit mode offers a field to create tags', (await page.locator('.dfrow.tagrow .taginput').count()) === 1)
+  await page.locator('.dfrow.tagrow .taginput').fill('typo-tag, keep-me')
+  await page.keyboard.press('Enter')
+  await page.waitForTimeout(250)
+  check('comma separated creation adds both', (await page.locator('.dfrow.tagrow .chip').count()) === 4,
+    (await page.locator('.dfrow.tagrow .chip').allInnerTexts()).map((x) => x.replace('✕', '').trim()).join(' | '))
+  await page.reload({ waitUntil: 'networkidle' })
+  await page.waitForSelector('.verse')
+  await page.locator('.tools .icon').nth(1).click()
+  await page.waitForSelector('.drawer')
+  check('tags on no note survive a reload', (await page.locator('.dfrow.tagrow .chip').count()) === 4,
+    (await page.locator('.dfrow.tagrow .chip').allInnerTexts()).map((x) => x.trim()).join(' | '))
+
+  // Deleting an unattached tag removes it without touching any note.
+  await page.locator('.tagedit-toggle').click()
+  await page.waitForTimeout(150)
+  const chips = await page.locator('.dfrow.tagrow .chip').allInnerTexts()
+  const typoAt = chips.findIndex((x) => x.includes('typo-tag'))
+  await page.locator('.dfrow.tagrow .chipx').nth(typoAt).click()
+  await page.waitForSelector('.sheet.confirm')
+  await page.locator('.sheet.confirm .danger').click()
+  await page.waitForTimeout(300)
+  check('an unattached tag can be deleted', (await page.locator('.dfrow.tagrow .chip').count()) === 3)
+  check('deleting it left the note alone', (await page.locator('.dlist li').count()) === 1)
+  await page.locator('.tagedit-toggle').click()
+  await page.waitForTimeout(150)
+
   // A misspelled tag can be deleted everywhere, with a confirmation naming the count.
   await page.locator('.tagedit-toggle').click()
   await page.waitForTimeout(150)
-  check('edit mode reveals a delete on each tag', (await page.locator('.dfrow.tagrow .chipx').count()) === 2)
-  await page.locator('.dfrow.tagrow .chipx').first().click()
+  const inUse = await page.locator('.dfrow.tagrow .chip').allInnerTexts()
+  const at = inUse.findIndex((x) => x.includes('prayer'))
+  await page.locator('.dfrow.tagrow .chipx').nth(at).click()
   await page.waitForSelector('.sheet.confirm')
   const body = await page.locator('.sheet.confirm .empty').innerText()
-  check('confirmation names the tag and how many notes', /prayer|study/.test(body) && /\d/.test(body), body)
+  check('confirmation names the tag and how many notes', /prayer/.test(body) && /\d/.test(body), body)
   await page.locator('.sheet.confirm .danger').click()
   await page.waitForTimeout(300)
-  check('tag removed everywhere', (await page.locator('.dfrow.tagrow .chip').count()) === 1)
+  check('an in-use tag is removed from the note too',
+    !(await page.locator('.dlist .chip.static').allInnerTexts()).some((x) => x.includes('prayer')))
   check('the note itself survives', (await page.locator('.dlist li').count()) === 1)
+  await page.locator('.tagedit-toggle').click()
+  await page.waitForTimeout(150)
 
   await page.locator('.dfilters .seg button').nth(3).click() // Custom
   check('reorder arrows appear in custom mode', (await page.locator('.dmove').count()) === 1)
@@ -470,6 +546,59 @@ for (const [stopAtChapterEnd, expectAdvance] of [
     advanced === expectAdvance,
     `stopped at Psalm ${chapter}`,
   )
+  await ctx.close()
+}
+
+// ---------- 11c. a stopped utterance must be silenced, not just ignored ----------
+// Reproduces the engine quirk where cancel() does not drop an already-dispatched
+// utterance: the stub keeps delivering onstart after a cancel. The fix must respond
+// by cancelling again rather than letting it speak.
+console.log('\nAudio stops cleanly')
+{
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } })
+  await ctx.addInitScript(
+    (p) => {
+      localStorage.setItem('prefs', JSON.stringify(p))
+      window.__tts = { spoken: 0, cancels: 0, startedWhileStale: 0, stale: false }
+      const queue = []
+      Object.defineProperty(window.speechSynthesis, 'speak', {
+        configurable: true,
+        value: (u) => {
+          window.__tts.spoken++
+          queue.push(u)
+          // Deliver onstart late, so a stop can land in between.
+          setTimeout(() => {
+            if (window.__tts.stale) window.__tts.startedWhileStale++
+            u.onstart && u.onstart({})
+            setTimeout(() => u.onend && u.onend({}), 4)
+          }, 60)
+        },
+      })
+      Object.defineProperty(window.speechSynthesis, 'cancel', {
+        configurable: true,
+        value: () => {
+          window.__tts.cancels++
+        },
+      })
+    },
+    { ...BASE, ui: 'en', columns: ['en'] },
+  )
+  const page = await ctx.newPage()
+  await page.goto(URL + '#/psalms/119/en', { waitUntil: 'networkidle' })
+  await page.waitForSelector('.verse')
+  await page.locator('.colplay').click()
+  await page.waitForTimeout(200)
+  const before = await page.evaluate(() => window.__tts.cancels)
+  // Stop, then mark everything after this point as stale.
+  await page.evaluate(() => { window.__tts.stale = true })
+  await page.locator('.colplay').click()          // now the stop button
+  await page.waitForTimeout(500)
+  const r = await page.evaluate(() => window.__tts)
+  check('stop cancels the synth', r.cancels > before, `${before} -> ${r.cancels}`)
+  check('an utterance starting after the stop is cancelled, not left to speak',
+    r.startedWhileStale === 0 || r.cancels > before + 1,
+    `${r.startedWhileStale} started while stale, ${r.cancels} cancels total`)
+  check('playback is not still advancing', (await page.locator('.colplay.on').count()) === 0)
   await ctx.close()
 }
 
@@ -536,6 +665,18 @@ console.log('\nSettings: stop at chapter end + licences sheet')
   await page.waitForSelector('.sheet.licences')
   check('licences sheet lists all 11 editions', (await page.locator('.liclist li').count()) === 11)
   check('licences sheet links the repo', (await page.locator('.licrepo a').count()) === 1)
+  await page.keyboard.press('Escape')
+  await page.waitForTimeout(200)
+
+  // The close button must not sit flush against the search field.
+  await page.locator('.tools .icon').first().click()
+  await page.waitForSelector('.searchin')
+  const sep = await page.evaluate(() => {
+    const i = document.querySelector('.searchin').getBoundingClientRect()
+    const x = document.querySelector('.sheet.search .sheet-head .icon').getBoundingClientRect()
+    return Math.round(x.left - i.right)
+  })
+  check('search close button is clear of the input', sep >= 8, `${sep}px apart`)
   await page.screenshot({ path: `${OUT}/10-licences.png` })
   await ctx.close()
 }

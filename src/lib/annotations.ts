@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Lang } from './versions'
 
 export type HColor = 'yellow' | 'green' | 'blue' | 'pink' | 'purple'
@@ -31,6 +31,19 @@ export const parseRef = (r: string) => {
 }
 
 const KEY = 'annotations.v1'
+// Tags a reader has defined but not yet applied to anything. Without this a tag
+// would only exist as a member of some note's `tags`, so a freshly created one
+// would vanish on reload. Keeping a vocabulary lets you set up your tag set once
+// and then just tap chips while reading.
+const VOCAB_KEY = 'tags.v1'
+const loadVocab = (): string[] => {
+  try {
+    const v = JSON.parse(localStorage.getItem(VOCAB_KEY) || '[]')
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []
+  } catch {
+    return []
+  }
+}
 const load = (): Store => {
   try {
     return JSON.parse(localStorage.getItem(KEY) || '{}')
@@ -42,9 +55,13 @@ const isEmpty = (a: Ann) => !a.note && !(a.highlights && a.highlights.length) &&
 
 export function useAnnotations() {
   const [store, setStore] = useState<Store>(load)
+  const [vocab, setVocab] = useState<string[]>(loadVocab)
   useEffect(() => {
     localStorage.setItem(KEY, JSON.stringify(store))
   }, [store])
+  useEffect(() => {
+    localStorage.setItem(VOCAB_KEY, JSON.stringify(vocab))
+  }, [vocab])
 
   /** Every mutation stamps `updatedAt`, and `createdAt` the first time. */
   const update = useCallback((ref: string, fn: (a: Ann) => Ann) => {
@@ -102,11 +119,18 @@ export function useAnnotations() {
     [update],
   )
 
-  /** Drop a tag from every note that carries it, for fixing a misspelling. The
-   *  notes survive; only entries whose tag was their sole content are removed. */
-  const removeTag = useCallback(
-    (tag: string) =>
-      setStore((prev) => {
+  /** Define one or more tags up front, comma separated, without attaching them. */
+  const createTags = useCallback(
+    (raw: string) => setVocab((prev) => [...new Set([...prev, ...parseTags(raw)])]),
+    [],
+  )
+
+  /** Drop a tag from every note that carries it, and from the vocabulary, for
+   *  fixing a misspelling. The notes survive; only entries whose tag was their
+   *  sole content are removed. */
+  const removeTag = useCallback((tag: string) => {
+    setVocab((prev) => prev.filter((x) => x !== tag))
+    return setStore((prev) => {
         const next = { ...prev }
         const now = Date.now()
         for (const [ref, a] of Object.entries(prev)) {
@@ -117,9 +141,8 @@ export function useAnnotations() {
           else next[ref] = res
         }
         return next
-      }),
-    [],
-  )
+      })
+  }, [])
 
   /** Rewrite the hand-arranged order for the whole list, in the given ref order. */
   const setOrder = useCallback(
@@ -134,14 +157,33 @@ export function useAnnotations() {
     [],
   )
 
-  return { store, addHighlight, clearHighlightsIn, setNote, setTags, removeTag, setOrder, remove, importStore }
-}
-
-/** Every tag in use, alphabetical — drives the drawer's filter chips. */
-export const allTags = (store: Store): string[] =>
-  [...new Set(Object.values(store).flatMap((a) => a.tags || []))].sort((a, b) =>
-    a.localeCompare(b, undefined, { sensitivity: 'base' }),
+  /** Vocabulary plus everything actually in use, alphabetical. */
+  const tags = useMemo(
+    () =>
+      [...new Set([...vocab, ...Object.values(store).flatMap((a) => a.tags || [])])].sort((a, b) =>
+        a.localeCompare(b, undefined, { sensitivity: 'base' }),
+      ),
+    [vocab, store],
   )
+
+  const importVocab = useCallback((incoming: string[]) => setVocab((prev) => [...new Set([...prev, ...incoming])]), [])
+
+  return {
+    store,
+    tags,
+    vocab,
+    addHighlight,
+    clearHighlightsIn,
+    setNote,
+    setTags,
+    createTags,
+    removeTag,
+    setOrder,
+    remove,
+    importStore,
+    importVocab,
+  }
+}
 
 export const normalizeTag = (t: string) => t.trim().replace(/\s+/g, ' ').slice(0, 40)
 

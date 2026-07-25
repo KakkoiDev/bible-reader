@@ -417,6 +417,7 @@ export function Drawer({
   onThisBook,
   onToggleTag,
   onDeleteTag,
+  onCreateTags,
   onMove,
   onJump,
   onDelete,
@@ -440,12 +441,15 @@ export function Drawer({
   onToggleTag: (tag: string) => void
   /** Remove a tag from every note that carries it. */
   onDeleteTag: (tag: string) => void
+  /** Define tags up front, comma separated, without attaching them to a note. */
+  onCreateTags: (raw: string) => void
   onMove: (ref: string, delta: 1 | -1) => void
   onJump: (ref: string) => void
   onDelete: (ref: string) => void
   onClose: () => void
 }) {
   const [editTags, setEditTags] = useState(false)
+  const [newTag, setNewTag] = useState('')
   useEffect(() => {
     if (!open) setEditTags(false)
   }, [open])
@@ -484,10 +488,11 @@ export function Drawer({
               <span>{t('this_book')}</span>
             </label>
           </div>
-          {tags.length > 0 && (
-            <div className="dfrow tagrow">
-              <span className="dflabel">{t('tags')}</span>
-              <div className="chips">
+          {/* Rendered even with no tags yet, otherwise there is nowhere to create
+              the first one. */}
+          <div className="dfrow tagrow">
+            <span className="dflabel">{t('tags')}</span>
+            <div className="chips">
                 {tags.map((tag) =>
                   editTags ? (
                     // In edit mode a chip deletes the tag everywhere, which is how a
@@ -505,18 +510,46 @@ export function Drawer({
                       onClick={() => onToggleTag(tag)}
                     >
                       {tag}
-                    </button>
+                  </button>
                   ),
                 )}
-              </div>
-              <button
-                className={`mini tagedit-toggle ${editTags ? 'on' : ''}`}
-                onClick={() => setEditTags(!editTags)}
-              >
-                {editTags ? t('save') : t('manage_tags')}
-              </button>
             </div>
-          )}
+            <button
+              className={`mini tagedit-toggle ${editTags ? 'on' : ''}`}
+              onClick={() => setEditTags(!editTags)}
+            >
+              {editTags ? t('save') : t('manage_tags')}
+            </button>
+            {editTags && (
+              <input
+                className="taginput"
+                value={newTag}
+                placeholder={t('add_tag')}
+                autoComplete="off"
+                onChange={(e) => {
+                  const v = e.target.value
+                  setNewTag(v)
+                  if (v.endsWith(',')) {
+                    onCreateTags(v)
+                    setNewTag('')
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    onCreateTags(newTag)
+                    setNewTag('')
+                  }
+                }}
+                onBlur={() => {
+                  if (newTag.trim()) {
+                    onCreateTags(newTag)
+                    setNewTag('')
+                  }
+                }}
+              />
+            )}
+          </div>
         </div>
 
         {!hasAny ? (
