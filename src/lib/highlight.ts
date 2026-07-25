@@ -93,12 +93,15 @@ export function clearWordHighlight() {
 }
 
 const verseOf = (n: Node | null): Element | null =>
-  n ? (n.nodeType === 1 ? (n as Element) : n.parentElement)?.closest('.verse') ?? null : null
+  n ? (n.nodeType === 1 ? (n as Element) : n.parentElement)?.closest('.verse, .fverse') ?? null : null
 
-/** Which verse/lang does the current selection belong to? Reads `.verse` id `v-<lang>-<n>`. */
+/** Which verse the current selection belongs to. Handles both the parallel view
+ *  (`.verse` li with `.vt`, id `v-<lang>-<n>`) and flow view (`.fverse`, `fv-<ch>-<n>`).
+ *  lang/ch are null when the anchor doesn't encode them (caller fills from state). */
 export function selectionContext(reader: Element): {
-  vt: Element
-  lang: Lang
+  el: Element
+  lang: Lang | null
+  ch: number | null
   v: number
   start: number
   end: number
@@ -109,14 +112,28 @@ export function selectionContext(reader: Element): {
   const range = sel.getRangeAt(0)
   const verseEl = verseOf(range.commonAncestorContainer) || verseOf(range.startContainer)
   if (!verseEl || !reader.contains(verseEl)) return null
-  const m = /^v-(en|ja|fr)-(\d+)$/.exec(verseEl.id)
-  if (!m) return null
-  const vt = verseEl.querySelector('.vt')
-  if (!vt) return null
-  const a = baseOffsetTo(vt, range.startContainer, range.startOffset)
-  const b = baseOffsetTo(vt, range.endContainer, range.endOffset)
+  const mf = /^fv-(\d+)-(\d+)$/.exec(verseEl.id)
+  const mn = /^v-(en|ja|fr)-(\d+)$/.exec(verseEl.id)
+  let el: Element | null
+  let lang: Lang | null
+  let ch: number | null
+  let v: number
+  if (mf) {
+    el = verseEl // the .fverse span IS the text container
+    lang = null
+    ch = Number(mf[1])
+    v = Number(mf[2])
+  } else if (mn) {
+    el = verseEl.querySelector('.vt')
+    lang = mn[1] as Lang
+    ch = null
+    v = Number(mn[2])
+  } else return null
+  if (!el) return null
+  const a = baseOffsetTo(el, range.startContainer, range.startOffset)
+  const b = baseOffsetTo(el, range.endContainer, range.endOffset)
   const start = Math.min(a, b)
   const end = Math.max(a, b)
   if (start === end) return null
-  return { vt, lang: m[1] as Lang, v: Number(m[2]), start, end, rect: range.getBoundingClientRect() }
+  return { el, lang, ch, v, start, end, rect: range.getBoundingClientRect() }
 }

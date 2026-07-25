@@ -100,7 +100,7 @@ export default function App() {
   const canTTS = ttsSupported()
 
   const { store, addHighlight, clearHighlightsIn, setNote, remove, importStore } = useAnnotations()
-  const [sel, setSel] = useState<{ lang: Lang; v: number; start: number; end: number; rect: DOMRect } | null>(null)
+  const [sel, setSel] = useState<{ lang: Lang; ch: number; v: number; start: number; end: number; rect: DOMRect } | null>(null)
   const [noteRef, setNoteRef] = useState<string | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -246,6 +246,15 @@ export default function App() {
     (lang: Lang, ch: number, v: number, text: string) => speakList(lang, [{ ch, v, text }], false),
     [speakList],
   )
+  // Play continuously from a given verse onward (through the chapter, then the book).
+  const playFrom = useCallback(
+    (lang: Lang, ch: number, v: number) => {
+      const c = data?.chapters.find((x) => x.n === ch)
+      if (!c) return
+      speakList(lang, c.verses.filter((x) => x.v >= v).map((x) => ({ ch, v: x.v, text: x[lang] })), true)
+    },
+    [data, speakList],
+  )
   useEffect(() => () => stopSpeaking(), []) // stop on unmount
 
   // user navigation stops audio; auto-advance (below) uses navigate() directly so it doesn't
@@ -334,7 +343,15 @@ export default function App() {
         const el = readerRef.current
         if (!el) return
         const ctx = selectionContext(el)
-        if (ctx) setSel({ lang: ctx.lang, v: ctx.v, start: ctx.start, end: ctx.end, rect: ctx.rect })
+        if (ctx)
+          setSel({
+            lang: ctx.lang ?? posRef.current.lang,
+            ch: ctx.ch ?? posRef.current.chapter,
+            v: ctx.v,
+            start: ctx.start,
+            end: ctx.end,
+            rect: ctx.rect,
+          })
         else {
           const s = window.getSelection()
           if (!s || s.isCollapsed) setSel(null)
@@ -453,7 +470,7 @@ export default function App() {
   }
 
   // annotation actions bound to the current selection
-  const selRef = sel ? vref(pos.slug, pos.chapter, sel.v) : null
+  const selRef = sel ? vref(pos.slug, sel.ch, sel.v) : null
   const selHasHL = !!(sel && store[selRef!]?.highlights?.some((h) => h.lang === sel.lang && h.start < sel.end && h.end > sel.start))
   const clearSelection = () => {
     window.getSelection()?.removeAllRanges()
@@ -619,6 +636,9 @@ export default function App() {
                         id={`v-${l}-${v.v}`}
                         className={`verse ${flashVerse === v.v && pos.lang === l ? 'flash' : ''} ${spk ? 'speaking' : ''}`}
                       >
+                        <button className="vn" title="Verse actions" onClick={() => openVerseAt(l, pos.chapter, v.v)}>
+                          {v.v}
+                        </button>
                         {canTTS && (
                           <button
                             className={`vplay ${spk ? 'on' : ''}`}
@@ -752,7 +772,7 @@ export default function App() {
         onCopyText={() => verseSheet && copyVerseText(verseSheet.label, verseSheet.en, verseSheet.fr, verseSheet.ja)}
         onCopyLink={() => verseSheet && copyVerseLink(verseSheet.lang, verseSheet.v)}
         onPlay={() => {
-          if (verseSheet) playVerse(verseSheet.lang, verseSheet.ch, verseSheet.v, verseSheet[verseSheet.lang])
+          if (verseSheet) playFrom(verseSheet.lang, verseSheet.ch, verseSheet.v)
           setVerseSheet(null)
         }}
         onNote={() => {
@@ -776,6 +796,12 @@ export default function App() {
           }}
           onClose={() => setNoteRef(null)}
         />
+      )}
+
+      {flow && playingLang && (
+        <button className="audiofab" onClick={stopAudio} title="Stop audio" aria-label="Stop audio">
+          ⏹
+        </button>
       )}
 
       {toast && <div className="toast" role="status">{toast}</div>}
