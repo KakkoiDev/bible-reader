@@ -226,3 +226,14 @@ Open questions, roughly in the order they need answering:
 
 Worth noting the two panels answer different questions and could coexist on the KJV:
 Strong's says what the Greek was, a modernising gloss says what the English means now.
+
+**Pronunciation is already wired.** `speakOne` in `src/lib/tts.ts` speaks one short
+string at a capped rate, and the concordance rows use it. An archaic-word panel gets
+the same button for free, and should offer it on *both* sides of an entry: the archaic
+word and its modern equivalent, which is the pairing that makes it stick. English is
+also the one script where the voice is genuinely good and near-universally installed,
+unlike the Greek and Hebrew caveats in the README.
+
+For the 文語訳 the reading is already known from the furigana chunks, so its panel can
+speak the kana rather than depending on a voice guessing at classical kanji, which is
+the same trick `speechText` already uses for chapter playback.

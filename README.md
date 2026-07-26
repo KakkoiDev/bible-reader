@@ -51,7 +51,7 @@ Every attribution is reproduced verbatim in the app under **Texts & licences**.
   `إنجيل يوحنا 3:16`, `תהלים 23` all work.
 - **Concordance** on the KJV: open any verse and the panel lists its words with the
   Greek or Hebrew behind each one plus a transliteration; tap a word for its Strong's
-  definition. KJV-only by design, because the tags are keyed to the KJV's own word
+  definition, or the speaker to hear the original pronounced (see the caveat below). KJV-only by design, because the tags are keyed to the KJV's own word
   choices, and the settings list badges it so you can see which edition has it.
 - **The verse sheet adapts to the edition you tapped.** An edition that can explain
   its own words shows just itself plus that panel, since on a wide screen the others
@@ -119,6 +119,20 @@ needs brings the first request to a median 18 KB. Duplicating lemmas across book
 more on disk in total, which is the right trade when nothing is precached and no reader
 ever downloads all 66. `-def` rather than `.def` in the filename so it still matches
 the service worker's runtime-cache pattern and stays available offline.
+
+### Hearing the original words
+
+Each concordance row has a speaker button that speaks the lemma, at a capped rate,
+because a lone Greek word at 1.25× is not learnable. Two honest limits:
+
+- **The voices are modern.** The registry maps Greek to `el-GR` and Hebrew to
+  `he-IL`, so a Greek lemma is read in *modern* Greek, not reconstructed Koine:
+  ἀγάπη comes out closer to "aghapi" than "agapē". For Hebrew this matters less,
+  since modern Israeli pronunciation is broadly what Biblical Hebrew is read with
+  anyway. For Greek it is a real divergence, and no browser ships a Koine voice.
+- **Most devices have neither voice installed.** The button is hidden when the device
+  reports no voice for that script, the same rule the settings list uses, so it is
+  never a control that does nothing.
 
 Three things worth knowing:
 

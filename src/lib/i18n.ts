@@ -137,7 +137,10 @@ const en = {
   exported_anki_n: '{n} cards for Anki',
 
   audio_interrupted: 'Audio stopped when the app went to the background.',
-  resume_audio: 'Resume'
+  resume_audio: 'Resume',
+
+  /** Speaks one word: the Greek or Hebrew behind a KJV word. */
+  pronounce: 'Pronounce'
 }
 
 export type StringKey = keyof typeof en
@@ -180,6 +183,7 @@ const ja: Dict = {
   with_concordance: '原語辞書',
   anki: 'Anki', exported_anki_n: 'Anki用に{n}件を書き出しました',
   audio_interrupted: 'アプリが背面に移ったため音声を停止しました。', resume_audio: '再開',
+  pronounce: '発音を聞く',
 }
 
 const fr: Dict = {
@@ -223,6 +227,7 @@ const fr: Dict = {
   with_concordance: 'concordance',
   anki: 'Anki', exported_anki_n: '{n} cartes pour Anki',
   audio_interrupted: "L'audio s'est arrêté au passage en arrière-plan.", resume_audio: 'Reprendre',
+  pronounce: 'Prononcer',
 }
 
 const zht: Dict = {

@@ -74,6 +74,45 @@ console.log('\nConcordance opens instantly')
   await ctx.close()
 }
 
+// ---------- 1b. pronounce buttons ----------
+console.log('\nPronounce buttons')
+{
+  const { ctx, page } = await open(BASE, { hash: '#/1-corinthians/13/en' })
+  await page.waitForTimeout(1800)
+  await page.locator('#v-en-13').click()
+  await page.locator('.conclist li').first().waitFor({ state: 'visible', timeout: 3000 })
+  const rows = await page.locator('.conclist li').count()
+  const speak = await page.locator('.cspeak').count()
+  check('one pronounce button per word', speak === rows, `${speak} for ${rows} rows`)
+  const label = await page.locator('.cspeak').nth(5).getAttribute('aria-label')
+  check('labelled with the word it speaks', /ἀγάπη/.test(label || ''), label || '')
+
+  // Nested buttons would be invalid markup and would swallow each other's clicks.
+  const nested = await page.evaluate(() => document.querySelectorAll('.crowbtn button').length)
+  check('no button nested inside the row button', nested === 0, `${nested}`)
+
+  const box = await page.locator('.cspeak').first().boundingBox()
+  check('44px square target', box.width >= 44 && box.height >= 44, `${Math.round(box.width)}x${Math.round(box.height)}`)
+
+  // Speaking must not throw, and must not leave the row expanded (separate controls).
+  const errors = []
+  page.on('pageerror', (e) => errors.push(String(e)))
+  await page.locator('.cspeak').nth(5).click()
+  await page.waitForTimeout(300)
+  check('speaking does not throw', errors.length === 0, errors[0] || '')
+  check('and does not expand the row', await page.locator('.cdef').count() === 0)
+
+  // Hebrew rows must ask for a Hebrew voice, Greek for Greek.
+  await ctx.close()
+  const ot = await open(BASE, { hash: '#/genesis/1/en' })
+  await ot.page.waitForTimeout(1800)
+  await ot.page.locator('#v-en-1').click()
+  await ot.page.locator('.conclist li').first().waitFor({ state: 'visible', timeout: 3000 })
+  const hl = await ot.page.locator('.cspeak').first().getAttribute('aria-label')
+  check('Hebrew lemma gets a button too', /[֑-ׇא-ת]/.test(hl || ''), hl || '')
+  await ot.ctx.close()
+}
+
 // ---------- 2. one edition on the card, and KJV-only ----------
 console.log('\nCard shows one edition')
 {

@@ -150,6 +150,30 @@ export function speakVerses(
 }
 
 let genToken = 0
+
+/**
+ * Speak one short string: a concordance lemma, or a glossed word.
+ *
+ * Separate from `speakVerses` because the needs are opposite. There is no verse to
+ * follow, no word boundaries to track, and the rate is capped: a lone Greek word at
+ * 1.25× is not learnable, and this button exists to be learned from. It still bumps
+ * the generation token, so a chapter in progress is genuinely stopped rather than
+ * left firing highlight callbacks underneath.
+ */
+export function speakOne(text: string, lang: Lang, rate: number, gender: Gender) {
+  if (!ttsSupported()) return
+  const spoken = speechText(text, lang).trim()
+  if (!spoken) return
+  genToken++
+  speechSynthesis.cancel()
+  const u = new SpeechSynthesisUtterance(spoken)
+  u.lang = langTag(lang)
+  const voice = pickVoice(lang, gender)
+  if (voice) u.voice = voice
+  u.rate = Math.min(rate, 0.9)
+  speechSynthesis.speak(u)
+}
+
 export function stopSpeaking() {
   genToken++
   if (!ttsSupported()) return

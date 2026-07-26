@@ -10,6 +10,7 @@ import {
   primeVoices,
   speakVerses,
   stopSpeaking,
+  speakOne,
   hasVoice,
   voicesLoaded,
   onVoicesChanged,
@@ -457,6 +458,24 @@ export default function App() {
     [book, verseText, speakList, keepGoing],
   )
   useEffect(() => () => stopSpeaking(), []) // stop on unmount
+
+  /** Speak one word: a concordance lemma today, a glossed archaic word later.
+   *  Routed through here rather than called from the sheet so that stopping the
+   *  chapter also clears this component's playing state, instead of leaving the UI
+   *  claiming it is still reading. */
+  const speakWord = useCallback(
+    (text: string, lang: Lang) => {
+      if (!canTTS) return
+      stopAudio()
+      speakOne(text, lang, prefs.rate, prefs.voice)
+    },
+    [canTTS, stopAudio, prefs.rate, prefs.voice],
+  )
+
+  /** Whether a script can actually be spoken on this device, so the sheet does not
+   *  offer a button that would do nothing. Before the voice list arrives nothing is
+   *  claimed unspeakable, matching how the settings list behaves. */
+  const canSpeak = useCallback((l: Lang) => canTTS && !noVoice.has(l), [canTTS, noVoice])
 
   // Where playback was when the app went to the background, so it can be offered back.
   const [resumeAt, setResumeAt] = useState<{ lang: Lang; ch: number; v: number } | null>(null)
@@ -1367,6 +1386,8 @@ export default function App() {
         }
         onCopyLink={() => verseSheet && copyVerseLink(verseSheet.lang, verseSheet.v)}
         onCopyInvite={() => verseSheet && setInviteFor(verseSheet.v)}
+        canSpeak={canSpeak}
+        onSpeakWord={speakWord}
         onClearHighlight={(lang) =>
           verseSheet &&
           clearHighlightsIn(vref(verseSheet.slug, verseSheet.ch, verseSheet.v), lang, 0, Number.MAX_SAFE_INTEGER)

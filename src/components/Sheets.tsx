@@ -245,7 +245,22 @@ const WORD_PANEL: Partial<Record<Lang, 'concordance'>> = { en: 'concordance' }
  * whole row is the tap target, which is what makes this usable on a phone: a word in
  * body text is about 18px tall, far under a thumb.
  */
-function Concordance({ slug, ch, v, t }: { slug: string; ch: number; v: number; t: T }) {
+function Concordance({
+  slug,
+  ch,
+  v,
+  t,
+  canSpeak,
+  onSpeakWord,
+}: {
+  slug: string
+  ch: number
+  v: number
+  t: T
+  /** Whether this device has a voice for a script, so the button isn't a dead end. */
+  canSpeak: (l: Lang) => boolean
+  onSpeakWord: (text: string, lang: Lang) => void
+}) {
   const [words, setWords] = useState<StrongWord[] | null>(null)
   const [open, setOpen] = useState<string | null>(null)
   const [def, setDef] = useState<{ code: string; entry: StrongDef | null } | null>(null)
@@ -291,22 +306,39 @@ function Concordance({ slug, ch, v, t }: { slug: string; ch: number; v: number; 
           {words.map((w, i) => {
             const isOpen = open === w.code
             const entry = def?.code === w.code ? def.entry : null
+            // H codes are Hebrew, G codes Greek. That picks the voice, and it is the
+            // code rather than the book because Ezra and Daniel carry both.
+            const speakLang: Lang = w.code.startsWith('H') ? 'he' : 'el'
             return (
               <li key={i}>
-                <button
-                  className={`crowbtn ${isOpen ? 'on' : ''}`}
-                  aria-expanded={isOpen}
-                  onClick={() => toggle(w.code)}
-                >
-                  <span className="cword">{w.word}</span>
-                  {/* The lemma is Greek or Hebrew, so it carries its own direction:
-                      a Hebrew lemma inside an English row must not reorder the line. */}
-                  <bdi className="clemma" dir="auto">
-                    {w.lemma}
-                  </bdi>
-                  {w.translit && <i className="ctranslit">{w.translit}</i>}
-                  <small className="ccode">{w.code}</small>
-                </button>
+                {/* The speak button is a sibling, not a child: the row is itself a
+                    button, and nesting one inside another is invalid. */}
+                <div className="crowline">
+                  <button
+                    className={`crowbtn ${isOpen ? 'on' : ''}`}
+                    aria-expanded={isOpen}
+                    onClick={() => toggle(w.code)}
+                  >
+                    <span className="cword">{w.word}</span>
+                    {/* The lemma is Greek or Hebrew, so it carries its own direction:
+                        a Hebrew lemma inside an English row must not reorder the line. */}
+                    <bdi className="clemma" dir="auto">
+                      {w.lemma}
+                    </bdi>
+                    {w.translit && <i className="ctranslit">{w.translit}</i>}
+                    <small className="ccode">{w.code}</small>
+                  </button>
+                  {canSpeak(speakLang) && (
+                    <button
+                      className="cspeak"
+                      title={`${t('pronounce')}: ${w.lemma}`}
+                      aria-label={`${t('pronounce')}: ${w.lemma}`}
+                      onClick={() => onSpeakWord(w.lemma, speakLang)}
+                    >
+                      🔊
+                    </button>
+                  )}
+                </div>
                 {isOpen && (
                   <div className="cdef">
                     {!entry && <span className="empty">{t('searching')}</span>}
@@ -354,6 +386,8 @@ export function VerseSheet({
   onPlay,
   onNote,
   onClearHighlight,
+  canSpeak,
+  onSpeakWord,
   onClose,
 }: {
   data: VerseSheetData | null
@@ -369,6 +403,8 @@ export function VerseSheet({
   onPlay: () => void
   onNote: () => void
   onClearHighlight: (lang: Lang) => void
+  canSpeak: (l: Lang) => boolean
+  onSpeakWord: (text: string, lang: Lang) => void
   onClose: () => void
 }) {
   if (!data) return null
@@ -413,7 +449,14 @@ export function VerseSheet({
           })}
         </div>
         {WORD_PANEL[data.lang] === 'concordance' && (
-          <Concordance slug={data.slug} ch={data.ch} v={data.v} t={t} />
+          <Concordance
+            slug={data.slug}
+            ch={data.ch}
+            v={data.v}
+            t={t}
+            canSpeak={canSpeak}
+            onSpeakWord={onSpeakWord}
+          />
         )}
         <div className="noteact wrap">
           <button className="mini" onClick={onPlay}>▶ {t('play')}</button>
