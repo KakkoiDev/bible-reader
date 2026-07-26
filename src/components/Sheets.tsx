@@ -68,11 +68,42 @@ export function SearchSheet({
   // the head's bottom margin, so the sheet had 29px under the field against 17
   // above it.
   const hasResults = !!jump || loading || hits.length > 0 || showNoResults
-  const snippet = (h: Hit) => ({
-    pre: (h.at > 30 ? '…' : '') + h.text.slice(Math.max(0, h.at - 30), h.at),
-    mid: h.text.slice(h.at, h.at + h.len),
-    post: h.text.slice(h.at + h.len, h.at + h.len + 60),
-  })
+  // Matched terms can sit anywhere in the verse, so the snippet is a window over
+  // the text with every match inside it marked, rather than one match plus fixed
+  // context. The window is centred on the span covering the matches so a query
+  // whose words land at both ends still shows why the verse matched.
+  const WINDOW = 130
+  const LEAD = 24
+  const snippet = (h: Hit) => {
+    let from = 0
+    if (h.text.length > WINDOW) {
+      // Terms can land at both ends of a long verse — Joshua 8:33 spreads four
+      // matches over 411 characters — so centring on the span can put the window
+      // in a gap and show none of them. Take the window covering the most matches
+      // instead, earliest on a tie, with a little lead so it doesn't open mid-word.
+      let best = { from: 0, n: -1 }
+      for (const r of h.ranges) {
+        const start = Math.min(Math.max(0, r.at - LEAD), h.text.length - WINDOW)
+        let n = 0
+        for (const x of h.ranges) if (x.at >= start && x.at + x.len <= start + WINDOW) n++
+        if (n > best.n) best = { from: start, n }
+      }
+      from = best.from
+    }
+    const to = Math.min(h.text.length, from + WINDOW)
+    const parts: { s: string; hit: boolean }[] = []
+    let cur = from
+    for (const r of h.ranges) {
+      const s = Math.max(r.at, from)
+      const e = Math.min(r.at + r.len, to)
+      if (e <= s) continue // range lies outside the window
+      if (s > cur) parts.push({ s: h.text.slice(cur, s), hit: false })
+      parts.push({ s: h.text.slice(s, e), hit: true })
+      cur = e
+    }
+    if (cur < to) parts.push({ s: h.text.slice(cur, to), hit: false })
+    return { parts, lead: from > 0, tail: to < h.text.length }
+  }
   return (
     <div className="sheet-backdrop" onClick={onClose}>
       <div className="sheet search" onClick={(e) => e.stopPropagation()}>
@@ -109,9 +140,9 @@ export function SearchSheet({
                       {bySlug.get(h.slug)} {h.ch}:{h.v} <small className="badge">{m.edition}</small>
                     </span>
                     <span className="dnote" lang={m.htmlLang} dir={m.dir}>
-                      {sn.pre}
-                      <mark>{sn.mid}</mark>
-                      {sn.post}
+                      {sn.lead && '…'}
+                      {sn.parts.map((p, j) => (p.hit ? <mark key={j}>{p.s}</mark> : p.s))}
+                      {sn.tail && '…'}
                     </span>
                   </button>
                 </li>

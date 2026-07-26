@@ -25,9 +25,12 @@ export interface Entry {
  * 988 of them in John alone. A reader types whichever their keyboard produces, so
  * without folding, searching `l'Esprit` or `God's` silently returns nothing.
  *
- * Every substitution is one character for one character, because `Hit.at` indexes
- * into the unfolded text to build the snippet — a fold that changed length would
- * slide the highlight off the match.
+ * Every substitution is one character for one character, because `Hit.ranges`
+ * indexes into the unfolded text to build the snippet — a fold that changed length
+ * would slide the highlight off the match. This is why the fold deliberately does
+ * *not* strip Arabic tashkeel or Hebrew niqqud the way `collapse` does below:
+ * removing characters is not length-preserving, so it would need a folded→original
+ * offset map. Book-name lookup can afford that; snippet highlighting cannot.
  */
 const FOLD: Record<string, string> = {
   '’': "'", '‘': "'", '‛': "'", 'ʼ': "'", 'ʹ': "'",
@@ -82,25 +85,143 @@ function indexEdition(lang: Lang): Promise<Entry[]> {
   return p
 }
 
+/** One matched stretch of a verse, in coordinates of the *unfolded* `text`. */
+export interface Range {
+  at: number
+  len: number
+}
+
 export interface Hit {
   slug: string
   ch: number
   v: number
   lang: Lang
   text: string
-  at: number
-  len: number
+  /** Every matched stretch, ascending and non-overlapping. Never empty. */
+  ranges: Range[]
 }
 
 // CJK searches are meaningful at one character; latin needs two to avoid noise.
 export const minQueryLen = (q: string) => (/[぀-ヿ㐀-鿿豈-﫿]/.test(q) ? 1 : 2)
 
-/** Search across the given editions, in the order supplied. */
+/**
+ * Split a query into the terms a verse must contain.
+ *
+ * Bare words are separate terms, so `faith hope charity` finds the verse that
+ * has all three whatever punctuation sits between them — a single substring
+ * scan missed 1 Corinthians 13:13, because the text reads `faith, hope,` and
+ * the comma is not in the query.
+ *
+ * A quoted run stays one term, which is how you ask for an exact phrase:
+ * `"the beginning"` will not match `the` and `beginning` far apart. An unclosed
+ * quote is treated as if closed at the end, so results keep updating while the
+ * reader is still typing.
+ */
+export function parseQuery(q: string): string[] {
+  const terms: string[] = []
+  const re = /"([^"]*)"?|(\S+)/g
+  let m: RegExpExecArray | null
+  while ((m = re.exec(q))) {
+    if (m[0] === '') {
+      re.lastIndex++ // a zero-width match would spin forever
+      continue
+    }
+    const term = (m[1] ?? m[2] ?? '').trim()
+    if (term) terms.push(term)
+  }
+  return terms
+}
+
+/** Cap per term: a snippet only ever shows a handful, and `and` occurs ~1200
+ *  times in some chapters — collecting every hit is work nothing reads. */
+const MAX_PER_TERM = 12
+
+const CJK = /[぀-ヿ㐀-鿿豈-﫿]/
+/** Hebrew, Arabic, and the Arabic presentation forms. */
+const SEMITIC = /[֐-׿؀-ۿיִ-ﭏﹰ-﻿]/
+const WORDISH = /[\p{L}\p{N}]/u
+
+interface Term {
+  /** Folded needle. */
+  t: string
+  /** Anchor the match to the start of a word rather than anywhere inside one. */
+  anchored: boolean
+  /** Also require the word to *end* here, i.e. match the whole word only. */
+  whole: boolean
+}
+
+/**
+ * A term matches from the *start of a word* onwards, so `believ` finds
+ * `believeth` — prefix matching is most of why search is useful on a text this
+ * archaic — while `am` no longer matches `firmament` (f-i-rm-am-ent), which under
+ * plain substring rules also made `i` match it and turned `I am` into a query
+ * satisfied by nearly every verse.
+ *
+ * Two script families opt out, because for them "start of word" is the wrong unit:
+ *
+ * - **CJK** has no spaces at all, so there is no word start to anchor to.
+ * - **Hebrew and Arabic** attach particles to the front of a word — the
+ *   conjunctive ו, the article ה and ال — so anchoring would make `ישראל` miss
+ *   `וישראל`, i.e. hide the very verses the reader wants.
+ *
+ * The mode is chosen from the *term's* script, not the edition's: a Latin query
+ * against a Chinese edition finds nothing either way.
+ *
+ * One further tightening: a one- or two-letter anchored term must match a *whole*
+ * word. As a prefix, `i` legitimately matches `in`, `is` and `Israel` and `am`
+ * matches `amongst`, so `I am` still pulled 500+ verses. The shorter the term, the
+ * stricter it has to be to mean anything.
+ */
+const asTerm = (t: string): Term => {
+  const anchored = !CJK.test(t) && !SEMITIC.test(t)
+  return { t, anchored, whole: anchored && t.length <= 2 }
+}
+
+function findFrom(fold: string, term: Term, from: number): number {
+  for (let at = fold.indexOf(term.t, from); at >= 0; at = fold.indexOf(term.t, at + 1)) {
+    if (term.anchored && at > 0 && WORDISH.test(fold[at - 1])) continue
+    const end = at + term.t.length
+    if (term.whole && end < fold.length && WORDISH.test(fold[end])) continue
+    return at
+  }
+  return -1
+}
+
+/** Every occurrence of each term, merged where they overlap or abut.
+ *  Overlap is normal: `god` and `godly` both match `godly`, and rendering two
+ *  <mark>s over the same characters would double-wrap them. */
+function collectRanges(fold: string, terms: Term[]): Range[] {
+  const raw: Range[] = []
+  for (const term of terms) {
+    let from = 0
+    for (let n = 0; n < MAX_PER_TERM; n++) {
+      const at = findFrom(fold, term, from)
+      if (at < 0) break
+      raw.push({ at, len: term.t.length })
+      from = at + 1 // +1, not +len: overlapping repeats (`aa` in `aaa`) still count
+    }
+  }
+  raw.sort((a, b) => a.at - b.at || b.len - a.len)
+  const out: Range[] = []
+  for (const r of raw) {
+    const last = out[out.length - 1]
+    if (last && r.at <= last.at + last.len) {
+      last.len = Math.max(last.len, r.at + r.len - last.at)
+    } else out.push({ ...r })
+  }
+  return out
+}
+
+/** Search across the given editions, in the order supplied.
+ *  A verse matches when it contains *every* term; order and distance are free. */
 export async function search(langs: Lang[], q: string, limit = 150): Promise<Hit[]> {
   const query = q.trim()
+  // Gate on the whole query, not per term, so `I am` still searches: either term
+  // alone is below the latin minimum, together they are a real query.
   if (query.length < minQueryLen(query)) return []
+  const terms = parseQuery(query).map(foldText).filter(Boolean).map(asTerm)
+  if (!terms.length) return []
   const indexes = await Promise.all(langs.map(indexEdition))
-  const ql = foldText(query)
   const hits: Hit[] = []
   // Walk verse-major so results interleave editions by location rather than
   // returning every English hit before the first French one.
@@ -109,8 +230,18 @@ export async function search(langs: Lang[], q: string, limit = 150): Promise<Hit
     for (let k = 0; k < indexes.length && hits.length < limit; k++) {
       const e = indexes[k][i]
       if (!e) continue
-      const at = e.fold.indexOf(ql)
-      if (at >= 0) hits.push({ slug: e.slug, ch: e.ch, v: e.v, lang: langs[k], text: e.text, at, len: query.length })
+      // Cheap reject first: most verses fail on the rarest term, and scanning
+      // for positions before knowing the verse qualifies is wasted work.
+      let all = true
+      for (const term of terms)
+        if (findFrom(e.fold, term, 0) < 0) {
+          all = false
+          break
+        }
+      if (!all) continue
+      const ranges = collectRanges(e.fold, terms)
+      if (ranges.length)
+        hits.push({ slug: e.slug, ch: e.ch, v: e.v, lang: langs[k], text: e.text, ranges })
     }
   }
   return hits
