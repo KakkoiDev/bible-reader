@@ -860,6 +860,83 @@ console.log('\nPanel consistency')
   await ctx.close()
 }
 
+// ---------- 12e. touch targets and control spacing ----------
+// Codifies the classes of defect found by auditing: controls too small to hit on a
+// phone, and interactive neighbours close enough that their hover backgrounds touch.
+// Effective target size accounts for an ::after overlay, which is how the verse
+// number and per-verse play button grow without reflowing the text around them.
+console.log('\nTouch targets and control spacing')
+{
+  const MEASURE = `(() => {
+    const root = document.querySelector('.sheet-backdrop') || document.querySelector('.app')
+    const vis = (e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 }
+    const effective = (e) => {
+      const r = e.getBoundingClientRect()
+      const a = getComputedStyle(e, '::after')
+      let dx = 0, dy = 0
+      if (a.content && a.content !== 'none' && a.position === 'absolute') {
+        dx = Math.max(0, -parseFloat(a.left) || 0, -parseFloat(a.right) || 0)
+        dy = Math.max(0, -parseFloat(a.top) || 0, -parseFloat(a.bottom) || 0)
+      }
+      return { w: r.width + 2 * dx, h: r.height + 2 * dy, r, dx }
+    }
+    const tiny = [], tight = [], neg = []
+    for (const e of root.querySelectorAll('button, select, [tabindex]')) {
+      if (!vis(e)) continue
+      // WCAG 2.5.8 exempts targets that sit inline in a sentence; the attribution
+      // footer's links are prose, not controls in a toolbar.
+      if (e.closest('.attrib')) continue
+      // a control wrapped in a label inherits the label's target
+      const box = e.closest('label') ? e.closest('label').getBoundingClientRect() : null
+      const t = effective(e)
+      const w = box ? Math.max(t.w, box.width) : t.w
+      const h = box ? Math.max(t.h, box.height) : box ? box.height : t.h
+      if (Math.min(w, h) < 22) tiny.push((e.className || e.tagName) + ' ' + Math.round(w) + 'x' + Math.round(h))
+      const cs = getComputedStyle(e)
+      for (const side of ['marginTop', 'marginBottom', 'marginLeft', 'marginRight'])
+        if (parseFloat(cs[side]) < 0) neg.push((e.className || e.tagName) + ' ' + side)
+    }
+    const inter = [...root.querySelectorAll('button, input, select')].filter(vis)
+    for (let i = 0; i < inter.length; i++)
+      for (let j = i + 1; j < inter.length; j++) {
+        if (inter[i].parentElement !== inter[j].parentElement) continue
+        if (inter[i].closest('.seg') || inter[j].closest('.seg')) continue
+        const a = inter[i].getBoundingClientRect(), c = inter[j].getBoundingClientRect()
+        if (Math.min(a.bottom, c.bottom) - Math.max(a.top, c.top) <= 2) continue
+        const gap = Math.max(a.left, c.left) - Math.min(a.right, c.right)
+        if (gap >= 0 && gap < 6) tight.push(Math.round(gap) + 'px ' + (inter[i].className || '?').slice(0, 18))
+      }
+    return { tiny: [...new Set(tiny)], tight: [...new Set(tight)], neg: [...new Set(neg)] }
+  })()`
+
+  const { ctx, page } = await open({ ...BASE, ui: 'en', columns: ['en', 'el', 'he'] }, { mobile: true, hash: '#/john/3/en' })
+  await page.waitForSelector('.verse')
+  const surfaces = [
+    ['reader', null],
+    ['search', async (p) => p.locator('.tools .icon').nth(0).click()],
+    ['saved', async (p) => p.locator('.tools .icon').nth(1).click()],
+    ['settings', async (p) => p.locator('.tools .icon').nth(2).click()],
+    ['navigator', async (p) => p.locator('.navbtn').click()],
+    ['verse', async (p) => p.locator('#v-en-16 .vn').click()],
+  ]
+  for (const [name, open_] of surfaces) {
+    if (open_) {
+      await open_(page)
+      await page.waitForSelector('.sheet-backdrop')
+      await page.waitForTimeout(250)
+    }
+    const r = await page.evaluate(MEASURE)
+    check(`${name}: every control is at least 22px`, r.tiny.length === 0, r.tiny.slice(0, 5).join(', ') || 'clean')
+    check(`${name}: no interactive neighbours under 6px apart`, r.tight.length === 0, r.tight.slice(0, 4).join(', ') || 'clean')
+    check(`${name}: no negative margins on controls`, r.neg.length === 0, r.neg.join(', ') || 'clean')
+    if (open_) {
+      await page.keyboard.press('Escape')
+      await page.waitForTimeout(220)
+    }
+  }
+  await ctx.close()
+}
+
 // ---------- 13. splash lists every edition ----------
 console.log('\nPWA splash')
 {

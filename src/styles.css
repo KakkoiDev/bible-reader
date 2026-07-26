@@ -212,17 +212,34 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
   font-size: 11px;
   font-weight: 600;
   vertical-align: super;
-  margin-inline-end: 4px;
+  margin-inline-end: 10px;
   background: none;
   border: 0;
   padding: 0;
   cursor: pointer;
+  /* Verses 1-9 were only 6px wide, leaving the target under 22px even with the
+     overlay. A floor also lines up where the text starts across single and double
+     digit verses. */
+  min-width: 14px;
+  text-align: center;
 }
 .vn:hover { text-decoration: underline; }
+/* The verse number and the per-verse play button rendered at 13x13 and 18x13, four
+   pixels apart: too small to hit confidently on a phone and easy to confuse with
+   each other. The glyphs stay the same size; an absolutely positioned overlay grows
+   the touch target instead, so nothing in the text reflows. The spacing between
+   them is opened up first, so the two targets meet without overlapping. */
+.vn, .vplay, .mk { position: relative; }
+.vn::after, .vplay::after, .mk::after {
+  content: '';
+  position: absolute;
+  inset-block: -9px;
+  inset-inline: -5px;
+}
 /* Latin digits inside Arabic/Hebrew verses would otherwise be reordered by the
    bidi algorithm and drift away from the verse they label. */
 .vn, .vplay, .fchap { unicode-bidi: isolate; }
-.mk { font-size: 12px; margin-inline-end: 4px; background: none; border: 0; padding: 0; cursor: default; vertical-align: super; }
+.mk { font-size: 12px; margin-inline-end: 10px; background: none; border: 0; padding: 0; cursor: default; vertical-align: super; }
 .mk.note { cursor: pointer; }
 .verse.flash {
   background: var(--accent-bg);
@@ -278,7 +295,7 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
   background: none;
   border: 0;
   padding-inline-end: 4px;
-  margin-inline-end: 2px;
+  margin-inline-end: 8px;
   cursor: pointer;
   vertical-align: super;
 }
@@ -301,7 +318,7 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
 .hl-purple { background: rgba(167, 139, 250, 0.48); }
 
 /* ---------- header tool buttons ---------- */
-.tools { display: flex; gap: 2px; flex: 0 0 auto; }
+.tools { display: flex; gap: 6px; flex: 0 0 auto; }
 .icon {
   font-size: 16px;
   background: none;
@@ -494,7 +511,7 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
 .colrow.off { opacity: 0.55; }
 .collabel { font-family: system-ui, sans-serif; font-size: 14px; }
 .collabel small { color: var(--muted); font-size: 11px; margin-inline-start: 4px; }
-.colctl { display: inline-flex; gap: 4px; }
+.colctl { display: inline-flex; gap: 6px; }
 .colrow .mini { padding: 4px 9px; font-size: 12px; }
 .colrow .mini:disabled { opacity: 0.4; cursor: default; }
 
@@ -677,14 +694,15 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
   cursor: pointer;
 }
 .dcheck input { accent-color: var(--accent); width: 16px; height: 16px; }
-.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   font-family: system-ui, sans-serif;
   font-size: 11px;
-  padding: 3px 8px;
+  min-height: 24px;
+  padding: 4px 10px;
   color: var(--fg);
   background: var(--bg);
   border: 1px solid var(--line);
@@ -693,7 +711,7 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
 }
 .chip.on { color: #fff; background: var(--accent); border-color: var(--accent); }
 .chip.static { cursor: default; }
-.chips.small .chip { font-size: 10px; padding: 2px 7px; }
+.chips.small .chip { font-size: 10px; min-height: 22px; padding: 2px 8px; }
 .chipx { background: none; border: 0; color: inherit; padding: 0; font-size: 10px; cursor: pointer; line-height: 1; }
 .dmove { display: flex; flex-direction: column; gap: 2px; }
 .dmove .mini { padding: 2px 6px; font-size: 11px; line-height: 1.2; }
@@ -724,7 +742,7 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
 }
 .hlctl { display: inline-flex; align-items: center; gap: 4px; }
 .swatch.mini-sw { width: 15px; height: 15px; }
-.abtn.tiny { padding: 1px 6px; font-size: 12px; }
+.abtn.tiny { min-height: 24px; min-width: 26px; padding: 1px 6px; font-size: 12px; }
 .noteact.wrap { flex-wrap: wrap; }
 
 /* ---------- RTL: the floating toolbar is positioned in raw pixels ---------- */
