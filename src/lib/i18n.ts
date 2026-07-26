@@ -32,6 +32,7 @@ const en = {
   furigana: 'Furigana (日本語)',
   swipe: 'Swipe to change language (mobile)',
   align: 'Align verses across versions',
+  justify: 'Justify text',
   stop_chapter_end: 'Stop audio at chapter end',
   ui_language: 'Language',
   versions: 'Versions & columns',
@@ -162,6 +163,7 @@ const ja: Dict = {
   coverage_nt_only: 'この版は新約聖書のみを収録しています。', coverage_ot_only: 'この版は旧約聖書のみを収録しています。',
   invite_build_title: '共有する訳', invite_build_body: '共有する訳と並び順を選んでください。箇所は最初の訳で開きます。', invite_applied: '{versions} を表示中', undo: '元に戻す',
   add_tag: 'タグを追加（カンマ区切り）…', manage_tags: 'タグを編集', delete_tag_title: 'このタグを削除しますか？', delete_tag_body: '「{tag}」を {n} 件のノートから削除します。ノート自体は残ります。',
+  justify: '両端揃え',
 }
 
 const fr: Dict = {
@@ -200,6 +202,7 @@ const fr: Dict = {
   coverage_nt_only: 'Cette édition ne contient que le Nouveau Testament.', coverage_ot_only: 'Cette édition ne contient que l’Ancien Testament.',
   invite_build_title: 'Versions à partager', invite_build_body: "Choisissez les versions à partager et leur ordre. Le passage s'ouvre dans la première.", invite_applied: 'Affichage de {versions}', undo: 'Annuler',
   add_tag: 'Ajouter des étiquettes, séparées par des virgules…', manage_tags: 'Modifier les étiquettes', delete_tag_title: 'Supprimer cette étiquette ?', delete_tag_body: 'Retire « {tag} » de {n} note(s). Les notes elles-mêmes sont conservées.',
+  justify: 'Texte justifié',
 }
 
 const zht: Dict = {
@@ -234,6 +237,7 @@ const zht: Dict = {
   coverage_nt_only: '此譯本僅收錄新約。', coverage_ot_only: '此譯本僅收錄舊約。',
   invite_build_title: '分享的譯本', invite_build_body: '選擇要分享的譯本與排列順序。經文會以第一個譯本開啟。', invite_applied: '正在顯示 {versions}', undo: '復原',
   add_tag: '新增標籤，以逗號分隔…', manage_tags: '編輯標籤', delete_tag_title: '要刪除這個標籤嗎？', delete_tag_body: '將「{tag}」從 {n} 則筆記中移除。筆記本身會保留。',
+  justify: '左右對齊',
 }
 
 const zhs: Dict = {
@@ -268,6 +272,7 @@ const zhs: Dict = {
   coverage_nt_only: '此译本仅收录新约。', coverage_ot_only: '此译本仅收录旧约。',
   invite_build_title: '分享的译本', invite_build_body: '选择要分享的译本与排列顺序。经文会以第一个译本打开。', invite_applied: '正在显示 {versions}', undo: '撤销',
   add_tag: '添加标签，以逗号分隔…', manage_tags: '编辑标签', delete_tag_title: '要删除这个标签吗？', delete_tag_body: '将“{tag}”从 {n} 条笔记中移除。笔记本身会保留。',
+  justify: '左右对齐',
 }
 
 const pt: Dict = {
@@ -308,6 +313,7 @@ const pt: Dict = {
   coverage_nt_only: 'Esta edição contém apenas o Novo Testamento.', coverage_ot_only: 'Esta edição contém apenas o Antigo Testamento.',
   invite_build_title: 'Versões a compartilhar', invite_build_body: 'Escolha as versões a compartilhar e a ordem delas. A passagem abre na primeira.', invite_applied: 'Mostrando {versions}', undo: 'Desfazer',
   add_tag: 'Adicionar etiquetas, separadas por vírgulas…', manage_tags: 'Editar etiquetas', delete_tag_title: 'Excluir esta etiqueta?', delete_tag_body: 'Remove "{tag}" de {n} nota(s). As notas permanecem.',
+  justify: 'Texto justificado',
 }
 
 const es: Dict = {
@@ -349,6 +355,7 @@ const es: Dict = {
   coverage_nt_only: 'Esta edición contiene solo el Nuevo Testamento.', coverage_ot_only: 'Esta edición contiene solo el Antiguo Testamento.',
   invite_build_title: 'Versiones para compartir', invite_build_body: 'Elige las versiones que quieres compartir y su orden. El pasaje se abre en la primera.', invite_applied: 'Mostrando {versions}', undo: 'Deshacer',
   add_tag: 'Añadir etiquetas, separadas por comas…', manage_tags: 'Editar etiquetas', delete_tag_title: '¿Eliminar esta etiqueta?', delete_tag_body: 'Quita «{tag}» de {n} nota(s). Las notas se conservan.',
+  justify: 'Texto justificado',
 }
 
 const ar: Dict = {
@@ -388,6 +395,7 @@ const ar: Dict = {
   coverage_nt_only: 'تحتوي هذه الترجمة على العهد الجديد فقط.', coverage_ot_only: 'تحتوي هذه الترجمة على العهد القديم فقط.',
   invite_build_title: 'الترجمات المشتركة', invite_build_body: 'اختر الترجمات التي تريد مشاركتها وترتيبها. يُفتح المقطع بالترجمة الأولى.', invite_applied: 'يتم عرض {versions}', undo: 'تراجع',
   add_tag: 'أضف وسومًا مفصولة بفواصل…', manage_tags: 'تحرير الوسوم', delete_tag_title: 'حذف هذا الوسم؟', delete_tag_body: 'يُزال «{tag}» من {n} ملاحظة. تبقى الملاحظات نفسها.',
+  justify: 'ضبط النص',
 }
 
 const tl: Dict = {
@@ -429,6 +437,7 @@ const tl: Dict = {
   coverage_nt_only: 'Bagong Tipan lamang ang nilalaman ng edisyong ito.', coverage_ot_only: 'Lumang Tipan lamang ang nilalaman ng edisyong ito.',
   invite_build_title: 'Mga bersyong ibabahagi', invite_build_body: 'Piliin ang mga bersyong ibabahagi at ang pagkakasunod-sunod nila. Bubukas ang bahagi sa una.', invite_applied: 'Ipinapakita ang {versions}', undo: 'I-undo',
   add_tag: 'Magdagdag ng mga tag, hiwalayin ng kuwit…', manage_tags: 'I-edit ang mga tag', delete_tag_title: 'Tanggalin ang tag na ito?', delete_tag_body: 'Aalisin ang "{tag}" sa {n} tala. Mananatili ang mga tala.',
+  justify: 'Justified na teksto',
 }
 
 // Modern Greek chrome; the text itself stays Koine.
@@ -473,6 +482,7 @@ const el: Dict = {
   coverage_nt_only: 'Η έκδοση αυτή περιέχει μόνο την Καινή Διαθήκη.', coverage_ot_only: 'Η έκδοση αυτή περιέχει μόνο την Παλαιά Διαθήκη.',
   invite_build_title: 'Εκδόσεις για κοινοποίηση', invite_build_body: 'Επιλέξτε τις εκδόσεις που θα κοινοποιηθούν και τη σειρά τους. Το χωρίο ανοίγει στην πρώτη.', invite_applied: 'Εμφανίζονται {versions}', undo: 'Αναίρεση',
   add_tag: 'Προσθήκη ετικετών, χωρισμένων με κόμμα…', manage_tags: 'Επεξεργασία ετικετών', delete_tag_title: 'Διαγραφή αυτής της ετικέτας;', delete_tag_body: 'Αφαιρεί «{tag}» από {n} σημείωση/σημειώσεις. Οι σημειώσεις παραμένουν.',
+  justify: 'Πλήρης στοίχιση',
 }
 
 // Modern Hebrew chrome; the text itself stays the Masoretic consonantal tradition.
@@ -513,6 +523,7 @@ const he: Dict = {
   coverage_nt_only: 'מהדורה זו כוללת את הברית החדשה בלבד.', coverage_ot_only: 'מהדורה זו כוללת את התנ״ך בלבד.',
   invite_build_title: 'גרסאות לשיתוף', invite_build_body: 'בחר את הגרסאות לשיתוף ואת סדרן. הקטע ייפתח בגרסה הראשונה.', invite_applied: 'מוצג {versions}', undo: 'בטל',
   add_tag: 'הוסף תגיות, מופרדות בפסיקים…', manage_tags: 'עריכת תגיות', delete_tag_title: 'למחוק את התגית?', delete_tag_body: 'מסיר «{tag}» מ־{n} הערות. ההערות עצמן נשמרות.',
+  justify: 'יישור לשני הצדדים',
 }
 
 const STRINGS: Record<Lang, Dict> = { en, ja, fr, zht, zhs, pt, es, ar, tl, el, he }

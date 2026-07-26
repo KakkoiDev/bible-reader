@@ -34,7 +34,7 @@ async function open(prefs, { mobile = false, hash = '' } = {}) {
   return { ctx, page }
 }
 
-const BASE = { theme: 'light', size: 'md', furigana: true, align: true, rate: 1, voice: 'male', swipe: false, flow: false, stopAtChapterEnd: false }
+const BASE = { theme: 'light', size: 'md', furigana: true, align: true, justify: false, rate: 1, voice: 'male', swipe: false, flow: false, stopAtChapterEnd: false }
 
 // ---------- 1. header does not overflow on a narrow phone ----------
 console.log('\nHeader overflow (360px, long localized book name)')
@@ -318,7 +318,7 @@ console.log('\nInvite links')
   // Sending: the builder picks which editions to share, and their order.
   const { ctx: c2, page: p2 } = await open({ ...BASE, ui: 'en', columns: ['en', 'ja'] }, { hash: '#/matthew/15/en' })
   await p2.waitForSelector('.verse')
-  await p2.locator('#v-en-3 .vn').click()
+  await p2.locator('#v-en-3').click({ position: { x: 300, y: 8 } })
   await p2.waitForSelector('.verse-sheet')
   await p2.locator('.verse-sheet .noteact .mini').nth(3).click()   // Copy invite
   await p2.waitForSelector('.sheet.invite')
@@ -345,7 +345,7 @@ console.log('\nVerse sheet')
 {
   const { ctx, page } = await open({ ...BASE, ui: 'en', columns: ['en', 'fr'] }, { hash: '#/john/3/en' })
   await page.waitForSelector('.verse')
-  await page.locator('#v-en-16 .vn').click()
+  await page.locator('#v-en-16').click({ position: { x: 300, y: 8 } })
   await page.waitForSelector('.verse-sheet')
   check('only visible editions are compared', (await page.locator('.verse-sheet .crow').count()) === 2)
   check('no whole-verse colour swatches', (await page.locator('.verse-sheet .hlctl').count()) === 0)
@@ -372,6 +372,24 @@ console.log('\nVerse sheet')
   await page.locator('.verse-sheet .abtn.tiny').click()
   await page.waitForTimeout(250)
   check('per-edition clear removes it', (await page.locator('#sv-en-3-16 .ctext .hl').count()) === 0)
+  await ctx.close()
+}
+
+// ---------- 10a2. the verse number copies its link ----------
+console.log('\nVerse number copies the link')
+{
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, permissions: ['clipboard-read', 'clipboard-write'] })
+  await ctx.addInitScript((p) => localStorage.setItem('prefs', JSON.stringify(p)), { ...BASE, ui: 'en', columns: ['en'] })
+  const page = await ctx.newPage()
+  await page.goto(URL + '#/john/3/en', { waitUntil: 'networkidle' })
+  await page.waitForSelector('.verse')
+  await page.locator('#v-en-16 .vn').click()
+  await page.waitForTimeout(300)
+  check('no modal opens', (await page.locator('.verse-sheet').count()) === 0)
+  const clip = await page.evaluate(() => navigator.clipboard.readText())
+  check('the link to that verse is on the clipboard', /#\/john\/3\/en\/16$/.test(clip), clip)
+  const toast = await page.locator('.toast').innerText().catch(() => '')
+  check('and it says so', /copied/i.test(toast), toast)
   await ctx.close()
 }
 
@@ -466,7 +484,7 @@ console.log('\nNotes drawer')
 {
   const { ctx, page } = await open({ ...BASE, ui: 'en', columns: ['en'] }, { hash: '#/john/3/en' })
   await page.waitForSelector('.verse')
-  await page.locator('#v-en-16 .vn').click()
+  await page.locator('#v-en-16').click({ position: { x: 300, y: 8 } })
   await page.waitForSelector('.verse-sheet')
   await page.locator('.verse-sheet .primary').click()
   await page.waitForSelector('.notearea')
@@ -480,7 +498,7 @@ console.log('\nNotes drawer')
   await page.waitForTimeout(250)
 
   // A second note should offer the first note's tags as dimmed, clickable chips.
-  await page.locator('#v-en-17 .vn').click()
+  await page.locator('#v-en-17').click({ position: { x: 300, y: 8 } })
   await page.waitForSelector('.verse-sheet')
   await page.locator('.verse-sheet .primary').click()
   await page.waitForSelector('.notearea')
@@ -836,7 +854,7 @@ console.log('\nPanel consistency')
     ['saved', async () => page.locator('.tools .icon').nth(1).click()],
     ['settings', async () => page.locator('.tools .icon').nth(2).click()],
     ['navigator', async () => page.locator('.navbtn').click()],
-    ['verse', async () => page.locator('#v-en-16 .vn').click()],
+    ['verse', async () => page.locator('#v-en-16').click({ position: { x: 300, y: 8 } })],
     ['licences', async () => page.locator('.attrib .liclink').click()],
   ]
   const results = []
@@ -896,15 +914,28 @@ console.log('\nTouch targets and control spacing')
       for (const side of ['marginTop', 'marginBottom', 'marginLeft', 'marginRight'])
         if (parseFloat(cs[side]) < 0) neg.push((e.className || e.tagName) + ' ' + side)
     }
+    // What matters is that hit areas don't overlap (so a tap can't hit the wrong
+    // control) and that hover backgrounds don't collide. Controls that grow via an
+    // ::after overlay are measured on the overlay; the visible gap between their
+    // glyphs is a typographic choice, deliberately tight in the verse row.
     const inter = [...root.querySelectorAll('button, input, select')].filter(vis)
+    const hit = (e) => {
+      const r = e.getBoundingClientRect()
+      const a = getComputedStyle(e, '::after')
+      const grown = a.content && a.content !== 'none' && a.position === 'absolute'
+      const dl = grown ? Math.max(0, -parseFloat(a.left) || 0) : 0
+      const dr = grown ? Math.max(0, -parseFloat(a.right) || 0) : 0
+      return { left: r.left - dl, right: r.right + dr, top: r.top, bottom: r.bottom, grown }
+    }
     for (let i = 0; i < inter.length; i++)
       for (let j = i + 1; j < inter.length; j++) {
         if (inter[i].parentElement !== inter[j].parentElement) continue
         if (inter[i].closest('.seg') || inter[j].closest('.seg')) continue
-        const a = inter[i].getBoundingClientRect(), c = inter[j].getBoundingClientRect()
+        const a = hit(inter[i]), c = hit(inter[j])
         if (Math.min(a.bottom, c.bottom) - Math.max(a.top, c.top) <= 2) continue
         const gap = Math.max(a.left, c.left) - Math.min(a.right, c.right)
-        if (gap >= 0 && gap < 6) tight.push(Math.round(gap) + 'px ' + (inter[i].className || '?').slice(0, 18))
+        const floor = a.grown || c.grown ? 0 : 6   // overlays may meet, chrome must not
+        if (gap < floor) tight.push(Math.round(gap) + 'px ' + (inter[i].className || '?').slice(0, 18))
       }
     return { tiny: [...new Set(tiny)], tight: [...new Set(tight)], neg: [...new Set(neg)] }
   })()`
@@ -917,7 +948,7 @@ console.log('\nTouch targets and control spacing')
     ['saved', async (p) => p.locator('.tools .icon').nth(1).click()],
     ['settings', async (p) => p.locator('.tools .icon').nth(2).click()],
     ['navigator', async (p) => p.locator('.navbtn').click()],
-    ['verse', async (p) => p.locator('#v-en-16 .vn').click()],
+    ['verse', async (p) => p.locator('#v-en-16').click({ position: { x: 200, y: 8 } })],
   ]
   for (const [name, open_] of surfaces) {
     if (open_) {
@@ -927,7 +958,7 @@ console.log('\nTouch targets and control spacing')
     }
     const r = await page.evaluate(MEASURE)
     check(`${name}: every control is at least 22px`, r.tiny.length === 0, r.tiny.slice(0, 5).join(', ') || 'clean')
-    check(`${name}: no interactive neighbours under 6px apart`, r.tight.length === 0, r.tight.slice(0, 4).join(', ') || 'clean')
+    check(`${name}: hit areas don't overlap, chrome stays 6px apart`, r.tight.length === 0, r.tight.slice(0, 4).join(', ') || 'clean')
     check(`${name}: no negative margins on controls`, r.neg.length === 0, r.neg.join(', ') || 'clean')
     if (open_) {
       await page.keyboard.press('Escape')
@@ -935,6 +966,42 @@ console.log('\nTouch targets and control spacing')
     }
   }
   await ctx.close()
+}
+
+// ---------- 12f. the KJF repairs, and justified text ----------
+console.log('\nKJF repairs')
+{
+  const { ctx, page } = await open({ ...BASE, ui: 'en', columns: ['en', 'fr'] }, { hash: '#/revelation/5/fr' })
+  await page.waitForSelector('.verse')
+  const n = await page.locator('#v-fr-1 .vt, #v-fr-14 .vt').count()
+  check('Revelation 5 is present in the KJF', n === 2)
+  check('and reads as the KJF, not a placeholder',
+    /Et je vis dans la main droite/.test(await page.locator('#v-fr-1 .vt').innerText()))
+  check('the chapter has all 14 verses', (await page.locator('.col[lang="fr"] .verse').count()) === 14)
+
+  await page.goto(URL + '#/john/18/fr', { waitUntil: 'networkidle' })
+  await page.waitForSelector('.verse')
+  check('John 18:24 recovered', /Or Anne l/.test(await page.locator('#v-fr-24 .vt').innerText()))
+  check('and 18:23 no longer carries the stray number',
+    !/\b24\b/.test(await page.locator('#v-fr-23 .vt').innerText()),
+    await page.locator('#v-fr-23 .vt').innerText())
+  await ctx.close()
+}
+
+console.log('\nJustified text')
+{
+  for (const justify of [false, true]) {
+    const { ctx, page } = await open({ ...BASE, ui: 'en', justify, columns: ['en'] }, { hash: '#/john/1/en' })
+    await page.waitForSelector('.verse')
+    const r = await page.evaluate(() => ({
+      verse: getComputedStyle(document.querySelector('.verse .vt')).textAlign,
+      chrome: getComputedStyle(document.querySelector('.chapnav button')).textAlign,
+    }))
+    check(`justify=${justify}: verse text is ${justify ? 'justified' : 'not justified'}`,
+      justify ? r.verse === 'justify' : r.verse !== 'justify', r.verse)
+    check(`justify=${justify}: chrome is untouched`, r.chrome !== 'justify', r.chrome)
+    await ctx.close()
+  }
 }
 
 // ---------- 13. splash lists every edition ----------

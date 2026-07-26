@@ -5,3 +5,7 @@ public/data
 *.local
 .DS_Store
 .vite
+
+# Vendored upstream sources for provenance checks. Not redistributable:
+# vendor/kjf/ holds the publisher's copyrighted KJF PDF.
+vendor/

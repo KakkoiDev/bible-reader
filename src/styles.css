@@ -212,7 +212,7 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
   font-size: 11px;
   font-weight: 600;
   vertical-align: super;
-  margin-inline-end: 10px;
+  margin-inline-end: 4px;
   background: none;
   border: 0;
   padding: 0;
@@ -230,16 +230,21 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
    the touch target instead, so nothing in the text reflows. The spacing between
    them is opened up first, so the two targets meet without overlapping. */
 .vn, .vplay, .mk { position: relative; }
+/* Grow the targets away from each other, into the space the line already has, so
+   the visible gaps stay tight: widening the margins instead made the row look
+   spaced-out and drew the eye to the controls rather than the text. */
 .vn::after, .vplay::after, .mk::after {
   content: '';
   position: absolute;
   inset-block: -9px;
-  inset-inline: -5px;
 }
+.vn::after { inset-inline: -9px -2px; }
+.vplay::after { inset-inline: -2px -7px; }
+.mk::after { inset-inline: -2px -7px; }
 /* Latin digits inside Arabic/Hebrew verses would otherwise be reordered by the
    bidi algorithm and drift away from the verse they label. */
 .vn, .vplay, .fchap { unicode-bidi: isolate; }
-.mk { font-size: 12px; margin-inline-end: 10px; background: none; border: 0; padding: 0; cursor: default; vertical-align: super; }
+.mk { font-size: 12px; margin-inline-end: 4px; background: none; border: 0; padding: 0; cursor: default; vertical-align: super; }
 .mk.note { cursor: pointer; }
 .verse.flash {
   background: var(--accent-bg);
@@ -294,8 +299,8 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
   color: var(--muted);
   background: none;
   border: 0;
-  padding-inline-end: 4px;
-  margin-inline-end: 8px;
+  padding-inline-end: 2px;
+  margin-inline-end: 4px;
   cursor: pointer;
   vertical-align: super;
 }
@@ -867,3 +872,16 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
 
 /* ---------- saved panel: create-tag field appears in edit mode ---------- */
 .dfrow.tagrow .taginput { flex-basis: 100%; font-size: 12px; padding: 6px 9px; }
+
+/* ---------- justified text (off by default) ---------- */
+/* Scoped to the verse and flow bodies, never the chrome. Hyphenation is enabled with
+   it: justifying without it opens rivers of whitespace in narrow columns, which is
+   the usual reason justified text reads worse than ragged-right on screens. */
+:root[data-justify='on'] .verse .vt,
+:root[data-justify='on'] .fpar,
+:root[data-justify='on'] .ctext {
+  text-align: justify;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+}
+:root[data-justify='on'] .verse .vt { display: inline; }

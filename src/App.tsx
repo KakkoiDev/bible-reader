@@ -46,6 +46,7 @@ interface Prefs {
   size: Size
   furigana: boolean
   align: boolean
+  justify: boolean
   rate: number
   voice: Gender
   swipe: boolean
@@ -92,6 +93,7 @@ const loadPrefs = (): Prefs => {
     size: 'md',
     furigana: true,
     align: true,
+    justify: false,
     rate: 1,
     voice: 'male',
     swipe: false,
@@ -202,6 +204,7 @@ export default function App() {
     const el = document.documentElement
     el.dataset.theme = prefs.theme === 'system' ? '' : prefs.theme
     el.dataset.size = prefs.size
+    el.dataset.justify = prefs.justify ? 'on' : ''
     el.lang = BY_ID[prefs.ui].htmlLang
     el.dir = BY_ID[prefs.ui].dir
     localStorage.setItem('prefs', JSON.stringify(prefs))
@@ -1061,7 +1064,9 @@ export default function App() {
                             openVerseAt(l, pos.chapter, v.v)
                           }}
                         >
-                          <button className="vn" title={t('verse_actions')} onClick={() => openVerseAt(l, pos.chapter, v.v)}>
+                          {/* The number is the verse's identity, so tapping it copies a
+                              link to it. The rest of the row opens the actions. */}
+                          <button className="vn" title={t('copy_link')} onClick={() => copyVerseLink(l, v.v)}>
                             {v.v}
                           </button>
                           {playable && text && (
@@ -1140,6 +1145,7 @@ export default function App() {
         size={prefs.size}
         furigana={prefs.furigana}
         align={prefs.align}
+        justify={prefs.justify}
         rate={prefs.rate}
         voice={prefs.voice}
         swipe={prefs.swipe}
@@ -1154,6 +1160,7 @@ export default function App() {
         onSize={(s) => setPref({ size: s })}
         onFurigana={(f) => setPref({ furigana: f })}
         onAlign={(v) => setPref({ align: v })}
+        onJustify={(v) => setPref({ justify: v })}
         onRate={(r) => setPref({ rate: r })}
         onVoice={(g) => setPref({ voice: g })}
         onSwipe={(v) => setPref({ swipe: v })}

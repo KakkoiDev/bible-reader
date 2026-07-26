@@ -85,6 +85,7 @@ export interface SettingsProps {
   size: Size
   furigana: boolean
   align: boolean
+  justify: boolean
   rate: number
   voice: 'male' | 'female'
   swipe: boolean
@@ -99,6 +100,7 @@ export interface SettingsProps {
   onSize: (s: Size) => void
   onFurigana: (f: boolean) => void
   onAlign: (v: boolean) => void
+  onJustify: (v: boolean) => void
   onRate: (r: number) => void
   onVoice: (g: 'male' | 'female') => void
   onSwipe: (v: boolean) => void
@@ -118,6 +120,7 @@ export function Settings({
   size,
   furigana,
   align,
+  justify,
   rate,
   voice,
   swipe,
@@ -131,6 +134,7 @@ export function Settings({
   onSize,
   onFurigana,
   onAlign,
+  onJustify,
   onRate,
   onVoice,
   onSwipe,
@@ -200,6 +204,10 @@ export function Settings({
         <label className="srow">
           <span>{t('flow')}</span>
           <input type="checkbox" checked={flow} onChange={(e) => onFlow(e.target.checked)} />
+        </label>
+        <label className="srow">
+          <span>{t('justify')}</span>
+          <input type="checkbox" checked={justify} onChange={(e) => onJustify(e.target.checked)} />
         </label>
 
         {/* Everything that depends on a language lives here: the UI language, which
