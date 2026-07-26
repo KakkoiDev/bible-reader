@@ -39,7 +39,7 @@ console.log('\nConcordance opens instantly')
 {
   const { ctx, page, requests } = await open(BASE, { hash: '#/1-corinthians/13/en' })
   await page.waitForTimeout(2000) // let the idle prefetch run
-  const card = requests.filter((u) => /\/data\/strongs\/1-corinthians\.json/.test(u))
+  const card = requests.filter((u) => /\/data\/concordance\/1-corinthians\.json/.test(u))
   const defs = requests.filter((u) => u.includes('-def.json'))
   check('the book card is prefetched on open', card.length === 1, `${card.length} request(s)`)
   check('definitions are NOT prefetched', defs.length === 0, `${defs.length} request(s)`)
@@ -48,7 +48,7 @@ console.log('\nConcordance opens instantly')
   // Opening the verse must not need another request, and must not show a spinner.
   // The card must render from memory. The definitions warm-up fires straight after,
   // so count only the card request here and assert the warm-up separately below.
-  const isCard = (u) => u.includes('/data/strongs/') && !u.includes('-def.json')
+  const isCard = (u) => u.includes('/data/concordance/') && !u.includes('-def.json')
   const cardsBefore = requests.filter(isCard).length
   await page.locator('#v-en-13').click()
   await page.locator('.conclist li').first().waitFor({ state: 'visible', timeout: 2000 })
@@ -111,6 +111,58 @@ console.log('\nPronounce buttons')
   const hl = await ot.page.locator('.cspeak').first().getAttribute('aria-label')
   check('Hebrew lemma gets a button too', /[֑-ׇא-ת]/.test(hl || ''), hl || '')
   await ot.ctx.close()
+}
+
+// ---------- 1c. a stale CacheFirst entry must not silently empty the panel ----------
+// Regression: the files first shipped under data/strongs/ with a different shape at
+// the same URLs. Because the runtime cache is CacheFirst, readers who had already
+// opened the panel were served the old shape for good, and it rendered nothing at all.
+console.log('\nStale cache cannot blank the panel')
+{
+  const { ctx, page, requests } = await open(BASE, { hash: '#/1-corinthians/13/en' })
+  await page.waitForFunction(() => !!(navigator.serviceWorker && navigator.serviceWorker.controller), null, { timeout: 20000 }).catch(() => {})
+  await page.waitForTimeout(1500)
+
+  // Checked before the probe below, which would otherwise count as the app asking.
+  check('the app never requests the old path', !requests.some((u) => u.includes('/data/strongs/')))
+
+  // The abandoned path must not be what the app reads any more. Asserted on content,
+  // not status: vite preview answers a missing file with index.html and a 200, while
+  // GitHub Pages returns a real 404.
+  const oldPath = await page.evaluate(async () => {
+    try {
+      const r = await fetch('data/strongs/1-corinthians.json')
+      const body = await r.text()
+      return body.trim().startsWith('{') ? 'still serving json' : 'not json'
+    } catch {
+      return 'unreachable'
+    }
+  })
+  check('the old data/strongs path serves no card', oldPath !== 'still serving json', oldPath)
+
+  // Poison the *current* URL with a wrong-shape payload and confirm it is rejected
+  // as a failure rather than mistaken for a verse with no tagged words.
+  await page.evaluate(async () => {
+    const url = new URL('data/concordance/1-corinthians.json', location.href).href
+    const c = await caches.open('bible-editions')
+    await c.put(url, new Response(JSON.stringify({ '13': { '13': [['charity', 'G26']] } }), { status: 200, headers: { 'content-type': 'application/json' } }))
+  })
+  await page.reload({ waitUntil: 'networkidle' })
+  await page.waitForTimeout(2000)
+  await page.locator('#v-en-13').click()
+  await page.locator('.verse-sheet').waitFor({ state: 'visible' })
+  await page.waitForTimeout(800)
+  const panels = await page.locator('.conc').count()
+  const failed = await page.locator('.conc .empty').count()
+  check('panel still renders, does not vanish', panels === 1, `${panels} panel(s)`)
+  check('and reports the failure', failed === 1 && /could not be loaded/i.test(await page.locator('.conc .empty').innerText()))
+
+  // Retry must be able to get past a CacheFirst entry, or it is a lie.
+  await page.locator('.conc .empty .mini').click()
+  await page.locator('.conclist li').first().waitFor({ state: 'visible', timeout: 8000 })
+  const rows = await page.locator('.conclist li').count()
+  check('retry evicts the bad entry and recovers', rows === 12, `${rows} rows`)
+  await ctx.close()
 }
 
 // ---------- 2. one edition on the card, and KJV-only ----------

@@ -164,10 +164,16 @@ if (existsSync(resolve(SRC, 'paragraphs.json'))) copyFileSync(resolve(SRC, 'para
 //
 // `-def` rather than `.def` in the name so the filename still matches the service
 // worker's runtime-cache pattern (`[a-z0-9-]+\.json`) and stays available offline.
+//
+// The directory is `concordance/`, not the `strongs/` these files first shipped under.
+// That rename is load-bearing: the runtime cache is CacheFirst, so changing what lives
+// at a URL strands every reader who already fetched it on the old shape forever. A new
+// shape gets a new path. `SHAPE` is checked on read for the same reason, so the next
+// change fails loudly instead of rendering an empty panel.
 const strongsSrc = resolve(SRC, 'strongs.json')
 const lexiconSrc = resolve(SRC, 'lexicon.json')
 if (existsSync(strongsSrc) && existsSync(lexiconSrc)) {
-  const dir = resolve(OUT, 'strongs')
+  const dir = resolve(OUT, 'concordance')
   mkdirSync(dir, { recursive: true })
   const tags = JSON.parse(readFileSync(strongsSrc, 'utf8'))
   const lex = JSON.parse(readFileSync(lexiconSrc, 'utf8'))
@@ -193,7 +199,7 @@ if (existsSync(strongsSrc) && existsSync(lexiconSrc)) {
     const slug = slugOf(en)
     const cardPath = resolve(dir, `${slug}.json`)
     const defPath = resolve(dir, `${slug}-def.json`)
-    writeFileSync(cardPath, JSON.stringify({ t: chapters, w: words }))
+    writeFileSync(cardPath, JSON.stringify({ v: 2, t: chapters, w: words }))
     writeFileSync(defPath, JSON.stringify(defs))
     books++
     cardBytes += statSync(cardPath).size

@@ -110,8 +110,8 @@ open instantly:
 
 | File | Holds | Fetched |
 | --- | --- | --- |
-| `<slug>.json` | tags + lemma + transliteration | warmed when the book opens |
-| `<slug>-def.json` | Strong's definitions | warmed when the panel first renders |
+| `concordance/<slug>.json` | tags + lemma + transliteration | warmed when the book opens |
+| `concordance/<slug>-def.json` | Strong's definitions | warmed when the panel first renders |
 
 A single shared 2.1 MB dictionary used to load before the panel could render anything,
 610 KB over the wire to show twelve words. Inlining just the two short fields each book
@@ -133,6 +133,26 @@ because a lone Greek word at 1.25× is not learnable. Two honest limits:
 - **Most devices have neither voice installed.** The button is hidden when the device
   reports no voice for that script, the same rule the settings list uses, so it is
   never a control that does nothing.
+
+### Changing the shape of a data file means changing its path
+
+Learned the hard way. The runtime cache is **CacheFirst**, so whatever a reader
+fetched once is what they keep being served. These files first shipped under
+`data/strongs/` with a different shape, and readers who had already opened the panel
+were then served the old shape indefinitely: the parse found no chapters, and because
+"no words" was rendered the same as "nothing tagged", the panel silently disappeared
+altogether.
+
+Three rules came out of it, and they apply to any file under `public/data`:
+
+1. **New shape, new path.** Hence `concordance/`. Never reuse a URL for different
+   content under a CacheFirst policy.
+2. **Version the payload and check it on read** (`SHAPE` in `src/lib/strongs.ts`), so
+   the next mismatch is a visible error rather than an empty panel.
+3. **Never render a failed load as an empty result.** `verseWords` returns `null` for
+   "could not load" and `[]` for "this verse has no tags", and only the first shows a
+   message. Its retry deletes the cache entry before refetching, because a CacheFirst
+   entry cannot otherwise be got past from the page.
 
 Three things worth knowing:
 
@@ -233,9 +253,9 @@ there plus `npm run fetch && npm run data`.
 - `public/data/index.json` — per book: slug, per-chapter verse counts, and the book's
   name in every edition's language (~21 KB)
 - `public/data/<id>/<slug>.json` — one edition of one book
-- `public/data/strongs/<slug>.json` — the KJV's tags, lemmas and transliterations for
-  one book (median 18 KB gzipped)
-- `public/data/strongs/<slug>-def.json` — the Strong's definitions for that book
+- `public/data/concordance/<slug>.json` — the KJV's tags, lemmas and transliterations
+  for one book (median 18 KB gzipped)
+- `public/data/concordance/<slug>-def.json` — the Strong's definitions for that book
 
 One file per edition per book is what lets the app download only the editions a
 reader has enabled. `public/data` is generated and git-ignored — run `npm run data`

@@ -261,21 +261,32 @@ function Concordance({
   canSpeak: (l: Lang) => boolean
   onSpeakWord: (text: string, lang: Lang) => void
 }) {
-  const [words, setWords] = useState<StrongWord[] | null>(null)
+  // 'loading' and 'failed' are distinct from an empty list on purpose: a book that
+  // would not load must say so, not look like a verse with nothing tagged.
+  const [words, setWords] = useState<StrongWord[] | 'loading' | 'failed'>('loading')
   const [open, setOpen] = useState<string | null>(null)
   const [def, setDef] = useState<{ code: string; entry: StrongDef | null } | null>(null)
 
-  useEffect(() => {
-    let live = true
+  const load = (force = false) => {
     // Already in memory for this book (prefetched on open, or a previous verse):
     // render in the same paint rather than flashing a spinner for one frame.
-    if (!cardReady(slug)) setWords(null)
+    if (!cardReady(slug) || force) setWords('loading')
+    setOpen(null)
+    return verseWords(slug, ch, v, force).then((w) => {
+      setWords(w ?? 'failed')
+      // The panel is on screen now, so this reader will plausibly tap a word.
+      if (w?.length) prefetchDefs(slug)
+    })
+  }
+
+  useEffect(() => {
+    let live = true
+    if (!cardReady(slug)) setWords('loading')
     setOpen(null)
     verseWords(slug, ch, v).then((w) => {
       if (!live) return
-      setWords(w)
-      // The panel is on screen now, so this reader will plausibly tap a word.
-      if (w.length) prefetchDefs(slug)
+      setWords(w ?? 'failed')
+      if (w?.length) prefetchDefs(slug)
     })
     return () => {
       live = false
@@ -292,7 +303,8 @@ function Concordance({
     wordDef(slug, code).then((entry) => setDef({ code, entry }))
   }
 
-  if (words && words.length === 0) return null // nothing tagged: no empty panel
+  // Genuinely no tagged words (three verses in the whole KJV): no empty panel.
+  if (Array.isArray(words) && words.length === 0) return null
 
   return (
     <div className="conc">
@@ -300,8 +312,16 @@ function Concordance({
         <b>{t('concordance')}</b>
         <small>{BY_ID.en.edition}</small>
       </div>
-      {!words && <p className="empty">{t('searching')}</p>}
-      {words && (
+      {words === 'loading' && <p className="empty">{t('searching')}</p>}
+      {words === 'failed' && (
+        <p className="empty">
+          {t('concordance_failed')}{' '}
+          <button className="mini" onClick={() => load(true)}>
+            {t('retry')}
+          </button>
+        </p>
+      )}
+      {Array.isArray(words) && (
         <ul className="conclist">
           {words.map((w, i) => {
             const isOpen = open === w.code
