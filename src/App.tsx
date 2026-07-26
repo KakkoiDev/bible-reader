@@ -93,7 +93,7 @@ const loadPrefs = (): Prefs => {
     size: 'md',
     furigana: true,
     align: true,
-    justify: false,
+    justify: true,
     rate: 1,
     voice: 'male',
     swipe: false,

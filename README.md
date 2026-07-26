@@ -40,6 +40,8 @@ Every attribution is reproduced verbatim in the app under **Texts & licences**.
   toggleable in Settings).
 - **Phone:** one edition at a time. Tap the tabs, or enable **swipe** to cycle them.
   Arrow keys ←/→ move between chapters, ↑/↓ between editions.
+- **Justified text** is on by default, with hyphenation enabled alongside it so narrow
+  columns don't open rivers of whitespace. Toggleable in Settings.
 - **Flowing mode** drops verse numbers and renders a whole book as continuous
   paragraphs, with inline chapter markers so chapter navigation still lands visibly.
 - **UI language** switches the chrome and displayed book names across all eleven
@@ -64,7 +66,7 @@ the machine-readable version; this table is the audit trail. Retrieved 2026-07-2
 | --- | --- | --- | --- |
 | `en` | hand-curated, in repo | `data-src/kjv.md` | public domain |
 | `ja` | hand-curated, in repo | `data-src/bungo.md` | public domain |
-| `fr` | hand-curated, in repo | `data-src/kjf.md` — **provenance unresolved, see below** | © Nadine L. Stratford |
+| `fr` | hand-curated, in repo | `data-src/kjf.md`, from the KJF OSIS 2022 export, partly repaired — see below | © Nadine L. Stratford |
 | `zht` | eBible.org | `https://ebible.org/Scriptures/cmn-cu89t_usfm.zip` | public domain |
 | `zhs` | eBible.org | `https://ebible.org/Scriptures/cmn-cu89s_usfm.zip` | public domain |
 | `pt` | getbible.net v2 | `https://api.getbible.net/v2/almeida.json` | module claims GPL — see FUTURE.md |
@@ -78,55 +80,39 @@ Catalogues used to choose the above:
 `https://ebible.org/Scriptures/translations.csv` and
 `https://api.getbible.net/v2/translations.json`.
 
-### Open item: the KJF's provenance is undocumented
+### The KJF: provenance, and defects in the export
 
-`data-src/kjf.md` arrived in the initial commit already merged, and its own header is
-the only record of where it came from:
+**Resolved: there is no separate "KJF 2006" file.** 2006 is the year the translation
+was completed and forms part of the copyrighted work's name, not an edition label. The
+note in `data-src/kjf.md` about the Song of Solomon being "repris de l'édition KJF
+2006" does not point at a retrievable artifact.
 
-> *Le Cantique des Cantiques est absent de l'export OSIS 2022 (défaut de source) ;
-> il est repris de l'édition KJF 2006. Les autres livres proviennent de l'OSIS 2022.*
+- The Internet Archive item `KJF_Bible_King_James_fr` is labelled `date: 2006`, but its
+  own SWORD config declares its upstream as
+  `https://github.com/gratis-bible/bible/raw/master/fr/kjf.xml`, and it carries **the
+  same defects** as the 2022 export plus no Song of Solomon at all.
+- `http://www.kingjamesfrancaise.net/remository.html` is live and is the current
+  official download index. (An earlier note here claimed the domain did not resolve;
+  that was wrong, it had been probed over `https://` when it is served over `http://www.`.)
+  It offers three files, none of them a 2006 edition. The only complete official
+  artifact is `KJF_WHOLE_BIBLE_2022.pdf`.
+- Full trail: `vendor/kjf/SOURCES.md`. `vendor/` is git-ignored: that PDF is
+  copyrighted and this repository is public, so committing it would be redistribution
+  rather than display with attribution.
 
-So two upstream files were used — an **OSIS 2022 export** and a **KJF 2006 edition** —
-and neither is in the repo, nor is any URL recorded in git history. The 2006 edition
-demonstrably existed for this project (the Song of Solomon is present and came from
-it), so it is worth recovering: it would likely fill the gaps listed below.
+The export is damaged in three distinct ways, characterised against the publisher's
+PDF in **[`docs/KJF-DEFECTS.md`](docs/KJF-DEFECTS.md)** — written so it can be sent to
+the publisher as-is. In summary, of the 41 verses the KJV carries and the export lacks:
 
-Searched without success on 2026-07-26:
+| | |
+| --- | --- |
+| **Fixed here** (`scripts/repair-kjf.mjs`) | **16** — Revelation 5 entire (14 verses, recovered from the PDF), plus John 18:24 and 1 Corinthians 7:6, which were merged into the preceding verse with their number left inline as literal text |
+| Numbering runs one ahead after a dropped number | 19 — the text is present under the wrong number. Not fixed: it needs the PDF's wording, and that text layer inserts spaces inside words, so a wholesale substitution would trade a numbering defect for a text-quality one |
+| Not defects at all | 3 — 1 Samuel 20, 1 Kings 22 and Revelation 12, where the KJF legitimately prints one fewer verse and the PDF agrees with the export |
+| Unresolved | 3 — Numbers 13:9, Psalm 57:10, Jonah 2:3, in chapters too dense with numerals for a page to be split by verse number mechanically |
 
-- `ebible.org` catalogue — five French editions, no KJF
-- `api.getbible.net` catalogue — French has Darby, Louis Segond, Martin; no KJF
-- CrossWire SWORD module registry — `ModInfo.jsp?modName=KJF` returns
-  *"No module found: KJF"*
-- GitHub repository search for "king james francaise bible" — 0 results
-- `kingjamesfrancaise.net` and `kingjamesfrancaise.fr` — do not resolve
-
-If you still have either upstream file, drop it in and the gaps close.
-
-### Known gaps in the KJF (41 verses the KJV carries)
-
-Verified against the committed source, so these are upstream omissions rather than
-pipeline losses. They render the missing-verse placeholder.
-
-```
-leviticus       13:1
-numbers         13:9, 30:5
-1-samuel        20:43
-1-kings         22:54
-1-chronicles    23:26
-psalms          21:12, 44:23, 45:1, 57:10, 60:8, 60:9, 63:7, 69:7,
-                84:11, 92:8, 113:9, 140:13, 142:6
-isaiah          9:17
-ezekiel         20:49
-jonah           2:3
-john            18:24
-1-corinthians   7:6
-2-thessalonians 2:16
-3-john          1:15
-revelation      5:1-14 (the whole chapter), 12:18
-```
-
-These are genuine holes, not a numbering offset: Psalm 44 runs to verse 26 in the KJF
-but has no verse 23, and Revelation 4 and 6 are complete while 5 is absent entirely.
+`scripts/repair-kjf.mjs` is idempotent and runs against `data-src/kjf.md`; re-run
+`npm run data` after it.
 
 ## Frontend conventions
 
