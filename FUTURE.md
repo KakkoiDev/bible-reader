@@ -43,25 +43,69 @@ Works identically on every device.
 Relevant existing code: `src/lib/tts.ts` (would gain a "pre-generated" mode),
 `src/lib/highlight.ts` (`setWordHighlight` reused as-is).
 
+**This is also the only route to background audio.** Web Speech cannot be kept alive
+in a backgrounded tab on any platform — iOS suspends it outright — so what ships
+today is a screen wake lock during playback plus an offer to resume from the verse
+it reached (`App.tsx`). Pre-generated files played through an `<audio>` element are
+what the OS treats as real media, which is also the point at which `MediaMetadata`
+and lock-screen controls stop being a hack: without a playing media element they
+show nothing, and a silent-carrier workaround would be needed to fake it.
+
 ## 2. Search — *shipped*
 
 Full-text search plus reference lookup in any edition's language. The index is
 built lazily, per edition, over only the editions a reader has enabled
 (`src/lib/search.ts`) — indexing all eleven at once would be ~340k verse records.
 
-Still open: a **prebuilt** index shipped with the data, which would remove the
-first-search delay on large enabled sets.
+**Multi-word matching shipped too.** A verse matches when it contains every term in
+any order; a quoted run is an exact phrase. Terms match from the start of a word, so
+`believ` still finds `believeth` but `am` no longer matches f-i-rm-am-ent. CJK and
+Hebrew/Arabic opt out of that anchoring, the first for having no word boundaries, the
+second because they attach particles to the front of a word.
 
-## 3. Cross-references & study notes
+Still open:
 
-Tap a verse to see cross-references / a commentary layer. Would need a
-cross-reference dataset (e.g. Treasury of Scripture Knowledge, public domain).
+- A **prebuilt** index shipped with the data, which would remove the first-search
+  delay on large enabled sets.
+- **Arabic and Hebrew full-text search is weak** against those vocalised editions,
+  because readers type unvocalised. `collapse` strips the diacritics for book-name
+  lookup, but `foldText` cannot: it has to be length-preserving so `Hit.ranges` can
+  index the unfolded text for the snippet. Fixing it needs a folded→original offset
+  map, the same shape of problem as the kana→kanji map in §1. Deliberately deferred.
 
-## 4. Export / sync notes & highlights
+## 3. Cross-references & study notes — *partly shipped*
 
-Currently annotations live in `localStorage` (per device/browser). Add export to
-JSON/Markdown, and optionally sync across devices (would need a backend or a
-user-provided store like a gist / file).
+**Shipped: a word-level concordance on the KJV.** Opening a verse lists its words
+with the Greek or Hebrew behind each, from the tags eBible's KJV carries and the
+openscriptures dictionaries (see README). KJV-only, because the tags are keyed to
+the KJV's own word choices.
+
+Still open, and genuinely separate from the above:
+
+- **Verse-level cross-references** — "see also" links between passages. Needs an
+  external dataset (e.g. Treasury of Scripture Knowledge, public domain); nothing in
+  the concordance data implies them.
+- **Concordance search**: the tags make "every verse using G26" answerable, which is
+  the obvious next step now that the data is loaded. It needs a reverse index built
+  per book, or a prebuilt one shipped alongside the tags.
+- Tagging is **KJV-only**. Extending it would mean a tagged source per edition, which
+  mostly do not exist.
+
+## 4. Export / sync notes & highlights — *partly shipped*
+
+JSON export/import shipped earlier; a **TSV export for Anki** shipped with the
+concordance (Settings → Notes & data → Anki). One card per note, tags carried over
+in Anki's own tag column.
+
+**There is deliberately no "sync to Anki" button.** No cross-platform way exists for
+a web page to add a card directly: AnkiDroid's integration is an Android app-to-app
+ContentProvider, and AnkiConnect is desktop-only over `http://localhost`, which an
+https page cannot reach. Takoboto, which does have the Android integration, ships a
+CSV export for exactly this reason. The file is the portable route, so the button
+says what it does.
+
+Still open: sync across devices, which needs a backend or a user-provided store
+(a gist, a file in their own cloud).
 
 ## 5. More editions — *shipped (eleven)*
 
@@ -88,8 +132,13 @@ CC BY 3.0 BR, and TR-based like the KJV) or eBible's `porbrbsl` (public domain).
 
 ## 6. Reading plans / daily verse
 
-Scheduled reading plans, a "verse of the day", streaks — leaning on the existing
-resume + deep-link machinery.
+Scheduled reading plans, a "verse of the day" — leaning on the existing resume +
+deep-link machinery.
+
+**Not streaks, and not a percentage-read figure.** Both were considered and dropped:
+coverage numbers and streaks invite a "you are behind" reading, and this reader is
+not trying to pressure anyone. `lastRead` already does the useful, pressure-free
+version by putting you back where you were.
 
 ## 7. Native review of the UI translations
 
@@ -115,3 +164,25 @@ checkbox) or a superseded architecture (`CSS.highlights.get('hl-yellow')`, from
 before persistent highlights became DOM spans). Their still-valid coverage —
 export/import round trip, continuous playback, verse-sheet behaviour — is worth
 folding into `verify10.mjs` and deleting the rest.
+
+## 10. Print / PDF
+
+Parked after looking into it. Flow mode would be easy — it is already one linear
+column, so `break-inside: avoid` and orphan/widow control would mostly do it. The
+parallel view is the problem: `.cols.many` is `overflow-x: auto`, which print clips
+rather than paginating, and the alignment depends on subgrid, whose behaviour across
+a page break is essentially undefined in print engines.
+
+A library exists (**paged.js**, which polyfills CSS paged media) but it reflows the
+DOM into page boxes and fights CSS grid, so it would likely break the alignment that
+makes a parallel printout worth having.
+
+The route that would work needs no library: render a print-only `<table>` from the
+same chapter data, one `<tr>` per verse and one `<td>` per edition, with `<thead>`
+repeating the edition names on each page. Tables are the one layout primitive every
+print engine fragments reliably, and verse-per-row is the alignment you want anyway.
+Highlights would need `print-color-adjust: exact`, and more than three editions wants
+landscape.
+
+Note `playwright` is already a devDependency, so build-time PDFs via `page.pdf()` are
+close to free if the need is printable sheets rather than an in-app button.

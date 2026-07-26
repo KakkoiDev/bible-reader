@@ -108,6 +108,7 @@ export interface SettingsProps {
   onStopAtChapterEnd: (v: boolean) => void
   onColumns: (c: Lang[]) => void
   onExport: () => void
+  onExportAnki: () => void
   onImport: (file: File) => void
   onClose: () => void
 }
@@ -142,6 +143,7 @@ export function Settings({
   onStopAtChapterEnd,
   onColumns,
   onExport,
+  onExportAnki,
   onImport,
   onClose,
 }: SettingsProps) {
@@ -166,6 +168,9 @@ export function Settings({
       // the name keeps its own.
       <span className="collabel">
         <bdi lang={m.htmlLang} dir={m.dir}>{m.label}</bdi> <small>{m.edition}</small>
+        {/* The KJV is the only edition carrying a concordance, so say so where a
+            reader picks editions rather than leaving them to discover it. */}
+        {id === 'en' && <small className="cbadge">{t('with_concordance')}</small>}
         {note && <small className="cnote">{note}</small>}
         {ttsOn && noVoice.has(id) && <small className="cnote">{t('no_voice')}</small>}
       </span>
@@ -215,6 +220,10 @@ export function Settings({
           <span>{t('notes_data')}</span>
           <div className="databtns">
             <button className="mini" onClick={onExport}>{t('export')}</button>
+            {/* Anki imports tab-separated text natively on every platform, which is
+                why this is a file and not a "sync": there is no cross-platform way
+                for a web page to put a card into Anki directly. */}
+            <button className="mini" onClick={onExportAnki}>{t('anki')}</button>
             <label className="mini asbtn">
               {t('import')}
               <input

@@ -49,10 +49,18 @@ Every attribution is reproduced verbatim in the app under **Texts & licences**.
 - **Search** matches text in the enabled editions, and resolves references in *any*
   edition's language — `John 3:16`, `Mateo 15:3`, `マタイ15:3`, `馬太福音15:3`,
   `إنجيل يوحنا 3:16`, `תהלים 23` all work.
+- **Concordance** on the KJV: open any verse and the panel lists its words with the
+  Greek or Hebrew behind each one, with transliteration and Strong's definition.
+  KJV-only by design, because the tags are keyed to the KJV's own word choices, and
+  the settings list badges it so you can see which edition has it. Nothing loads
+  until you open the panel.
 - **Notes & highlights** with tags, sorting (book / created / updated / hand-arranged),
-  a this-book filter, timestamps, and JSON export/import.
+  a this-book filter, timestamps, JSON export/import, and a TSV export Anki imports
+  natively.
 - **Audio** reads a chapter aloud with word-level highlighting (EN/FR), optionally
-  stopping at the chapter end rather than rolling into the next.
+  stopping at the chapter end rather than rolling into the next. It holds a screen
+  wake lock while playing so an idle phone doesn't cut it off, and if you leave the
+  app it offers to pick up from the verse it reached.
 - **Links:** a verse link opens that verse; if it names an edition the recipient has
   hidden, it opens in their first visible one and says so. An **invite link** also
   carries the sender's edition set, and always asks before changing anything.
@@ -79,6 +87,38 @@ the machine-readable version; this table is the audit trail. Retrieved 2026-07-2
 Catalogues used to choose the above:
 `https://ebible.org/Scriptures/translations.csv` and
 `https://api.getbible.net/v2/translations.json`.
+
+### Concordance data
+
+Two more sources, fetched by `scripts/fetch-strongs.mjs` into `data-src/strongs.json`
+and `data-src/lexicon.json`. Retrieved 2026-07-26.
+
+| What | Source | Exact reference | Licence as stated by the source |
+| --- | --- | --- | --- |
+| KJV Strong's tags | eBible.org | `https://ebible.org/Scriptures/eng-kjv2006_usfm.zip` | public domain |
+| Greek dictionary | openscriptures/strongs | `greek/strongs-greek-dictionary.js` | public domain |
+| Hebrew dictionary | openscriptures/strongs | `hebrew/strongs-hebrew-dictionary.js` | public domain |
+
+348,884 tagged words across 31,099 verses (227,196 Hebrew in the OT, 122,112 Greek in
+the NT) and 14,197 dictionary entries.
+
+Three things worth knowing:
+
+- **The tagged KJV does not replace ours.** `data-src/kjv.md` stays the displayed text,
+  because its supplied-word marking is richer: 29,394 braces against eBible's 20,887
+  `\add` spans. Only the tags are borrowed, and the panel lists words rather than
+  annotating the rendered text, so the two texts never have to be aligned
+  character-for-character.
+- **`scripts/usfm.mjs` still strips `\w` tags** when building the reader's editions.
+  That is deliberate: verse text should not carry markup no edition but the KJV has.
+  The concordance script parses the same files separately.
+- **The two dictionaries disagree on one field name.** Greek calls the transliteration
+  `translit`, Hebrew calls it `xlit`. Reading only one silently drops 8,674 of them.
+
+Neither file is precached. Both are fetched on demand, per book, only once a reader
+opens the panel, and then kept by the same runtime cache that holds the opt-in
+editions. Precaching 8.3 MB for a panel most readers never open would nearly double
+the install.
 
 ### The KJF: provenance, and defects in the export
 
@@ -136,6 +176,7 @@ the publisher as-is. In summary, of the 41 verses the KJV carries and the export
 ```bash
 npm install
 npm run fetch     # download + normalise the 8 remote editions into data-src/
+npm run strongs   # download the KJV concordance + dictionaries into data-src/
 npm run data      # rebuild public/data/** from data-src/*.md
 npm run dev       # dev server
 npm run build     # data + typecheck + production build to dist/
@@ -143,6 +184,8 @@ npm run preview   # serve the production build
 ```
 
 `npm run fetch` accepts ids to refresh just some editions: `npm run fetch -- ar el`.
+`npm run strongs` is separate because it has its own two upstreams and only needs
+re-running if the concordance sources change.
 
 ## Data
 
@@ -157,6 +200,8 @@ there plus `npm run fetch && npm run data`.
 - `public/data/index.json` — per book: slug, per-chapter verse counts, and the book's
   name in every edition's language (~21 KB)
 - `public/data/<id>/<slug>.json` — one edition of one book
+- `public/data/strongs/<slug>.json` — the KJV's Strong's tags for one book
+- `public/data/strongs/lexicon.json` — the Greek and Hebrew dictionaries (1.8 MB)
 
 One file per edition per book is what lets the app download only the editions a
 reader has enabled. `public/data` is generated and git-ignored — run `npm run data`

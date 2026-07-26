@@ -620,6 +620,55 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
   border-radius: 5px;
   padding: 0 4px;
 }
+/* Same chip as .cnote, but accented: a coverage note is a caveat, this is a
+   capability only the KJV has. */
+.collabel .cbadge {
+  display: inline-block;
+  margin-inline-start: 6px;
+  font-size: 10px;
+  color: var(--accent);
+  background: var(--accent-bg);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: 5px;
+  padding: 0 4px;
+}
+
+/* ---------- concordance (verse sheet, KJV only) ---------- */
+.conctoggle { margin-bottom: 12px; }
+.conc {
+  margin-bottom: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.conchead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-family: system-ui, sans-serif;
+  font-size: 13px;
+}
+.conclist { list-style: none; margin: 0; padding: 0; font-family: system-ui, sans-serif; }
+.conclist li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 0;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.conclist li + li { border-top: 1px solid var(--line); }
+.cword { font-weight: 600; }
+/* The lemma is the point of the row, so it gets the reading size and the script's
+   own font — a 13px Hebrew lemma with vowel points is unreadable. */
+.clemma { font-family: 'Times New Roman', 'Noto Serif Hebrew', serif; font-size: 17px; }
+.ctranslit { color: var(--muted); }
+.ccode { color: var(--muted); font-size: 10px; border: 1px solid var(--line); border-radius: 5px; padding: 0 4px; }
+/* Definitions run long, so give them the whole next line rather than squeezing
+   them into the gap after the code. */
+.cdef { flex-basis: 100%; color: var(--muted); font-size: 12px; line-height: 1.55; }
 
 /* ---------- texts & licences ---------- */
 .sheet.licences { width: min(620px, 94vw); }

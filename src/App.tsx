@@ -441,6 +441,63 @@ export default function App() {
   )
   useEffect(() => () => stopSpeaking(), []) // stop on unmount
 
+  // Where playback was when the app went to the background, so it can be offered back.
+  const [resumeAt, setResumeAt] = useState<{ lang: Lang; ch: number; v: number } | null>(null)
+
+  /**
+   * Backgrounding silences speech (tts.ts hushes on `visibilitychange`, because a
+   * queued utterance otherwise wakes up talking minutes later). Our own state didn't
+   * know that, so the UI went on claiming it was playing with nothing audible.
+   *
+   * No platform keeps Web Speech running in the background reliably — iOS suspends it
+   * outright — so this does not try to continue. It remembers the verse and offers to
+   * pick up from there. An offer rather than an automatic restart on purpose: sound
+   * starting by itself on return would be a surprise, and browsers gate audio behind
+   * a gesture anyway.
+   */
+  useEffect(() => {
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        if (playingLang && speaking) setResumeAt({ lang: speaking.lang, ch: speaking.ch, v: speaking.v })
+        if (playingLang) stopAudio()
+        return
+      }
+      if (!resumeAt) return
+      const at = resumeAt
+      setResumeAt(null)
+      say(t('audio_interrupted'), { label: t('resume_audio'), run: () => playFrom(at.lang, at.ch, at.v) })
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => document.removeEventListener('visibilitychange', onVisibility)
+  }, [playingLang, speaking, resumeAt, stopAudio, say, t, playFrom])
+
+  /**
+   * Hold the screen awake while audio plays. Speech dies when the device idles, so
+   * without this a chapter stops partway through whenever the reader isn't touching
+   * the phone — which is the whole point of listening. Released the moment playback
+   * ends. Unsupported browsers simply skip it.
+   */
+  useEffect(() => {
+    if (!playingLang) return
+    let sentinel: { release?: () => Promise<void> } | null = null
+    let done = false
+    const lock = (navigator as Navigator & { wakeLock?: { request: (t: string) => Promise<typeof sentinel> } }).wakeLock
+    lock
+      ?.request('screen')
+      .then((s) => {
+        // Playback may already have stopped by the time the request resolves.
+        if (done) void s?.release?.()
+        else sentinel = s
+      })
+      .catch(() => {
+        /* denied, or the document was hidden — nothing to recover */
+      })
+    return () => {
+      done = true
+      void sentinel?.release?.().catch(() => {})
+    }
+  }, [playingLang])
+
   // user navigation stops audio; auto-advance (below) uses navigate() directly so it doesn't
   const go = useCallback(
     (next: { slug?: string; chapter?: number; lang?: Lang; verse?: number }) => {
@@ -847,6 +904,56 @@ export default function App() {
     [index, prefs.ui],
   )
 
+  /**
+   * Notes as an Anki-importable TSV.
+   *
+   * A file and not a "sync", because no cross-platform way exists for a web page to
+   * put a card into Anki: AnkiDroid's integration is an Android app-to-app
+   * ContentProvider, and AnkiConnect is desktop-only over http://localhost, which an
+   * https page cannot reach. Anki imports tab-separated text natively on every
+   * platform, so that is the portable route. Takoboto, which does have the Android
+   * integration, ships a CSV export for exactly the same reason.
+   *
+   * Only entries with a note body become cards: a highlight has no back side.
+   */
+  const exportAnki = useCallback(() => {
+    // Tab ends a field and newline ends a record, so neither can survive inside one.
+    // <br> renders as a line break because of the #html:true header below.
+    const cell = (s: string) => s.replace(/\t/g, ' ').replace(/\r?\n/g, '<br>').trim()
+    const order = new Map(index.map((b, i) => [b.slug, i]))
+    const rows = Object.entries(store)
+      .filter(([, a]) => a.note?.trim())
+      .sort(([x], [y]) => {
+        const a = parseRef(x)
+        const b = parseRef(y)
+        return (order.get(a.slug) ?? 0) - (order.get(b.slug) ?? 0) || a.ch - b.ch || a.v - b.v
+      })
+      .map(([ref, a]) =>
+        [
+          cell(labelFor(ref)),
+          cell(a.note!),
+          // Anki splits tags on spaces, so a multi-word tag has to join up or it
+          // would arrive as several unrelated tags.
+          (a.tags || []).map((x) => x.trim().replace(/\s+/g, '_')).join(' '),
+        ].join('\t'),
+      )
+    if (!rows.length) {
+      say(t('nothing_to_export'))
+      return
+    }
+    const head = ['#separator:tab', '#html:true', '#columns:Reference\tNote\tTags', '#tags column:3']
+    const blob = new Blob([`${[...head, ...rows].join('\n')}\n`], {
+      type: 'text/tab-separated-values',
+    })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `bible-anki-${new Date().toISOString().slice(0, 10)}.tsv`
+    a.click()
+    URL.revokeObjectURL(url)
+    say(t('exported_anki_n', { n: rows.length }))
+  }, [store, index, labelFor, t, say])
+
   const savedCount = useMemo(
     () => Object.values(store).filter((a) => a.note || a.highlights?.length || a.tags?.length).length,
     [store],
@@ -1167,6 +1274,7 @@ export default function App() {
         onFlow={(v) => setPref({ flow: v })}
         onStopAtChapterEnd={(v) => setPref({ stopAtChapterEnd: v })}
         onExport={exportAnnotations}
+        onExportAnki={exportAnki}
         onImport={importAnnotations}
         onClose={() => setSettingsOpen(false)}
       />

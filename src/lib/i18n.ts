@@ -125,7 +125,19 @@ const en = {
   group_reading: 'Reading',
   group_languages: 'Languages & versions',
   group_audio: 'Audio',
-  group_data: 'Notes & data'
+  group_data: 'Notes & data',
+
+  concordance: 'Concordance',
+  concordance_open: 'Show the original-language words',
+  concordance_none: 'No tagged words in this verse.',
+  /** Badge on the KJV row in settings: it is the only edition with a concordance. */
+  with_concordance: 'concordance',
+
+  anki: 'Anki',
+  exported_anki_n: '{n} cards for Anki',
+
+  audio_interrupted: 'Audio stopped when the app went to the background.',
+  resume_audio: 'Resume'
 }
 
 export type StringKey = keyof typeof en
@@ -164,6 +176,10 @@ const ja: Dict = {
   invite_build_title: '共有する訳', invite_build_body: '共有する訳と並び順を選んでください。箇所は最初の訳で開きます。', invite_applied: '{versions} を表示中', undo: '元に戻す',
   add_tag: 'タグを追加（カンマ区切り）…', manage_tags: 'タグを編集', delete_tag_title: 'このタグを削除しますか？', delete_tag_body: '「{tag}」を {n} 件のノートから削除します。ノート自体は残ります。',
   justify: '両端揃え',
+  concordance: '原語辞書', concordance_open: '原語の語句を表示', concordance_none: 'この節に見出し語はありません。',
+  with_concordance: '原語辞書',
+  anki: 'Anki', exported_anki_n: 'Anki用に{n}件を書き出しました',
+  audio_interrupted: 'アプリが背面に移ったため音声を停止しました。', resume_audio: '再開',
 }
 
 const fr: Dict = {
@@ -203,6 +219,10 @@ const fr: Dict = {
   invite_build_title: 'Versions à partager', invite_build_body: "Choisissez les versions à partager et leur ordre. Le passage s'ouvre dans la première.", invite_applied: 'Affichage de {versions}', undo: 'Annuler',
   add_tag: 'Ajouter des étiquettes, séparées par des virgules…', manage_tags: 'Modifier les étiquettes', delete_tag_title: 'Supprimer cette étiquette ?', delete_tag_body: 'Retire « {tag} » de {n} note(s). Les notes elles-mêmes sont conservées.',
   justify: 'Texte justifié',
+  concordance: 'Concordance', concordance_open: "Afficher les mots d'origine", concordance_none: 'Aucun mot répertorié dans ce verset.',
+  with_concordance: 'concordance',
+  anki: 'Anki', exported_anki_n: '{n} cartes pour Anki',
+  audio_interrupted: "L'audio s'est arrêté au passage en arrière-plan.", resume_audio: 'Reprendre',
 }
 
 const zht: Dict = {

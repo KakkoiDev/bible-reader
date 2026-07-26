@@ -4,6 +4,7 @@ import { bookName } from '../lib/types'
 import { BY_ID, VERSIONS, type Lang } from '../lib/versions'
 import { VerseText, type HL } from '../lib/format'
 import { search, parseReference, bookLookup, minQueryLen, type Hit } from '../lib/search'
+import { verseWords, concordanceSticky, setConcordanceSticky, type StrongWord } from '../lib/strongs'
 import type { T } from '../lib/i18n'
 import { coverageNote } from './Panels'
 
@@ -220,6 +221,84 @@ export function Navigator({
   )
 }
 
+/* ----------------------------- Concordance ---------------------------- */
+/**
+ * The verse's KJV words with the Greek or Hebrew behind each one.
+ *
+ * Collapsed until asked for, because the tags and dictionary are several MB and
+ * most verse taps are not lookups. Once opened it stays open for the rest of the
+ * session (`concordanceSticky`), so a reader studying a chapter expands it once
+ * rather than on every verse.
+ */
+function Concordance({ slug, ch, v, t }: { slug: string; ch: number; v: number; t: T }) {
+  const [open, setOpen] = useState(concordanceSticky)
+  const [words, setWords] = useState<StrongWord[] | null>(null)
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    let live = true
+    setLoading(true)
+    verseWords(slug, ch, v).then((w) => {
+      if (!live) return
+      setWords(w)
+      setLoading(false)
+    })
+    return () => {
+      live = false
+    }
+  }, [open, slug, ch, v])
+
+  if (!open)
+    return (
+      <button
+        className="mini conctoggle"
+        onClick={() => {
+          setConcordanceSticky(true)
+          setOpen(true)
+        }}
+      >
+        {t('concordance')}
+      </button>
+    )
+
+  return (
+    <div className="conc">
+      <div className="conchead">
+        <b>{t('concordance')}</b>
+        <button
+          className="mini"
+          onClick={() => {
+            setConcordanceSticky(false)
+            setOpen(false)
+          }}
+        >
+          {t('hide')}
+        </button>
+      </div>
+      {loading && !words && <p className="empty">{t('searching')}</p>}
+      {words && words.length === 0 && <p className="empty">{t('concordance_none')}</p>}
+      {words && words.length > 0 && (
+        <ul className="conclist">
+          {words.map((w, i) => (
+            <li key={i}>
+              <span className="cword">{w.word}</span>
+              {/* The lemma is Greek or Hebrew, so it carries its own direction:
+                  a Hebrew lemma inside an English row must not reorder the line. */}
+              <bdi className="clemma" dir="auto">
+                {w.lemma}
+              </bdi>
+              {w.translit && <i className="ctranslit">{w.translit}</i>}
+              <small className="ccode">{w.code}</small>
+              {w.def && <span className="cdef">{w.def}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 /* ----------------------------- Verse sheet ---------------------------- */
 export interface VerseSheetData {
   label: string
@@ -297,6 +376,10 @@ export function VerseSheet({
             )
           })}
         </div>
+        {/* KJV only: the tags are keyed to the KJV's own word choices, so the panel
+            is meaningless against an edition that chose different words. Hidden
+            outright when the reader has hidden the KJV. */}
+        {columns.includes('en') && <Concordance slug={data.slug} ch={data.ch} v={data.v} t={t} />}
         <div className="noteact wrap">
           <button className="mini" onClick={onPlay}>▶ {t('play')}</button>
           <button className="mini" onClick={onCopyText}>{t('copy_text')}</button>

@@ -61,6 +61,7 @@ const cleanKjv = (t) =>
     .trim()
 
 const slugOf = (en) => en.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+const mb = (n) => `${(n / 1e6).toFixed(1)} MB`
 
 // ---- load every edition ----
 const editions = []
@@ -144,8 +145,36 @@ writeFileSync(resolve(OUT, 'index.json'), JSON.stringify(index))
 // Paragraph boundaries for flow/reading mode (derived from WEB USFM, by reference).
 if (existsSync(resolve(SRC, 'paragraphs.json'))) copyFileSync(resolve(SRC, 'paragraphs.json'), resolve(OUT, 'paragraphs.json'))
 
+// ---- concordance: KJV Strong's tags per book, plus the shared dictionary ----
+// Split per book for the same reason the editions are: the reader opens one book at
+// a time, and the whole tag set is larger than any single edition. Neither these nor
+// the dictionary are precached — they load only for a reader who opens the panel.
+const strongsSrc = resolve(SRC, 'strongs.json')
+const lexiconSrc = resolve(SRC, 'lexicon.json')
+if (existsSync(strongsSrc) && existsSync(lexiconSrc)) {
+  const dir = resolve(OUT, 'strongs')
+  mkdirSync(dir, { recursive: true })
+  const tags = JSON.parse(readFileSync(strongsSrc, 'utf8'))
+  let books = 0
+  let bytes = 0
+  for (const en of BOOK_ORDER) {
+    const book = tags[en]
+    if (!book) continue
+    const path = resolve(dir, `${slugOf(en)}.json`)
+    writeFileSync(path, JSON.stringify(book))
+    books++
+    bytes += statSync(path).size
+  }
+  copyFileSync(lexiconSrc, resolve(dir, 'lexicon.json'))
+  const lexBytes = statSync(resolve(dir, 'lexicon.json')).size
+  console.log(
+    `Concordance: ${books} books ${mb(bytes)} + dictionary ${mb(lexBytes)} — fetched on demand\n`,
+  )
+} else {
+  console.warn('  ! concordance skipped — run `node scripts/fetch-strongs.mjs`\n')
+}
+
 // ---- summary ----
-const mb = (n) => `${(n / 1e6).toFixed(1)} MB`
 const idxKb = (statSync(resolve(OUT, 'index.json')).size / 1024).toFixed(0)
 console.log(`\nBooks: ${index.length}   Editions: ${editions.length}   index.json: ${idxKb} KB\n`)
 console.log('  id     books  verses     size   default')
