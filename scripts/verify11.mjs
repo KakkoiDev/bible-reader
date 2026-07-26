@@ -165,6 +165,45 @@ console.log('\nStale cache cannot blank the panel')
   await ctx.close()
 }
 
+// ---------- 1d. loading indicator ----------
+console.log('\nLoading indicator')
+{
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } })
+  await ctx.addInitScript((p) => localStorage.setItem('prefs', JSON.stringify(p)), BASE)
+  const page = await ctx.newPage()
+  // Hold the card back so the first-load state is observable at all.
+  await page.route('**/data/concordance/john.json', async (route) => {
+    await new Promise((r) => setTimeout(r, 2500))
+    await route.continue()
+  })
+  await page.goto(URL + '#/john/3/en', { waitUntil: 'domcontentloaded' })
+  await page.waitForTimeout(500)
+  await page.locator('#v-en-16').click()
+  await page.locator('.conc').waitFor({ state: 'visible', timeout: 5000 })
+  const spinner = await page.locator('.conc .spin').count()
+  const text = await page.locator('.conc .loadrow').innerText().catch(() => '')
+  check('spinner shows while first loading', spinner === 1, `${spinner}`)
+  check('and says Loading, not Searching', /Loading/.test(text), text.trim())
+  await page.locator('.conclist li').first().waitFor({ state: 'visible', timeout: 8000 })
+  check('spinner goes away once loaded', await page.locator('.conc .spin').count() === 0)
+  await ctx.close()
+}
+
+// ---------- 1e. the pronounce glyph matches the verse play button ----------
+console.log('\nPronounce glyph')
+{
+  const { ctx, page } = await open(BASE, { hash: '#/1-corinthians/13/en' })
+  await page.waitForTimeout(1800)
+  await page.locator('#v-en-13').click()
+  await page.locator('.conclist li').first().waitFor({ state: 'visible', timeout: 3000 })
+  const glyph = (await page.locator('.cspeak').first().innerText()).trim()
+  const versePlay = (await page.locator('.vplay').first().innerText()).trim()
+  check('uses the verse play arrow', glyph === '▶', JSON.stringify(glyph))
+  check('same glyph as the verse button', glyph === versePlay, `${glyph} vs ${versePlay}`)
+  check('no speaker emoji anywhere', !(await page.locator('.conc').innerText()).includes('🔊'))
+  await ctx.close()
+}
+
 // ---------- 2. one edition on the card, and KJV-only ----------
 console.log('\nCard shows one edition')
 {

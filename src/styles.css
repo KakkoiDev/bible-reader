@@ -633,6 +633,23 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
   padding: 0 4px;
 }
 
+/* ---------- loading indicator ---------- */
+.loadrow { display: flex; align-items: center; gap: 8px; }
+.spin {
+  flex: none;
+  width: 13px;
+  height: 13px;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+/* A spinner is decoration; the adjacent text already says what is happening. */
+@media (prefers-reduced-motion: reduce) {
+  .spin { animation-duration: 2.4s; }
+}
+
 /* ---------- concordance (verse sheet, KJV only) ---------- */
 .conc {
   margin-bottom: 14px;
@@ -653,7 +670,8 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
 .crowline { display: flex; align-items: stretch; gap: 2px; }
 .crowline .crowbtn { flex: 1; min-width: 0; }
 /* Its own 44px square, because it sits beside a target that is already 44px and a
-   thumb aiming at one must not hit the other. */
+   thumb aiming at one must not hit the other. The glyph matches the verse play
+   button (.vplay) so one arrow means "speak this" everywhere in the reader. */
 .cspeak {
   flex: none;
   width: 44px;
@@ -662,12 +680,13 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
   border: 0;
   border-radius: 8px;
   color: var(--muted);
-  font-size: 15px;
+  font-size: 10px;
   line-height: 1;
   cursor: pointer;
+  unicode-bidi: isolate;
 }
-.cspeak:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
-.cspeak:active { background: var(--accent-bg); }
+.cspeak:hover { color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.cspeak:active { color: var(--accent); background: var(--accent-bg); }
 /* The whole row is the control, not the word: a word in body text is about 18px
    tall, well under a thumb, so the row carries the 44px target instead. */
 .crowbtn {

@@ -142,7 +142,8 @@ const en = {
   /** Speaks one word: the Greek or Hebrew behind a KJV word. */
   pronounce: 'Pronounce',
   concordance_failed: 'The concordance could not be loaded.',
-  retry: 'Retry'
+  retry: 'Retry',
+  loading: 'Loading…'
 }
 
 export type StringKey = keyof typeof en
@@ -186,7 +187,7 @@ const ja: Dict = {
   anki: 'Anki', exported_anki_n: 'Anki用に{n}件を書き出しました',
   audio_interrupted: 'アプリが背面に移ったため音声を停止しました。', resume_audio: '再開',
   pronounce: '発音を聞く',
-  concordance_failed: '原語辞書を読み込めませんでした。', retry: '再試行',
+  concordance_failed: '原語辞書を読み込めませんでした。', retry: '再試行', loading: '読み込み中…',
 }
 
 const fr: Dict = {
@@ -231,7 +232,7 @@ const fr: Dict = {
   anki: 'Anki', exported_anki_n: '{n} cartes pour Anki',
   audio_interrupted: "L'audio s'est arrêté au passage en arrière-plan.", resume_audio: 'Reprendre',
   pronounce: 'Prononcer',
-  concordance_failed: 'Impossible de charger la concordance.', retry: 'Réessayer',
+  concordance_failed: 'Impossible de charger la concordance.', retry: 'Réessayer', loading: 'Chargement…',
 }
 
 const zht: Dict = {

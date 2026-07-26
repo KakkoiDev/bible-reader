@@ -312,7 +312,12 @@ function Concordance({
         <b>{t('concordance')}</b>
         <small>{BY_ID.en.edition}</small>
       </div>
-      {words === 'loading' && <p className="empty">{t('searching')}</p>}
+      {words === 'loading' && (
+        <p className="empty loadrow">
+          <span className="spin" aria-hidden="true" />
+          {t('loading')}
+        </p>
+      )}
       {words === 'failed' && (
         <p className="empty">
           {t('concordance_failed')}{' '}
@@ -355,13 +360,18 @@ function Concordance({
                       aria-label={`${t('pronounce')}: ${w.lemma}`}
                       onClick={() => onSpeakWord(w.lemma, speakLang)}
                     >
-                      🔊
+                      ▶
                     </button>
                   )}
                 </div>
                 {isOpen && (
                   <div className="cdef">
-                    {!entry && <span className="empty">{t('searching')}</span>}
+                    {!entry && (
+                      <span className="empty loadrow">
+                        <span className="spin" aria-hidden="true" />
+                        {t('loading')}
+                      </span>
+                    )}
                     {entry && (
                       <>
                         {entry.def && <span>{entry.def}</span>}

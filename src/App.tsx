@@ -466,10 +466,12 @@ export default function App() {
   const speakWord = useCallback(
     (text: string, lang: Lang) => {
       if (!canTTS) return
-      stopAudio()
+      // Only tear down playback if there is any: stopAudio schedules a deferred
+      // cancel, and cancelling around a fresh utterance is what loses it.
+      if (playingLang) stopAudio()
       speakOne(text, lang, prefs.rate, prefs.voice)
     },
-    [canTTS, stopAudio, prefs.rate, prefs.voice],
+    [canTTS, playingLang, stopAudio, prefs.rate, prefs.voice],
   )
 
   /** Whether a script can actually be spoken on this device, so the sheet does not

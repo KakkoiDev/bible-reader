@@ -97,6 +97,7 @@ export function speakVerses(
 ) {
   if (!ttsSupported() || items.length === 0) return
   const myGen = ++genToken
+  clearPendingHush()
   speechSynthesis.cancel()
   const voice = pickVoice(lang, gender)
   // Sequential: speak one verse, and on its end speak the next. Queuing everything
@@ -152,6 +153,22 @@ export function speakVerses(
 let genToken = 0
 
 /**
+ * The deferred cancel scheduled by `stopSpeaking`, so a new utterance can call it off.
+ *
+ * Without this, stopping and immediately speaking loses the new utterance: the
+ * deferred cancel lands a tick later and kills what was just queued. That is exactly
+ * what silenced the concordance's pronounce button, which stops any chapter playback
+ * before speaking its word — the trace showed cancel() 14ms after speak().
+ */
+let hushTimer: ReturnType<typeof setTimeout> | undefined
+function clearPendingHush() {
+  if (hushTimer !== undefined) {
+    clearTimeout(hushTimer)
+    hushTimer = undefined
+  }
+}
+
+/**
  * Speak one short string: a concordance lemma, or a glossed word.
  *
  * Separate from `speakVerses` because the needs are opposite. There is no verse to
@@ -165,13 +182,25 @@ export function speakOne(text: string, lang: Lang, rate: number, gender: Gender)
   const spoken = speechText(text, lang).trim()
   if (!spoken) return
   genToken++
-  speechSynthesis.cancel()
-  const u = new SpeechSynthesisUtterance(spoken)
-  u.lang = langTag(lang)
-  const voice = pickVoice(lang, gender)
-  if (voice) u.voice = voice
-  u.rate = Math.min(rate, 0.9)
-  speechSynthesis.speak(u)
+  clearPendingHush()
+
+  const build = () => {
+    const u = new SpeechSynthesisUtterance(spoken)
+    u.lang = langTag(lang)
+    const voice = pickVoice(lang, gender)
+    if (voice) u.voice = voice
+    u.rate = Math.min(rate, 0.9)
+    speechSynthesis.speak(u)
+  }
+
+  // cancel() followed by speak() in the same task is dropped by both Chrome and
+  // Safari, so only cancel when something is actually talking, and when we do, let
+  // the engine settle for a tick before queueing. Tapping a word with nothing playing
+  // — the normal case — now never calls cancel() at all.
+  if (speechSynthesis.speaking || speechSynthesis.pending) {
+    speechSynthesis.cancel()
+    setTimeout(build, 60)
+  } else build()
 }
 
 export function stopSpeaking() {
@@ -185,8 +214,12 @@ export function stopSpeaking() {
   }
   speechSynthesis.cancel()
   // Cancel again on the next tick: an utterance dispatched in the same turn can
-  // slip past the first call and start speaking afterwards.
-  setTimeout(() => {
+  // slip past the first call and start speaking afterwards. Held in `hushTimer` so
+  // that deliberately speaking again before it fires calls it off, instead of having
+  // the new utterance silenced by the old stop.
+  clearPendingHush()
+  hushTimer = setTimeout(() => {
+    hushTimer = undefined
     if (ttsSupported()) speechSynthesis.cancel()
   }, 0)
 }
