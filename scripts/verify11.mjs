@@ -34,56 +34,89 @@ async function open(prefs = BASE, { mobile = false, hash = '' } = {}) {
   return { ctx, page, requests }
 }
 
-// ---------- 1. concordance is not fetched until asked for ----------
-console.log('\nConcordance loads on demand')
+// ---------- 1. the card is warm before the first tap ----------
+console.log('\nConcordance opens instantly')
 {
   const { ctx, page, requests } = await open(BASE, { hash: '#/1-corinthians/13/en' })
-  const before = requests.filter((u) => u.includes('/data/strongs/')).length
-  check('nothing from data/strongs on page load', before === 0, `${before} request(s)`)
+  await page.waitForTimeout(2000) // let the idle prefetch run
+  const card = requests.filter((u) => /\/data\/strongs\/1-corinthians\.json/.test(u))
+  const defs = requests.filter((u) => u.includes('-def.json'))
+  check('the book card is prefetched on open', card.length === 1, `${card.length} request(s)`)
+  check('definitions are NOT prefetched', defs.length === 0, `${defs.length} request(s)`)
+  check('no 2 MB shared dictionary any more', !requests.some((u) => u.includes('lexicon.json')))
 
-  // Open the verse sheet for 1 Cor 13:13 by tapping the verse row.
+  // Opening the verse must not need another request, and must not show a spinner.
+  // The card must render from memory. The definitions warm-up fires straight after,
+  // so count only the card request here and assert the warm-up separately below.
+  const isCard = (u) => u.includes('/data/strongs/') && !u.includes('-def.json')
+  const cardsBefore = requests.filter(isCard).length
   await page.locator('#v-en-13').click()
-  await page.locator('.verse-sheet').waitFor({ state: 'visible' })
-  const toggle = page.locator('.conctoggle')
-  check('verse sheet offers the concordance', await toggle.count() === 1)
-  const stillNone = requests.filter((u) => u.includes('/data/strongs/')).length
-  check('still nothing fetched while collapsed', stillNone === 0, `${stillNone} request(s)`)
+  await page.locator('.conclist li').first().waitFor({ state: 'visible', timeout: 2000 })
+  const cardsAfter = requests.filter(isCard).length
+  check('renders with no further card fetch', cardsAfter === cardsBefore, `${cardsAfter - cardsBefore} extra`)
+  check('no toggle to press', await page.locator('.conctoggle').count() === 0)
 
-  await toggle.click()
-  await page.locator('.conclist li').first().waitFor({ state: 'visible' })
-  const fetched = requests.filter((u) => u.includes('/data/strongs/'))
-  check('fetched tags + dictionary on expand', fetched.length === 2, fetched.map((u) => u.split('/').pop()).join(', '))
-
-  // 1 Cor 13:13 — "charity" is G26, ἀγάπη.
   const rows = await page.locator('.conclist li').count()
   const text = await page.locator('.conc').innerText()
   check('lists the verse words', rows === 12, `${rows} rows`)
-  check('resolves charity to ἀγάπη / G26', text.includes('ἀγάπη') && text.includes('G26'), '')
-  check('shows the transliteration', text.includes('agápē'))
-  check('shows a definition', /affection or benevolence/.test(text))
+  check('shows lemma + translit + code', /ἀγάπη/.test(text) && /agápē/.test(text) && /G26/.test(text))
+  check('definitions are not shown up front', !/affection or benevolence/.test(text))
+
+  // Tapping a word fetches that book's definitions once and expands in place.
+  await page.waitForTimeout(800) // definitions warm once the panel is on screen
+  check('definitions warmed after the panel rendered', requests.filter((u) => u.includes('-def.json')).length === 1)
+  await page.locator('.crowbtn', { hasText: 'charity' }).first().click()
+  await page.locator('.cdef').first().waitFor({ state: 'visible' })
+  const dtext = await page.locator('.cdef').first().innerText()
+  check('definition is there on tap, no spinner', /affection or benevolence/.test(dtext), dtext.slice(0, 50))
+  check('plus the KJV renderings', /charity\(-ably\)|dear, love/.test(await page.locator('.conc').innerText()))
+  check('still only one definitions request', requests.filter((u) => u.includes('-def.json')).length === 1)
   await ctx.close()
 }
 
-// ---------- 2. sticky across verses, and KJV-only ----------
-console.log('\nConcordance is sticky, and KJV-only')
+// ---------- 2. one edition on the card, and KJV-only ----------
+console.log('\nCard shows one edition')
 {
   const { ctx, page } = await open(BASE, { hash: '#/john/3/en' })
   await page.locator('#v-en-16').click()
-  await page.locator('.conctoggle').click()
-  await page.locator('.conclist li').first().waitFor({ state: 'visible' })
-  await page.locator('.verse-sheet .icon').click() // close
-  await page.locator('#v-en-17').click()
   await page.locator('.verse-sheet').waitFor({ state: 'visible' })
-  check('stays open on the next verse', await page.locator('.conclist').count() === 1)
+  check('exactly one edition row', await page.locator('.compare .crow').count() === 1, `${await page.locator('.compare .crow').count()}`)
+  const row = await page.locator('.compare .crow').innerText()
+  check('and it is the one tapped', /KJV/.test(row), row.split('\n')[0])
   await ctx.close()
 
-  // With the KJV hidden there is no concordance at all.
-  const b = await open({ ...BASE, columns: ['ja', 'fr'] }, { hash: '#/john/3/ja' })
-  await b.page.locator('#v-ja-16').click()
-  await b.page.locator('.verse-sheet').waitFor({ state: 'visible' })
-  const none = (await b.page.locator('.conctoggle').count()) + (await b.page.locator('.conc').count())
-  check('absent when the KJV is hidden', none === 0, `${none} element(s)`)
-  await b.ctx.close()
+  // An edition with no word panel falls back to comparing across editions.
+  const j = await open(BASE, { hash: '#/john/3/ja' })
+  await j.page.locator('#v-ja-16').click()
+  await j.page.locator('.verse-sheet').waitFor({ state: 'visible' })
+  const jrows = await j.page.locator('.compare .crow').count()
+  check('no panel yet for the 文語訳', await j.page.locator('.conc').count() === 0)
+  check('so it falls back to all visible editions', jrows === 3, `${jrows} rows`)
+  await j.ctx.close()
+}
+
+// ---------- 2b. mobile ----------
+console.log('\nMobile')
+{
+  const { ctx, page } = await open(BASE, { mobile: true, hash: '#/1-corinthians/13/en' })
+  await page.waitForTimeout(1800)
+  await page.locator('#v-en-13').click()
+  await page.locator('.conclist li').first().waitFor({ state: 'visible', timeout: 3000 })
+  const box = await page.locator('.crowbtn').first().boundingBox()
+  check('row is a 44px touch target', box.height >= 44, `${Math.round(box.height)}px`)
+  const sheet = await page.locator('.verse-sheet').boundingBox()
+  check('card does not overflow 360px', sheet.width <= 360, `${Math.round(sheet.width)}px`)
+  const overflow = await page.evaluate(() => {
+    const el = document.querySelector('.verse-sheet')
+    return el.scrollWidth - el.clientWidth
+  })
+  check('no horizontal overflow inside the sheet', overflow <= 1, `${overflow}px`)
+  await page.waitForTimeout(700)
+  await page.locator('.crowbtn', { hasText: 'charity' }).first().click()
+  await page.locator('.cdef').first().waitFor({ state: 'visible' })
+  await page.locator('.cdef .ckjv').first().waitFor({ state: 'visible', timeout: 4000 })
+  check('definition opens on a phone tap', /affection or benevolence/.test(await page.locator('.cdef').first().innerText()))
+  await ctx.close()
 }
 
 // ---------- 3. the settings badge ----------

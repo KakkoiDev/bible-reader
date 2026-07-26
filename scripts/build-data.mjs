@@ -145,33 +145,65 @@ writeFileSync(resolve(OUT, 'index.json'), JSON.stringify(index))
 // Paragraph boundaries for flow/reading mode (derived from WEB USFM, by reference).
 if (existsSync(resolve(SRC, 'paragraphs.json'))) copyFileSync(resolve(SRC, 'paragraphs.json'), resolve(OUT, 'paragraphs.json'))
 
-// ---- concordance: KJV Strong's tags per book, plus the shared dictionary ----
-// Split per book for the same reason the editions are: the reader opens one book at
-// a time, and the whole tag set is larger than any single edition. Neither these nor
-// the dictionary are precached — they load only for a reader who opens the panel.
+// ---- concordance: KJV Strong's tags per book, in two levels ----
+//
+// The card shows a word, its lemma and its transliteration; the full Strong's
+// definition only appears when a reader taps that word. Splitting along the same
+// line is what makes the card open instantly:
+//
+//   <slug>.json      tags + lemma/translit for the codes this book uses
+//   <slug>-def.json  definitions for those codes
+//
+// A shared 2.1 MB dictionary used to be fetched before the card could render
+// anything, which is 610 KB over the wire for a panel showing twelve words. Inlining
+// just the two short fields each book actually needs brings that to a median 18 KB in
+// one request, and the definitions follow only if asked for.
+//
+// Duplicating lemmas across books costs more on disk in total, which is the right
+// trade: nothing here is precached, and no reader ever downloads all 66.
+//
+// `-def` rather than `.def` in the name so the filename still matches the service
+// worker's runtime-cache pattern (`[a-z0-9-]+\.json`) and stays available offline.
 const strongsSrc = resolve(SRC, 'strongs.json')
 const lexiconSrc = resolve(SRC, 'lexicon.json')
 if (existsSync(strongsSrc) && existsSync(lexiconSrc)) {
   const dir = resolve(OUT, 'strongs')
   mkdirSync(dir, { recursive: true })
   const tags = JSON.parse(readFileSync(strongsSrc, 'utf8'))
+  const lex = JSON.parse(readFileSync(lexiconSrc, 'utf8'))
   let books = 0
-  let bytes = 0
+  let cardBytes = 0
+  let defBytes = 0
   for (const en of BOOK_ORDER) {
-    const book = tags[en]
-    if (!book) continue
-    const path = resolve(dir, `${slugOf(en)}.json`)
-    writeFileSync(path, JSON.stringify(book))
+    const chapters = tags[en]
+    if (!chapters) continue
+    const codes = new Set()
+    for (const verses of Object.values(chapters))
+      for (const words of Object.values(verses)) for (const [, code] of words) codes.add(code)
+
+    const words = {}
+    const defs = {}
+    for (const code of codes) {
+      const e = lex[code]
+      if (!e) continue
+      words[code] = [e.l || '', e.x || '']
+      defs[code] = [e.d || '', e.k || '']
+    }
+
+    const slug = slugOf(en)
+    const cardPath = resolve(dir, `${slug}.json`)
+    const defPath = resolve(dir, `${slug}-def.json`)
+    writeFileSync(cardPath, JSON.stringify({ t: chapters, w: words }))
+    writeFileSync(defPath, JSON.stringify(defs))
     books++
-    bytes += statSync(path).size
+    cardBytes += statSync(cardPath).size
+    defBytes += statSync(defPath).size
   }
-  copyFileSync(lexiconSrc, resolve(dir, 'lexicon.json'))
-  const lexBytes = statSync(resolve(dir, 'lexicon.json')).size
   console.log(
-    `Concordance: ${books} books ${mb(bytes)} + dictionary ${mb(lexBytes)} — fetched on demand\n`,
+    `Concordance: ${books} books · cards ${mb(cardBytes)} + definitions ${mb(defBytes)} — fetched on demand\n`,
   )
 } else {
-  console.warn('  ! concordance skipped — run `node scripts/fetch-strongs.mjs`\n')
+  console.warn('  ! concordance skipped — run `npm run strongs`\n')
 }
 
 // ---- summary ----

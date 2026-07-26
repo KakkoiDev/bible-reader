@@ -50,10 +50,13 @@ Every attribution is reproduced verbatim in the app under **Texts & licences**.
   edition's language — `John 3:16`, `Mateo 15:3`, `マタイ15:3`, `馬太福音15:3`,
   `إنجيل يوحنا 3:16`, `תהלים 23` all work.
 - **Concordance** on the KJV: open any verse and the panel lists its words with the
-  Greek or Hebrew behind each one, with transliteration and Strong's definition.
-  KJV-only by design, because the tags are keyed to the KJV's own word choices, and
-  the settings list badges it so you can see which edition has it. Nothing loads
-  until you open the panel.
+  Greek or Hebrew behind each one plus a transliteration; tap a word for its Strong's
+  definition. KJV-only by design, because the tags are keyed to the KJV's own word
+  choices, and the settings list badges it so you can see which edition has it.
+- **The verse sheet adapts to the edition you tapped.** An edition that can explain
+  its own words shows just itself plus that panel, since on a wide screen the others
+  are already side by side. An edition with no such panel falls back to showing the
+  verse in every visible edition, which is the next best help it can give.
 - **Notes & highlights** with tags, sorting (book / created / updated / hand-arranged),
   a this-book filter, timestamps, JSON export/import, and a TSV export Anki imports
   natively.
@@ -102,6 +105,21 @@ and `data-src/lexicon.json`. Retrieved 2026-07-26.
 348,884 tagged words across 31,099 verses (227,196 Hebrew in the OT, 122,112 Greek in
 the NT) and 14,197 dictionary entries.
 
+The build splits this along the line the UI reads it at, which is what makes the panel
+open instantly:
+
+| File | Holds | Fetched |
+| --- | --- | --- |
+| `<slug>.json` | tags + lemma + transliteration | warmed when the book opens |
+| `<slug>-def.json` | Strong's definitions | warmed when the panel first renders |
+
+A single shared 2.1 MB dictionary used to load before the panel could render anything,
+610 KB over the wire to show twelve words. Inlining just the two short fields each book
+needs brings the first request to a median 18 KB. Duplicating lemmas across books costs
+more on disk in total, which is the right trade when nothing is precached and no reader
+ever downloads all 66. `-def` rather than `.def` in the filename so it still matches
+the service worker's runtime-cache pattern and stays available offline.
+
 Three things worth knowing:
 
 - **The tagged KJV does not replace ours.** `data-src/kjv.md` stays the displayed text,
@@ -115,10 +133,11 @@ Three things worth knowing:
 - **The two dictionaries disagree on one field name.** Greek calls the transliteration
   `translit`, Hebrew calls it `xlit`. Reading only one silently drops 8,674 of them.
 
-Neither file is precached. Both are fetched on demand, per book, only once a reader
-opens the panel, and then kept by the same runtime cache that holds the opt-in
-editions. Precaching 8.3 MB for a panel most readers never open would nearly double
-the install.
+Nothing here is precached, and the precache is unchanged at 18,306 KiB. Both files are
+fetched per book and then kept by the same runtime cache that holds the opt-in
+editions. The book's cards are warmed on an idle callback once the chapter is up (and
+skipped entirely when the KJV is hidden), so the first verse tap has nothing to wait
+for.
 
 ### The KJF: provenance, and defects in the export
 
@@ -200,8 +219,9 @@ there plus `npm run fetch && npm run data`.
 - `public/data/index.json` — per book: slug, per-chapter verse counts, and the book's
   name in every edition's language (~21 KB)
 - `public/data/<id>/<slug>.json` — one edition of one book
-- `public/data/strongs/<slug>.json` — the KJV's Strong's tags for one book
-- `public/data/strongs/lexicon.json` — the Greek and Hebrew dictionaries (1.8 MB)
+- `public/data/strongs/<slug>.json` — the KJV's tags, lemmas and transliterations for
+  one book (median 18 KB gzipped)
+- `public/data/strongs/<slug>-def.json` — the Strong's definitions for that book
 
 One file per edition per book is what lets the app download only the editions a
 reader has enabled. `public/data` is generated and git-ignored — run `npm run data`

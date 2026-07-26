@@ -17,6 +17,7 @@ import {
 } from './lib/tts'
 import { translator, detectUiLang } from './lib/i18n'
 import { decodeInvite, inviteUrl, type Invite } from './lib/invite'
+import { prefetch as prefetchStrongs } from './lib/strongs'
 import {
   Toolbar,
   Settings,
@@ -294,6 +295,22 @@ export default function App() {
     return out
   }, [loaded, pos.slug])
   const ready = loaded.slug === pos.slug && !!book
+
+  // Warm the book's concordance cards once the text itself is up, so the first verse
+  // tap opens with the words already there. Deferred to idle (with a timeout, since
+  // Safari has no requestIdleCallback) so it never competes with rendering the
+  // chapter, and skipped entirely when the KJV is hidden — that reader has no panel.
+  useEffect(() => {
+    if (!ready || !prefs.columns.includes('en')) return
+    const idle = (window as Window & { requestIdleCallback?: (cb: () => void) => number }).requestIdleCallback
+    const slug = pos.slug
+    if (idle) {
+      const id = idle(() => prefetchStrongs(slug))
+      return () => (window as Window & { cancelIdleCallback?: (h: number) => void }).cancelIdleCallback?.(id)
+    }
+    const timer = window.setTimeout(() => prefetchStrongs(slug), 1200)
+    return () => window.clearTimeout(timer)
+  }, [ready, pos.slug, prefs.columns])
 
   // keep the chapter within the book
   useEffect(() => {

@@ -88,8 +88,8 @@ Still open, and genuinely separate from the above:
 - **Concordance search**: the tags make "every verse using G26" answerable, which is
   the obvious next step now that the data is loaded. It needs a reverse index built
   per book, or a prebuilt one shipped alongside the tags.
-- Tagging is **KJV-only**. Extending it would mean a tagged source per edition, which
-  mostly do not exist.
+- Tagging is **KJV-only**. Extending Strong's itself would mean a tagged source per
+  edition, which mostly do not exist. The more promising direction is §11.
 
 ## 4. Export / sync notes & highlights — *partly shipped*
 
@@ -186,3 +186,43 @@ landscape.
 
 Note `playwright` is already a devDependency, so build-time PDFs via `page.pdf()` are
 close to free if the need is printable sheets rather than an in-app button.
+
+## 11. Modernising dictionary for archaic vocabulary
+
+The concordance turned out to be a general mechanism: a per-edition, per-word panel
+with a word list and a definition a tap away. `WORD_PANEL` in `src/components/Sheets.tsx`
+is the switch, and the verse sheet already behaves correctly for editions that are not
+in it (it falls back to comparing translations).
+
+The reading problem it could solve is bigger than the concordance's. All three default
+editions are deliberately archaic, and that is exactly what makes them hard:
+
+- **KJV** — *wot*, *prevent*, *charity*, *conversation*, *let* (meaning hinder), plus
+  thee/thou/ye and the -eth/-est verb forms. The false friends matter most: a word
+  that still exists but has changed sense is one a reader will silently misread.
+- **文語訳** — classical grammar and vocabulary (けり/たり/なり, ん as negation), which
+  furigana already helps with for *reading* but not for *meaning*.
+- **KJF** — the least affected, and worth checking before assuming it needs one.
+
+What makes this tractable is that it does not need a full dictionary: it needs the
+*divergences*. A word only earns an entry when its modern sense differs from its sense
+in the text. That is a few hundred entries for the KJV, not tens of thousands, and it
+is the same shape as the concordance data: `{ code → entry }` plus per-verse word
+positions.
+
+Open questions, roughly in the order they need answering:
+
+1. **Sourcing.** Is there an openly licensed archaic-KJV glossary, or does the word
+   list get derived (e.g. words in the KJV absent from a modern frequency list) and
+   the senses written by hand? Deriving the list is cheap; writing senses is not, and
+   this is a place where being wrong is worse than being absent.
+2. **Which occurrences.** *Let* is only interesting where it means hinder. Tagging
+   every occurrence would train readers to ignore the panel, so entries may need to
+   be per-verse, not per-word.
+3. **Japanese needs its own approach entirely.** The unit is not a word but a
+   grammatical form, and the existing `{{漢字|かな}}` chunks are the natural anchor.
+4. **Same two-level split** as the concordance, for the same reason: word list in the
+   card file, prose in the `-def` file.
+
+Worth noting the two panels answer different questions and could coexist on the KJV:
+Strong's says what the Greek was, a modernising gloss says what the English means now.

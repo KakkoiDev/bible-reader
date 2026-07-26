@@ -4,7 +4,7 @@ import { bookName } from '../lib/types'
 import { BY_ID, VERSIONS, type Lang } from '../lib/versions'
 import { VerseText, type HL } from '../lib/format'
 import { search, parseReference, bookLookup, minQueryLen, type Hit } from '../lib/search'
-import { verseWords, concordanceSticky, setConcordanceSticky, type StrongWord } from '../lib/strongs'
+import { verseWords, wordDef, cardReady, prefetchDefs, type StrongWord, type StrongDef } from '../lib/strongs'
 import type { T } from '../lib/i18n'
 import { coverageNote } from './Panels'
 
@@ -221,78 +221,110 @@ export function Navigator({
   )
 }
 
+/* ----------------------------- Word panels ---------------------------- */
+/**
+ * Which editions can explain their own words, and how.
+ *
+ * This is the switch the verse sheet reads: an edition listed here shows only its
+ * own text plus its panel, and an edition that is not listed falls back to showing
+ * the other translations instead.
+ *
+ * Only the KJV today, via its Strong's tags. A modernising dictionary for the
+ * archaic vocabulary of the 文語訳 and the KJF would slot in here as a second kind
+ * and get the same treatment for free.
+ */
+const WORD_PANEL: Partial<Record<Lang, 'concordance'>> = { en: 'concordance' }
+
 /* ----------------------------- Concordance ---------------------------- */
 /**
  * The verse's KJV words with the Greek or Hebrew behind each one.
  *
- * Collapsed until asked for, because the tags and dictionary are several MB and
- * most verse taps are not lookups. Once opened it stays open for the rest of the
- * session (`concordanceSticky`), so a reader studying a chapter expands it once
- * rather than on every verse.
+ * Loads as soon as the verse opens. That is affordable because the card only needs
+ * the word, lemma and transliteration — a median 18 KB per book — while the Strong's
+ * definitions are a second file fetched only when a word is actually tapped. The
+ * whole row is the tap target, which is what makes this usable on a phone: a word in
+ * body text is about 18px tall, far under a thumb.
  */
 function Concordance({ slug, ch, v, t }: { slug: string; ch: number; v: number; t: T }) {
-  const [open, setOpen] = useState(concordanceSticky)
   const [words, setWords] = useState<StrongWord[] | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [open, setOpen] = useState<string | null>(null)
+  const [def, setDef] = useState<{ code: string; entry: StrongDef | null } | null>(null)
 
   useEffect(() => {
-    if (!open) return
     let live = true
-    setLoading(true)
+    // Already in memory for this book (prefetched on open, or a previous verse):
+    // render in the same paint rather than flashing a spinner for one frame.
+    if (!cardReady(slug)) setWords(null)
+    setOpen(null)
     verseWords(slug, ch, v).then((w) => {
       if (!live) return
       setWords(w)
-      setLoading(false)
+      // The panel is on screen now, so this reader will plausibly tap a word.
+      if (w.length) prefetchDefs(slug)
     })
     return () => {
       live = false
     }
-  }, [open, slug, ch, v])
+  }, [slug, ch, v])
 
-  if (!open)
-    return (
-      <button
-        className="mini conctoggle"
-        onClick={() => {
-          setConcordanceSticky(true)
-          setOpen(true)
-        }}
-      >
-        {t('concordance')}
-      </button>
-    )
+  const toggle = (code: string) => {
+    if (open === code) {
+      setOpen(null)
+      return
+    }
+    setOpen(code)
+    if (def?.code === code) return
+    wordDef(slug, code).then((entry) => setDef({ code, entry }))
+  }
+
+  if (words && words.length === 0) return null // nothing tagged: no empty panel
 
   return (
     <div className="conc">
       <div className="conchead">
         <b>{t('concordance')}</b>
-        <button
-          className="mini"
-          onClick={() => {
-            setConcordanceSticky(false)
-            setOpen(false)
-          }}
-        >
-          {t('hide')}
-        </button>
+        <small>{BY_ID.en.edition}</small>
       </div>
-      {loading && !words && <p className="empty">{t('searching')}</p>}
-      {words && words.length === 0 && <p className="empty">{t('concordance_none')}</p>}
-      {words && words.length > 0 && (
+      {!words && <p className="empty">{t('searching')}</p>}
+      {words && (
         <ul className="conclist">
-          {words.map((w, i) => (
-            <li key={i}>
-              <span className="cword">{w.word}</span>
-              {/* The lemma is Greek or Hebrew, so it carries its own direction:
-                  a Hebrew lemma inside an English row must not reorder the line. */}
-              <bdi className="clemma" dir="auto">
-                {w.lemma}
-              </bdi>
-              {w.translit && <i className="ctranslit">{w.translit}</i>}
-              <small className="ccode">{w.code}</small>
-              {w.def && <span className="cdef">{w.def}</span>}
-            </li>
-          ))}
+          {words.map((w, i) => {
+            const isOpen = open === w.code
+            const entry = def?.code === w.code ? def.entry : null
+            return (
+              <li key={i}>
+                <button
+                  className={`crowbtn ${isOpen ? 'on' : ''}`}
+                  aria-expanded={isOpen}
+                  onClick={() => toggle(w.code)}
+                >
+                  <span className="cword">{w.word}</span>
+                  {/* The lemma is Greek or Hebrew, so it carries its own direction:
+                      a Hebrew lemma inside an English row must not reorder the line. */}
+                  <bdi className="clemma" dir="auto">
+                    {w.lemma}
+                  </bdi>
+                  {w.translit && <i className="ctranslit">{w.translit}</i>}
+                  <small className="ccode">{w.code}</small>
+                </button>
+                {isOpen && (
+                  <div className="cdef">
+                    {!entry && <span className="empty">{t('searching')}</span>}
+                    {entry && (
+                      <>
+                        {entry.def && <span>{entry.def}</span>}
+                        {entry.kjv && (
+                          <span className="ckjv">
+                            {BY_ID.en.edition}: {entry.kjv}
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </li>
+            )
+          })}
         </ul>
       )}
     </div>
@@ -347,8 +379,12 @@ export function VerseSheet({
           <b>{data.label}</b>
           <button className="icon" onClick={onClose} aria-label={t('close')}>✕</button>
         </div>
+        {/* An edition with a word panel of its own shows only itself: the panel is
+            the reason you opened the verse, and on a wide screen the other editions
+            are already side by side in the reader. An edition without one falls back
+            to comparing across editions, which is the next best help it can give. */}
         <div className="compare">
-          {columns.map((l) => {
+          {(WORD_PANEL[data.lang] ? [data.lang] : columns).map((l) => {
             const m = BY_ID[l]
             const text = data.text[l]
             const hl = highlights[l]
@@ -376,10 +412,9 @@ export function VerseSheet({
             )
           })}
         </div>
-        {/* KJV only: the tags are keyed to the KJV's own word choices, so the panel
-            is meaningless against an edition that chose different words. Hidden
-            outright when the reader has hidden the KJV. */}
-        {columns.includes('en') && <Concordance slug={data.slug} ch={data.ch} v={data.v} t={t} />}
+        {WORD_PANEL[data.lang] === 'concordance' && (
+          <Concordance slug={data.slug} ch={data.ch} v={data.v} t={t} />
+        )}
         <div className="noteact wrap">
           <button className="mini" onClick={onPlay}>▶ {t('play')}</button>
           <button className="mini" onClick={onCopyText}>{t('copy_text')}</button>
