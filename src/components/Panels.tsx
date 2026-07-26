@@ -210,58 +210,6 @@ export function Settings({
           <input type="checkbox" checked={justify} onChange={(e) => onJustify(e.target.checked)} />
         </label>
 
-        {/* Everything that depends on a language lives here: the UI language, which
-            editions are shown and in what order, cross-edition alignment, and the
-            two per-language reading aids (furigana, swipe-to-switch). */}
-        <div className="sgroup">{t('group_languages')}</div>
-        <div className="srow">
-          <span>{t('ui_language')}</span>
-          <select className="sel" value={ui} onChange={(e) => onUi(e.target.value as Lang)}>
-            {VERSIONS.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="srow">
-          <span>{t('versions')}</span>
-          <button className="mini" onClick={() => onColumns(defaults)}>{t('reset')}</button>
-        </div>
-        <div className="collist">
-          {columns.map((l, i) => (
-            <div className="colrow" key={l}>
-              {versionLabel(l)}
-              <div className="colctl">
-                <button className="mini" disabled={i === 0} onClick={() => moveCol(l, -1)} aria-label={t('move_up')}>↑</button>
-                <button className="mini" disabled={i === columns.length - 1} onClick={() => moveCol(l, 1)} aria-label={t('move_down')}>↓</button>
-                <button className="mini" disabled={columns.length <= 1} onClick={() => onColumns(columns.filter((x) => x !== l))}>
-                  {t('hide')}
-                </button>
-              </div>
-            </div>
-          ))}
-          {hidden.map((v) => (
-            <div className="colrow off" key={v.id}>
-              {versionLabel(v.id)}
-              <button className="mini" onClick={() => onColumns([...columns, v.id])}>{t('show')}</button>
-            </div>
-          ))}
-        </div>
-
-        <label className="srow">
-          <span>{t('align')}</span>
-          <input type="checkbox" checked={align} onChange={(e) => onAlign(e.target.checked)} />
-        </label>
-        <label className="srow">
-          <span>{t('furigana')}</span>
-          <input type="checkbox" checked={furigana} onChange={(e) => onFurigana(e.target.checked)} />
-        </label>
-        <label className="srow">
-          <span>{t('swipe')}</span>
-          <input type="checkbox" checked={swipe} onChange={(e) => onSwipe(e.target.checked)} />
-        </label>
-
         <div className="sgroup">{t('group_data')}</div>
         <div className="srow">
           <span>{t('notes_data')}</span>
@@ -311,6 +259,60 @@ export function Settings({
             </div>
           </>
         )}
+
+        {/* Last on purpose: everything language-related is set once and rarely
+            revisited, so it sits below the settings people actually come back for.
+            The UI language, which editions are shown and in what order,
+            cross-edition alignment, and the two per-language reading aids
+            (furigana, swipe-to-switch). */}
+        <div className="sgroup">{t('group_languages')}</div>
+        <div className="srow">
+          <span>{t('ui_language')}</span>
+          <select className="sel" value={ui} onChange={(e) => onUi(e.target.value as Lang)}>
+            {VERSIONS.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="srow">
+          <span>{t('versions')}</span>
+          <button className="mini" onClick={() => onColumns(defaults)}>{t('reset')}</button>
+        </div>
+        <div className="collist">
+          {columns.map((l, i) => (
+            <div className="colrow" key={l}>
+              {versionLabel(l)}
+              <div className="colctl">
+                <button className="mini" disabled={i === 0} onClick={() => moveCol(l, -1)} aria-label={t('move_up')}>↑</button>
+                <button className="mini" disabled={i === columns.length - 1} onClick={() => moveCol(l, 1)} aria-label={t('move_down')}>↓</button>
+                <button className="mini" disabled={columns.length <= 1} onClick={() => onColumns(columns.filter((x) => x !== l))}>
+                  {t('hide')}
+                </button>
+              </div>
+            </div>
+          ))}
+          {hidden.map((v) => (
+            <div className="colrow off" key={v.id}>
+              {versionLabel(v.id)}
+              <button className="mini" onClick={() => onColumns([...columns, v.id])}>{t('show')}</button>
+            </div>
+          ))}
+        </div>
+
+        <label className="srow">
+          <span>{t('align')}</span>
+          <input type="checkbox" checked={align} onChange={(e) => onAlign(e.target.checked)} />
+        </label>
+        <label className="srow">
+          <span>{t('furigana')}</span>
+          <input type="checkbox" checked={furigana} onChange={(e) => onFurigana(e.target.checked)} />
+        </label>
+        <label className="srow">
+          <span>{t('swipe')}</span>
+          <input type="checkbox" checked={swipe} onChange={(e) => onSwipe(e.target.checked)} />
+        </label>
 
       </div>
     </div>
