@@ -736,6 +736,14 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
 }
 .cdef .ckjv { color: var(--accent); }
 
+/* ---------- glossary (older words) ---------- */
+.conc.gloss { margin-bottom: 12px; }
+/* The modern equivalent is the payload of the row, so it reads as the answer rather
+   than as another label: same size as the word, accented, with an arrow into it. */
+.gmod { color: var(--accent); font-weight: 600; }
+.gmod::before { content: '→ '; color: var(--muted); font-weight: 400; }
+.cdef .gsay { align-self: flex-start; margin-top: 2px; }
+
 /* ---------- texts & licences ---------- */
 .sheet.licences { width: min(620px, 94vw); }
 .liclist { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }

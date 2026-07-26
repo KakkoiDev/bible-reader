@@ -187,7 +187,27 @@ landscape.
 Note `playwright` is already a devDependency, so build-time PDFs via `page.pdf()` are
 close to free if the need is printable sheets rather than an in-app button.
 
-## 11. Modernising dictionary for archaic vocabulary
+## 11. Modernising dictionary for archaic vocabulary — *shipped for the KJV*
+
+The KJV half is built: 64 hand-written false friends plus 24 derived from Webster's
+1913, shown as an "Older words" panel above the concordance. See the README for the
+sourcing rules and the mistakes that produced them.
+
+Still open:
+
+- **The 文語訳 and the KJF have no glossary.** `WORD_PANEL` in Sheets.tsx is the switch;
+  adding either needs only its data. Japanese is the harder one and still wants a small
+  hand-authored table of classical auxiliaries (けり/たり/なり/ん) anchored to the
+  existing `{{漢字|かな}}` chunks, since its problem is grammar rather than vocabulary.
+- **The curated list is 64 words and could be several hundred.** It was kept to what
+  could be stated confidently; the file's own header says why. Multi-word entries
+  (`by and by`, `to wit`) are not supported yet, since matching is single-token.
+- **Derived recall is low.** 24 words from 113,355 Webster entries, because the filters
+  are deliberately strict. Words like `froward`, `peradventure` and `twain` had to be
+  written by hand instead. A licensed modern frequency list would let the filters relax
+  safely; the one obvious candidate states no licence, which is why it was not used.
+
+### Original plan, for context
 
 The concordance turned out to be a general mechanism: a per-edition, per-word panel
 with a word list and a definition a tap away. `WORD_PANEL` in `src/components/Sheets.tsx`

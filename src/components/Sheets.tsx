@@ -5,6 +5,7 @@ import { BY_ID, VERSIONS, type Lang } from '../lib/versions'
 import { VerseText, type HL } from '../lib/format'
 import { search, parseReference, bookLookup, minQueryLen, type Hit } from '../lib/search'
 import { verseWords, wordDef, cardReady, prefetchDefs, type StrongWord, type StrongDef } from '../lib/strongs'
+import { verseGloss, ready as glossReady, type GlossWord } from '../lib/glossary'
 import type { T } from '../lib/i18n'
 import { coverageNote } from './Panels'
 
@@ -226,14 +227,109 @@ export function Navigator({
  * Which editions can explain their own words, and how.
  *
  * This is the switch the verse sheet reads: an edition listed here shows only its
- * own text plus its panel, and an edition that is not listed falls back to showing
+ * own text plus its panels, and an edition that is not listed falls back to showing
  * the other translations instead.
  *
- * Only the KJV today, via its Strong's tags. A modernising dictionary for the
- * archaic vocabulary of the 文語訳 and the KJF would slot in here as a second kind
- * and get the same treatment for free.
+ * The KJV has both, in this order deliberately: the glossary is reading help and
+ * belongs first, the concordance is study. A modernising glossary for the 文語訳 and
+ * the KJF would slot in here and need no other change.
  */
-const WORD_PANEL: Partial<Record<Lang, 'concordance'>> = { en: 'concordance' }
+const WORD_PANEL: Partial<Record<Lang, readonly ('glossary' | 'concordance')[]>> = {
+  en: ['glossary', 'concordance'],
+}
+
+/* ------------------------------ Glossary ------------------------------ */
+/**
+ * The verse's words whose meaning has moved since 1611.
+ *
+ * Rendered above the concordance because it answers the more urgent question. A false
+ * friend gets its modern equivalent on the row, since that is the whole point: seeing
+ * `charity → love` is what stops the misreading. Both the old word and the new one can
+ * be spoken, which is the pairing that makes it stick.
+ *
+ * Absent entirely when a verse has nothing worth glossing, which is most verses.
+ */
+function Glossary({
+  slug,
+  ch,
+  v,
+  t,
+  canSpeak,
+  onSpeakWord,
+}: {
+  slug: string
+  ch: number
+  v: number
+  t: T
+  canSpeak: (l: Lang) => boolean
+  onSpeakWord: (text: string, lang: Lang) => void
+}) {
+  const [words, setWords] = useState<GlossWord[] | 'loading' | 'failed'>('loading')
+  const [open, setOpen] = useState<string | null>(null)
+
+  useEffect(() => {
+    let live = true
+    if (!glossReady(slug)) setWords('loading')
+    setOpen(null)
+    verseGloss(slug, ch, v).then((w) => live && setWords(w ?? 'failed'))
+    return () => {
+      live = false
+    }
+  }, [slug, ch, v])
+
+  // Nothing to explain, or the file would not load: either way this panel has nothing
+  // to say, and a verse with no archaic words is the normal case rather than an error.
+  if (words === 'loading' || words === 'failed' || words.length === 0) return null
+
+  return (
+    <div className="conc gloss">
+      <div className="conchead">
+        <b>{t('glossary')}</b>
+        <small>{t('glossary_sub')}</small>
+      </div>
+      <ul className="conclist">
+        {words.map((w) => {
+          const isOpen = open === w.key
+          return (
+            <li key={w.key}>
+              <div className="crowline">
+                <button
+                  className={`crowbtn ${isOpen ? 'on' : ''}`}
+                  aria-expanded={isOpen}
+                  onClick={() => setOpen(isOpen ? null : w.key)}
+                >
+                  <span className="cword">{w.word}</span>
+                  {w.modern && <span className="gmod">{w.modern}</span>}
+                  {w.kind === 'arch' && <small className="ccode">{t('glossary_archaic')}</small>}
+                </button>
+                {canSpeak('en') && (
+                  <button
+                    className="cspeak"
+                    title={`${t('pronounce')}: ${w.word}`}
+                    aria-label={`${t('pronounce')}: ${w.word}`}
+                    onClick={() => onSpeakWord(w.word, 'en')}
+                  >
+                    ▶
+                  </button>
+                )}
+              </div>
+              {isOpen && (
+                <div className="cdef">
+                  <span>{w.note}</span>
+                  {w.modern && canSpeak('en') && (
+                    <button className="mini gsay" onClick={() => onSpeakWord(w.modern!, 'en')}>
+                      ▶ {w.modern}
+                    </button>
+                  )}
+                </div>
+              )}
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
 
 /* ----------------------------- Concordance ---------------------------- */
 /**
@@ -307,7 +403,7 @@ function Concordance({
   if (Array.isArray(words) && words.length === 0) return null
 
   return (
-    <div className="conc">
+    <div className="conc strongs">
       <div className="conchead">
         <b>{t('concordance')}</b>
         <small>{BY_ID.en.edition}</small>
@@ -450,7 +546,7 @@ export function VerseSheet({
             are already side by side in the reader. An edition without one falls back
             to comparing across editions, which is the next best help it can give. */}
         <div className="compare">
-          {(WORD_PANEL[data.lang] ? [data.lang] : columns).map((l) => {
+          {(WORD_PANEL[data.lang]?.length ? [data.lang] : columns).map((l) => {
             const m = BY_ID[l]
             const text = data.text[l]
             const hl = highlights[l]
@@ -478,7 +574,17 @@ export function VerseSheet({
             )
           })}
         </div>
-        {WORD_PANEL[data.lang] === 'concordance' && (
+        {WORD_PANEL[data.lang]?.includes('glossary') && (
+          <Glossary
+            slug={data.slug}
+            ch={data.ch}
+            v={data.v}
+            t={t}
+            canSpeak={canSpeak}
+            onSpeakWord={onSpeakWord}
+          />
+        )}
+        {WORD_PANEL[data.lang]?.includes('concordance') && (
           <Concordance
             slug={data.slug}
             ch={data.ch}

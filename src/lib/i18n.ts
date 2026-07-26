@@ -143,7 +143,12 @@ const en = {
   pronounce: 'Pronounce',
   concordance_failed: 'The concordance could not be loaded.',
   retry: 'Retry',
-  loading: 'Loading…'
+  loading: 'Loading…',
+
+  glossary: 'Older words',
+  /** Sub-label: says where the help comes from without claiming a translation. */
+  glossary_sub: 'meaning in the KJV',
+  glossary_archaic: 'archaic'
 }
 
 export type StringKey = keyof typeof en
@@ -188,6 +193,7 @@ const ja: Dict = {
   audio_interrupted: 'アプリが背面に移ったため音声を停止しました。', resume_audio: '再開',
   pronounce: '発音を聞く',
   concordance_failed: '原語辞書を読み込めませんでした。', retry: '再試行', loading: '読み込み中…',
+  glossary: '古い語', glossary_sub: 'KJVでの意味', glossary_archaic: '古語',
 }
 
 const fr: Dict = {
@@ -233,6 +239,7 @@ const fr: Dict = {
   audio_interrupted: "L'audio s'est arrêté au passage en arrière-plan.", resume_audio: 'Reprendre',
   pronounce: 'Prononcer',
   concordance_failed: 'Impossible de charger la concordance.', retry: 'Réessayer', loading: 'Chargement…',
+  glossary: 'Mots anciens', glossary_sub: 'sens dans la KJV', glossary_archaic: 'archaïque',
 }
 
 const zht: Dict = {

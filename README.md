@@ -49,6 +49,10 @@ Every attribution is reproduced verbatim in the app under **Texts & licences**.
 - **Search** matches text in the enabled editions, and resolves references in *any*
   edition's language — `John 3:16`, `Mateo 15:3`, `マタイ15:3`, `馬太福音15:3`,
   `إنجيل يوحنا 3:16`, `תהלים 23` all work.
+- **Older words** on the KJV: open a verse and any word whose meaning has moved since
+  1611 is listed with its modern equivalent, so *charity → love* and *prevent → go
+  before*. Tap for the note, or the arrow to hear either the old word or the new one.
+  Only appears when a verse actually has one, which is most often not the case.
 - **Concordance** on the KJV: open any verse and the panel lists its words with the
   Greek or Hebrew behind each one plus a transliteration; tap a word for its Strong's
   definition, or the speaker to hear the original pronounced (see the caveat below). KJV-only by design, because the tags are keyed to the KJV's own word
@@ -90,6 +94,51 @@ the machine-readable version; this table is the audit trail. Retrieved 2026-07-2
 Catalogues used to choose the above:
 `https://ebible.org/Scriptures/translations.csv` and
 `https://api.getbible.net/v2/translations.json`.
+
+### Glossary data
+
+Two sources, merged at build time, because there are two different problems.
+
+| Half | Source | Count | Licence |
+| --- | --- | --- | --- |
+| False friends | hand-written, in repo (`data-src/glossary-en.json`) | 64 words | ours |
+| Archaic words | Webster's Unabridged (1913), Gutenberg 29765 | 24 words | public domain |
+
+**Why the split.** A false friend is a word still in ordinary use whose KJV sense has
+shifted: *charity*, *prevent*, *suffer*, *conversation*. No frequency filter can find
+them, because they are all common words, and no dictionary can pick which sense a
+translation meant. Those are written by hand. The other kind is a word a reader knows
+they do not know, and Webster's 1913 marks obsolescence explicitly, so those are
+derived.
+
+**Webster's 1913, not GCIDE.** GCIDE is the same dictionary with GPL-licensed editorial
+work layered on. The 1913 text itself is public domain, so it is taken straight from
+Gutenberg, which keeps the data licences here clean.
+
+**What deriving got wrong, and the tests that came out of it.** Webster's marks obsolete
+*senses*, not obsolete words, so the first attempt produced `bottom → "An abyss"`,
+`palm → "To handle"` and `suppose → "To put by fraud in the place of another"`: true of
+1611, wrong for nearly every verse those words appear in. Three rules fixed it:
+
+1. **Every sense obsolete, across every homograph block.** That is the difference
+   between "this word is obsolete" and "this word once meant something else". The
+   second kind is a false friend and belongs in the curated file.
+2. **Skip words the KJV only capitalises.** Otherwise Webster's obsolete common nouns
+   collide with names: Jordan became "a pot used by alchemists", Luke "moderately
+   warm", Gog "ardent desire to go".
+3. **Read the output.** 52 candidates survived the filters and still included `kettle`,
+   `whale` and `inhabited` glossed as "uninhabited". `REVIEWED_OUT` in the script lists
+   what was rejected and why.
+
+**Frequency is a design constraint, not just a size one.** `saith` qualified on every
+rule and was 1,261 occurrences, 46% of the whole glossary, to say "3d pers. sing. pres.
+of Say". A panel that fires on half the Bible to tell a reader nothing is a panel they
+learn to ignore, so it is excluded. An entry may also carry `refs`, a whitelist of
+verses, for a word whose archaic sense is the exception: `let` means hinder in three
+verses and allow in hundreds.
+
+Matching is exact on a lower-cased word, with no stemming, because guessing that
+`charities` is `charity` risks glossing a word the entry was not written about.
 
 ### Concordance data
 
@@ -230,6 +279,7 @@ the publisher as-is. In summary, of the 41 verses the KJV carries and the export
 npm install
 npm run fetch     # download + normalise the 8 remote editions into data-src/
 npm run strongs   # download the KJV concordance + dictionaries into data-src/
+npm run glossary  # derive the archaic-word list from Webster's 1913 into data-src/
 npm run data      # rebuild public/data/** from data-src/*.md
 npm run dev       # dev server
 npm run build     # data + typecheck + production build to dist/
@@ -256,6 +306,8 @@ there plus `npm run fetch && npm run data`.
 - `public/data/concordance/<slug>.json` — the KJV's tags, lemmas and transliterations
   for one book (median 18 KB gzipped)
 - `public/data/concordance/<slug>-def.json` — the Strong's definitions for that book
+- `public/data/glossary/<slug>.json` — older-word entries for one book (~0.1 MB for all
+  66 together, so it is warmed alongside the concordance)
 
 One file per edition per book is what lets the app download only the editions a
 reader has enabled. `public/data` is generated and git-ignored — run `npm run data`

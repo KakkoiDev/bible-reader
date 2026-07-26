@@ -212,6 +212,86 @@ if (existsSync(strongsSrc) && existsSync(lexiconSrc)) {
   console.warn('  ! concordance skipped — run `npm run strongs`\n')
 }
 
+// ---- glossary: archaic and shifted KJV words, per book ----
+//
+// Two sources, merged, because they answer different problems:
+//
+//   data-src/glossary-en.json      hand-written false friends: words still in ordinary
+//                                  use whose KJV sense has shifted (charity, prevent,
+//                                  suffer). No filter can find these and no dictionary
+//                                  can choose their sense, so a human wrote them.
+//   data-src/webster-archaic.json  derived from Webster's 1913, for words a reader knows
+//                                  they do not know (astonied, purtenance, meteyard).
+//
+// The curated file wins on conflict. An entry may carry `refs`, a whitelist of verses,
+// for words whose archaic sense is the exception: `let` means hinder in three verses and
+// allow in hundreds, so glossing every occurrence would train readers to ignore it.
+//
+// Matching is exact on a lower-cased word. No stemming: guessing that `charities` is
+// `charity` risks glossing a word the entry was not written about.
+const curatedSrc = resolve(SRC, 'glossary-en.json')
+const archaicSrc = resolve(SRC, 'webster-archaic.json')
+if (existsSync(curatedSrc)) {
+  const curated = JSON.parse(readFileSync(curatedSrc, 'utf8'))
+  const archaic = existsSync(archaicSrc) ? JSON.parse(readFileSync(archaicSrc, 'utf8')) : {}
+  const entries = {}
+  for (const [w, e] of Object.entries(archaic)) entries[w] = { d: e.d, k: 'arch' }
+  let curatedCount = 0
+  for (const [w, e] of Object.entries(curated)) {
+    if (w.startsWith('_')) continue // the file's own readme block
+    entries[w] = { m: e.m, d: e.d, k: 'false', refs: e.refs }
+    curatedCount++
+  }
+
+  const dir = resolve(OUT, 'glossary')
+  mkdirSync(dir, { recursive: true })
+  const kjv = editions.find((e) => e.id === 'en')
+  let books = 0
+  let bytes = 0
+  let hits = 0
+  for (const en of BOOK_ORDER) {
+    const book = kjv?.books.get(en)
+    if (!book) continue
+    const slug = slugOf(en)
+    const tags = {}
+    const used = new Set()
+    for (const [ch, verses] of book.chapters) {
+      const out = {}
+      for (const [v, raw] of verses) {
+        const ref = `${slug}.${ch}.${v}`
+        const found = []
+        for (const m of cleanKjv(raw).matchAll(/[A-Za-z]+/g)) {
+          const key = m[0].toLowerCase()
+          const e = entries[key]
+          if (!e) continue
+          if (e.refs && !e.refs.includes(ref)) continue // sense does not apply here
+          found.push([m[0], key])
+          used.add(key)
+        }
+        if (found.length) out[v] = found
+      }
+      if (Object.keys(out).length) tags[ch] = out
+    }
+    if (!Object.keys(tags).length) continue
+    // Self-contained per book, like the concordance cards: one fetch, no shared file.
+    const e = {}
+    for (const key of used) {
+      const { m, d, k } = entries[key]
+      e[key] = m ? { m, d, k } : { d, k }
+    }
+    const path = resolve(dir, `${slug}.json`)
+    writeFileSync(path, JSON.stringify({ v: 1, t: tags, e }))
+    books++
+    bytes += statSync(path).size
+    for (const chs of Object.values(tags)) for (const ws of Object.values(chs)) hits += ws.length
+  }
+  console.log(
+    `Glossary: ${curatedCount} curated + ${Object.keys(archaic).length} derived words, ${hits} occurrences over ${books} books ${mb(bytes)}\n`,
+  )
+} else {
+  console.warn('  ! glossary skipped — data-src/glossary-en.json missing\n')
+}
+
 // ---- summary ----
 const idxKb = (statSync(resolve(OUT, 'index.json')).size / 1024).toFixed(0)
 console.log(`\nBooks: ${index.length}   Editions: ${editions.length}   index.json: ${idxKb} KB\n`)

@@ -7,6 +7,7 @@
   "scripts": {
     "fetch": "node scripts/fetch-sources.mjs",
     "strongs": "node scripts/fetch-strongs.mjs",
+    "glossary": "node scripts/fetch-glossary.mjs",
     "data": "node scripts/build-data.mjs",
     "dev": "vite",
     "build": "npm run data && tsc --noEmit && vite build",

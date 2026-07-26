@@ -19,6 +19,7 @@ import {
 import { translator, detectUiLang } from './lib/i18n'
 import { decodeInvite, inviteUrl, type Invite } from './lib/invite'
 import { prefetch as prefetchStrongs } from './lib/strongs'
+import { prefetch as prefetchGloss } from './lib/glossary'
 import {
   Toolbar,
   Settings,
@@ -306,10 +307,16 @@ export default function App() {
     const idle = (window as Window & { requestIdleCallback?: (cb: () => void) => number }).requestIdleCallback
     const slug = pos.slug
     if (idle) {
-      const id = idle(() => prefetchStrongs(slug))
+      const id = idle(() => {
+        prefetchGloss(slug)
+        prefetchStrongs(slug)
+      })
       return () => (window as Window & { cancelIdleCallback?: (h: number) => void }).cancelIdleCallback?.(id)
     }
-    const timer = window.setTimeout(() => prefetchStrongs(slug), 1200)
+    const timer = window.setTimeout(() => {
+      prefetchGloss(slug)
+      prefetchStrongs(slug)
+    }, 1200)
     return () => window.clearTimeout(timer)
   }, [ready, pos.slug, prefs.columns])
 
