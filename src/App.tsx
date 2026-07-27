@@ -860,6 +860,25 @@ export default function App() {
     return () => window.removeEventListener('keydown', onEsc)
   })
 
+  // Lock background scroll while any full-screen sheet is open. Same set of overlays as
+  // the Escape stack above (the selection toolbar aside, which has no backdrop). The
+  // scrollbar width is padded back so removing overflow doesn't shift the layout.
+  const anySheetOpen =
+    navOpen || searchOpen || licencesOpen || verseSheet !== null || inviteFor !== null ||
+    confirmDelete !== null || confirmTag !== null || noteRef !== null || drawerOpen || settingsOpen
+  useEffect(() => {
+    if (!anySheetOpen) return
+    const { body, documentElement: html } = document
+    const gap = window.innerWidth - html.clientWidth // scrollbar width, 0 on overlay bars
+    const prevPad = body.style.paddingRight
+    html.classList.add('modal-open')
+    if (gap > 0) body.style.paddingRight = `${gap}px`
+    return () => {
+      html.classList.remove('modal-open')
+      body.style.paddingRight = prevPad
+    }
+  }, [anySheetOpen])
+
   // keyboard
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

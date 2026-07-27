@@ -372,12 +372,18 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
 .abtn.wide { padding: 7px 13px; }
 
 /* ---------- sheets / note editor ---------- */
+/* Locked while any sheet is open (App toggles the class), so the page behind the
+   backdrop can't scroll under a finger or wheel. The viewport scrolls on <html> here,
+   not <body>, so the lock has to sit on the document element. */
+html.modal-open { overflow: hidden; }
 .sheet-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.4); z-index: 70; display: flex; }
 .sheet {
   margin: auto;
   width: min(440px, 92vw);
   max-height: 88dvh;
   overflow: auto;
+  /* Keep the sheet's own scroll from chaining out to the page behind it. */
+  overscroll-behavior: contain;
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: 16px;
