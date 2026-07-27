@@ -1473,6 +1473,13 @@ export default function App() {
         data={verseSheet}
         origVerse={origVerse}
         showFurigana={prefs.furigana}
+        highlights={
+          verseSheet
+            ? (store[vref(verseSheet.slug, verseSheet.ch, verseSheet.v)]?.highlights ?? []).filter(
+                (h) => h.lang === verseSheet.lang,
+              )
+            : []
+        }
         t={t}
         onCopyText={() =>
           verseSheet &&
@@ -1493,6 +1500,10 @@ export default function App() {
           if (verseSheet) setNoteRef(vref(verseSheet.slug, verseSheet.ch, verseSheet.v))
           setVerseSheet(null)
         }}
+        onClearHighlight={() =>
+          verseSheet &&
+          clearHighlightsIn(vref(verseSheet.slug, verseSheet.ch, verseSheet.v), verseSheet.lang, 0, Number.MAX_SAFE_INTEGER)
+        }
         onClose={() => setVerseSheet(null)}
       />
 

@@ -97,29 +97,53 @@ function paintText(text: string, base: number, colors: (string | null)[] | null,
   return out
 }
 
-// Paint a run of text, wrapping any glossed word in a clickable marker. Words are the
-// same [A-Za-z]+ tokens the glossary build matched on, so exactly the tagged words are
-// marked. Delimiters (odd indices of the split are words) are re-emitted verbatim.
+// Paint a run of text, wrapping any glossed word in a clickable marker and painting any
+// saved highlight colour underneath, so a word can be both marked and highlighted. Words
+// are the same [A-Za-z]+ tokens the glossary build matched on (odd split indices).
 function paintGlossRun(
   text: string,
+  base: number,
+  colors: (string | null)[] | null,
   gloss: Map<string, string>,
   onGlossClick: (key: string) => void,
   keyBase: number,
 ): ReactNode[] {
   const out: ReactNode[] = []
   let k = keyBase
+  let pos = base
   const parts = text.split(/([A-Za-z]+)/)
   for (let i = 0; i < parts.length; i++) {
     const seg = parts[i]
     if (!seg) continue
     const gk = i % 2 === 1 ? gloss.get(seg.toLowerCase()) : undefined
-    if (gk)
-      out.push(
+    if (gk) {
+      const btn = (
         <button key={k++} type="button" className="gloss-mark" onClick={() => onGlossClick(gk)}>
           {seg}
-        </button>,
+        </button>
       )
-    else out.push(seg)
+      // A highlight under the marker: the colour span sits behind the transparent button.
+      const color = colors ? colors[pos] : null
+      out.push(color ? hlSpan(color, k++, btn) : btn)
+    } else if (colors) {
+      let run = ''
+      let runColor: string | null = colors[pos] ?? null
+      const flush = () => {
+        if (!run) return
+        out.push(runColor ? hlSpan(runColor, k++, run) : <Fragment key={k++}>{run}</Fragment>)
+        run = ''
+      }
+      for (let j = 0; j < seg.length; j++) {
+        const c = colors[pos + j] ?? null
+        if (c !== runColor) {
+          flush()
+          runColor = c
+        }
+        run += seg[j]
+      }
+      flush()
+    } else out.push(seg)
+    pos += seg.length
   }
   return out
 }
@@ -141,8 +165,7 @@ export function VerseText({
    *  will grab; the reader leaves it on. */
   showHighlights?: boolean
   /** lower-cased word -> glossary entry key. When present, glossed words render as
-   *  clickable markers instead of taking colour highlights (the two never co-occur:
-   *  the sheet marks, the reader colours). */
+   *  clickable markers; a saved highlight under a marked word still shows through. */
   gloss?: Map<string, string>
   onGlossClick?: (key: string) => void
 }): ReactNode {
@@ -169,7 +192,7 @@ export function VerseText({
         ),
       )
     } else if (glossing) {
-      const pieces = paintGlossRun(t.text, gloss!, onGlossClick!, key)
+      const pieces = paintGlossRun(t.text, t.pos, colors, gloss!, onGlossClick!, key)
       key += 1000
       nodes.push(
         t.kind === 'italic' ? (

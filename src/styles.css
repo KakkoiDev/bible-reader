@@ -534,18 +534,21 @@ html.modal-open { overflow: hidden; }
 /* The per-verse pronounce button under the verse text (reuses the concordance's 44px
    .cspeak square); a touch of top gap sets it off from the text above. */
 .cspeak.vspeak { margin-top: 2px; }
-/* A word explained in the Older-words panel: a soft grey highlight in the running text,
-   a real button so it is keyboard-reachable. Tapping it opens that word's note below. */
+/* A word explained in the Older-words panel: a grey dotted underline in the running
+   text, a real button so it is keyboard-reachable. Tapping it opens that word's note
+   below. A transparent background (not a fill) so a saved colour highlight wrapping it
+   shows through. */
 .gloss-mark {
   font: inherit;
   color: inherit;
-  background: color-mix(in srgb, var(--muted) 18%, transparent);
+  background: none;
   border: 0;
-  border-radius: 3px;
-  padding: 0 1px;
+  padding: 0;
   cursor: pointer;
+  text-decoration: underline dotted var(--muted);
+  text-underline-offset: 3px;
 }
-.gloss-mark:hover { background: color-mix(in srgb, var(--accent) 24%, transparent); }
+.gloss-mark:hover { color: var(--accent); text-decoration-color: var(--accent); }
 
 .databtns { display: inline-flex; gap: 8px; }
 .mini {
@@ -912,6 +915,7 @@ html.modal-open { overflow: hidden; }
 
 /* ---------- verse sheet: per-edition highlight controls ---------- */
 .clang { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.clangbtns { display: flex; align-items: center; gap: 2px; flex: none; }
 .clang .cnote {
   margin-inline-start: 6px;
   border: 1px solid var(--line);

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { IndexItem } from '../lib/types'
 import { bookName } from '../lib/types'
 import { BY_ID, VERSIONS, type Lang } from '../lib/versions'
-import { VerseText } from '../lib/format'
+import { VerseText, type HL } from '../lib/format'
 import { search, parseReference, bookLookup, minQueryLen, type Hit } from '../lib/search'
 import { verseWords, wordDef, cardReady, prefetchDefs, type StrongWord, type StrongDef } from '../lib/strongs'
 import { verseGloss, type GlossWord, type GlossKind } from '../lib/glossary'
@@ -562,12 +562,14 @@ export function VerseSheet({
   data,
   origVerse,
   showFurigana,
+  highlights,
   t,
   onCopyText,
   onCopyLink,
   onCopyInvite,
   onPlay,
   onNote,
+  onClearHighlight,
   canSpeak,
   onSpeakWord,
   onSpeakVerse,
@@ -579,12 +581,16 @@ export function VerseSheet({
    *  none applies or its versification has no matching verse. */
   origVerse: { lang: Lang; text: string } | null
   showFurigana: boolean
+  /** Saved highlights for the shown verse, so they render and can be cleared here. */
+  highlights: HL[]
   t: T
   onCopyText: () => void
   onCopyLink: () => void
   onCopyInvite: () => void
   onPlay: () => void
   onNote: () => void
+  /** Clear the shown verse's saved highlights for this edition. */
+  onClearHighlight: () => void
   canSpeak: (l: Lang) => boolean
   onSpeakWord: (text: string, lang: Lang) => void
   /** Full-verse playback, pausable; toggles with sheetPlaying. */
@@ -639,36 +645,48 @@ export function VerseSheet({
           <b>{data.label}</b>
           <button className="icon" onClick={onClose} aria-label={t('close')}>✕</button>
         </div>
-        {/* Only the edition you opened is shown, with its saved colour highlights
-            suppressed, so there is no doubt which single verse Copy will take. */}
+        {/* Only the edition you opened is shown, so it is unambiguous which single verse
+            Copy takes. Saved highlights render here and can be cleared. */}
         <div className="compare">
-          {/* id lets selectionContext() resolve a selection made in here: a reader can
-              still highlight by selecting words, it just shows back in the reader. */}
+          {/* id lets selectionContext() resolve a selection made in here, so you can
+              highlight by selecting words in the sheet. */}
           <div id={`sv-${l}-${data.ch}-${data.v}`} className="crow" lang={m.htmlLang} dir={m.dir}>
             <div className="clang">
               <span>
                 {m.label} · {m.edition}
                 {!text && note && <small className="cnote">{note}</small>}
               </span>
-              {/* Play the verse from its title row, pausable. Distinct from the bottom
-                  Play, which reads on from here and closes the sheet. */}
-              {text && canSpeak(l) && (
-                <button
-                  className={`cspeak vspeak ${sheetPlaying === l ? 'on' : ''}`}
-                  title={sheetPlaying === l ? t('stop') : `${t('pronounce')}: ${m.label}`}
-                  aria-label={sheetPlaying === l ? t('stop') : t('pronounce')}
-                  onClick={() => onSpeakVerse(text, l)}
-                >
-                  {sheetPlaying === l ? '⏹' : '▶'}
-                </button>
-              )}
+              <span className="clangbtns">
+                {highlights.length > 0 && (
+                  <button
+                    className="cspeak"
+                    title={t('remove_highlight')}
+                    aria-label={t('remove_highlight')}
+                    onClick={onClearHighlight}
+                  >
+                    ⌫
+                  </button>
+                )}
+                {/* Play the verse from its title row, pausable. Distinct from the bottom
+                    Play, which reads on from here and closes the sheet. */}
+                {text && canSpeak(l) && (
+                  <button
+                    className={`cspeak vspeak ${sheetPlaying === l ? 'on' : ''}`}
+                    title={sheetPlaying === l ? t('stop') : `${t('pronounce')}: ${m.label}`}
+                    aria-label={sheetPlaying === l ? t('stop') : t('pronounce')}
+                    onClick={() => onSpeakVerse(text, l)}
+                  >
+                    {sheetPlaying === l ? '⏹' : '▶'}
+                  </button>
+                )}
+              </span>
             </div>
             <div className="ctext">
               <VerseText
                 text={text ?? ''}
                 lang={l}
                 showFurigana={showFurigana}
-                showHighlights={false}
+                highlights={highlights}
                 gloss={l === 'en' ? glossMap : undefined}
                 onGlossClick={l === 'en' ? openGlossEntry : undefined}
               />
