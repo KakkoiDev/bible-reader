@@ -534,6 +534,18 @@ html.modal-open { overflow: hidden; }
 /* The per-verse pronounce button under the verse text (reuses the concordance's 44px
    .cspeak square); a touch of top gap sets it off from the text above. */
 .cspeak.vspeak { margin-top: 2px; }
+/* A word explained in the Older-words panel: a soft grey highlight in the running text,
+   a real button so it is keyboard-reachable. Tapping it opens that word's note below. */
+.gloss-mark {
+  font: inherit;
+  color: inherit;
+  background: color-mix(in srgb, var(--muted) 18%, transparent);
+  border: 0;
+  border-radius: 3px;
+  padding: 0 1px;
+  cursor: pointer;
+}
+.gloss-mark:hover { background: color-mix(in srgb, var(--accent) 24%, transparent); }
 
 .databtns { display: inline-flex; gap: 8px; }
 .mini {

@@ -149,7 +149,9 @@ const en = {
   glossary: 'Older words',
   /** Sub-label: says where the help comes from without claiming a translation. */
   glossary_sub: 'meaning in the KJV',
-  glossary_archaic: 'archaic'
+  glossary_archaic: 'archaic',
+  glossary_grammar: 'grammar',
+  glossary_name: 'name'
 }
 
 export type StringKey = keyof typeof en
@@ -195,7 +197,7 @@ const ja: Dict = {
   tts_not_installed: 'この端末には{lang}の音声が入っていません。',
   pronounce: '発音を聞く',
   concordance_failed: '原語辞書を読み込めませんでした。', retry: '再試行', loading: '読み込み中…',
-  glossary: '古い語', glossary_sub: 'KJVでの意味', glossary_archaic: '古語',
+  glossary: '古い語', glossary_sub: 'KJVでの意味', glossary_archaic: '古語', glossary_grammar: '文法', glossary_name: '固有名',
 }
 
 const fr: Dict = {
@@ -242,7 +244,7 @@ const fr: Dict = {
   tts_not_installed: "Aucune voix {lang} n'est installée sur ce navigateur.",
   pronounce: 'Prononcer',
   concordance_failed: 'Impossible de charger la concordance.', retry: 'Réessayer', loading: 'Chargement…',
-  glossary: 'Mots anciens', glossary_sub: 'sens dans la KJV', glossary_archaic: 'archaïque',
+  glossary: 'Mots anciens', glossary_sub: 'sens dans la KJV', glossary_archaic: 'archaïque', glossary_grammar: 'grammaire', glossary_name: 'nom propre',
 }
 
 const zht: Dict = {

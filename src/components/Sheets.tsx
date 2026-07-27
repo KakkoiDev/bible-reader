@@ -5,8 +5,8 @@ import { BY_ID, VERSIONS, type Lang } from '../lib/versions'
 import { VerseText } from '../lib/format'
 import { search, parseReference, bookLookup, minQueryLen, type Hit } from '../lib/search'
 import { verseWords, wordDef, cardReady, prefetchDefs, type StrongWord, type StrongDef } from '../lib/strongs'
-import { verseGloss, ready as glossReady, type GlossWord } from '../lib/glossary'
-import type { T } from '../lib/i18n'
+import { verseGloss, type GlossWord, type GlossKind } from '../lib/glossary'
+import type { T, StringKey } from '../lib/i18n'
 import { coverageNote } from './Panels'
 
 /* ------------------------------- Search ------------------------------- */
@@ -249,38 +249,30 @@ const WORD_PANEL: Partial<Record<Lang, readonly ('glossary' | 'concordance')[]>>
  *
  * Absent entirely when a verse has nothing worth glossing, which is most verses.
  */
+const KIND_LABEL: Partial<Record<GlossKind, StringKey>> = {
+  arch: 'glossary_archaic',
+  grammar: 'glossary_grammar',
+  name: 'glossary_name',
+}
+
+// Presentational: the verse sheet owns the loaded words and which entry is open, so a
+// grey marker tapped in the verse text can drive this panel (open the row, scroll to it).
 function Glossary({
-  slug,
-  ch,
-  v,
+  words,
+  open,
+  onOpenChange,
   t,
   canSpeak,
   onSpeakWord,
 }: {
-  slug: string
-  ch: number
-  v: number
+  words: GlossWord[]
+  open: string | null
+  onOpenChange: (key: string | null) => void
   t: T
   canSpeak: (l: Lang) => boolean
   onSpeakWord: (text: string, lang: Lang) => void
 }) {
-  const [words, setWords] = useState<GlossWord[] | 'loading' | 'failed'>('loading')
-  const [open, setOpen] = useState<string | null>(null)
-
-  useEffect(() => {
-    let live = true
-    if (!glossReady(slug)) setWords('loading')
-    setOpen(null)
-    verseGloss(slug, ch, v).then((w) => live && setWords(w ?? 'failed'))
-    return () => {
-      live = false
-    }
-  }, [slug, ch, v])
-
-  // Nothing to explain, or the file would not load: either way this panel has nothing
-  // to say, and a verse with no archaic words is the normal case rather than an error.
-  if (words === 'loading' || words === 'failed' || words.length === 0) return null
-
+  if (!words.length) return null
   return (
     <div className="conc gloss">
       <div className="conchead">
@@ -290,17 +282,18 @@ function Glossary({
       <ul className="conclist">
         {words.map((w) => {
           const isOpen = open === w.key
+          const badge = KIND_LABEL[w.kind]
           return (
-            <li key={w.key}>
+            <li key={w.key} id={`gloss-${w.key}`}>
               <div className="crowline">
                 <button
                   className={`crowbtn ${isOpen ? 'on' : ''}`}
                   aria-expanded={isOpen}
-                  onClick={() => setOpen(isOpen ? null : w.key)}
+                  onClick={() => onOpenChange(isOpen ? null : w.key)}
                 >
                   <span className="cword">{w.word}</span>
                   {w.modern && <span className="gmod">{w.modern}</span>}
-                  {w.kind === 'arch' && <small className="ccode">{t('glossary_archaic')}</small>}
+                  {badge && <small className="ccode">{t(badge)}</small>}
                 </button>
                 {canSpeak('en') && (
                   <button
@@ -525,11 +518,40 @@ export function VerseSheet({
   onSpeakWord: (text: string, lang: Lang) => void
   onClose: () => void
 }) {
+  // The sheet owns the glossary load and which entry is open, so a grey marker tapped
+  // in the verse text can open (and scroll to) the matching row in the panel below.
+  const [glossWords, setGlossWords] = useState<GlossWord[]>([])
+  const [openGloss, setOpenGloss] = useState<string | null>(null)
+  useEffect(() => {
+    setOpenGloss(null)
+    if (!data || data.lang !== 'en') {
+      setGlossWords([])
+      return
+    }
+    let live = true
+    verseGloss(data.slug, data.ch, data.v).then((w) => {
+      if (live) setGlossWords(w ?? [])
+    })
+    return () => {
+      live = false
+    }
+  }, [data?.slug, data?.ch, data?.v, data?.lang])
+  const glossMap = useMemo(
+    () => new Map(glossWords.map((w) => [w.word.toLowerCase(), w.key])),
+    [glossWords],
+  )
   if (!data) return null
   const l = data.lang
   const m = BY_ID[l]
   const text = data.text[l]
   const note = coverageNote(t, l)
+  // Open a glossary entry from a marker tapped in the verse, and bring the row into view.
+  const openGlossEntry = (key: string) => {
+    setOpenGloss(key)
+    requestAnimationFrame(() =>
+      document.getElementById(`gloss-${key}`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }),
+    )
+  }
   return (
     <div className="sheet-backdrop" onClick={onClose}>
       <div className="sheet verse-sheet" onClick={(e) => e.stopPropagation()}>
@@ -550,7 +572,14 @@ export function VerseSheet({
               </span>
             </div>
             <div className="ctext">
-              <VerseText text={text ?? ''} lang={l} showFurigana={showFurigana} showHighlights={false} />
+              <VerseText
+                text={text ?? ''}
+                lang={l}
+                showFurigana={showFurigana}
+                showHighlights={false}
+                gloss={l === 'en' ? glossMap : undefined}
+                onGlossClick={l === 'en' ? openGlossEntry : undefined}
+              />
             </div>
             {/* Speak this one verse in place. Distinct from the bottom Play, which reads
                 on from here and closes the sheet. */}
@@ -568,9 +597,9 @@ export function VerseSheet({
         </div>
         {WORD_PANEL[data.lang]?.includes('glossary') && (
           <Glossary
-            slug={data.slug}
-            ch={data.ch}
-            v={data.v}
+            words={glossWords}
+            open={openGloss}
+            onOpenChange={setOpenGloss}
             t={t}
             canSpeak={canSpeak}
             onSpeakWord={onSpeakWord}

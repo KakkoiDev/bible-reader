@@ -18,7 +18,10 @@ const BASE = import.meta.env.BASE_URL
  *  in strongs.ts for why that rule exists. */
 const SHAPE = 1
 
-export type GlossKind = 'false' | 'arch'
+// 'grammar' (archaic pronouns/verb endings) and 'name' (proper-name meanings) are
+// added by the comprehensive glossary build; the on-disk shape is unchanged, so SHAPE
+// stays 1 and existing cached files stay valid.
+export type GlossKind = 'false' | 'arch' | 'grammar' | 'name'
 
 interface RawEntry {
   /** Modern equivalent, on false friends only: `charity` → `love`. */

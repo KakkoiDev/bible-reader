@@ -97,12 +97,41 @@ function paintText(text: string, base: number, colors: (string | null)[] | null,
   return out
 }
 
+// Paint a run of text, wrapping any glossed word in a clickable marker. Words are the
+// same [A-Za-z]+ tokens the glossary build matched on, so exactly the tagged words are
+// marked. Delimiters (odd indices of the split are words) are re-emitted verbatim.
+function paintGlossRun(
+  text: string,
+  gloss: Map<string, string>,
+  onGlossClick: (key: string) => void,
+  keyBase: number,
+): ReactNode[] {
+  const out: ReactNode[] = []
+  let k = keyBase
+  const parts = text.split(/([A-Za-z]+)/)
+  for (let i = 0; i < parts.length; i++) {
+    const seg = parts[i]
+    if (!seg) continue
+    const gk = i % 2 === 1 ? gloss.get(seg.toLowerCase()) : undefined
+    if (gk)
+      out.push(
+        <button key={k++} type="button" className="gloss-mark" onClick={() => onGlossClick(gk)}>
+          {seg}
+        </button>,
+      )
+    else out.push(seg)
+  }
+  return out
+}
+
 export function VerseText({
   text,
   lang,
   showFurigana,
   highlights,
   showHighlights = true,
+  gloss,
+  onGlossClick,
 }: {
   text: string
   lang: Lang
@@ -111,11 +140,17 @@ export function VerseText({
   /** The verse sheet turns this off so saved colour highlights don't muddy what Copy
    *  will grab; the reader leaves it on. */
   showHighlights?: boolean
+  /** lower-cased word -> glossary entry key. When present, glossed words render as
+   *  clickable markers instead of taking colour highlights (the two never co-occur:
+   *  the sheet marks, the reader colours). */
+  gloss?: Map<string, string>
+  onGlossClick?: (key: string) => void
 }): ReactNode {
   if (!text) return <span className="missing">·</span>
   const tokens = tokenize(text, lang)
   const total = tokens.reduce((a, t) => a + t.len, 0)
   const colors = showHighlights && highlights && highlights.length ? colorMap(total, highlights) : null
+  const glossing = !!(gloss && gloss.size && onGlossClick)
   const nodes: ReactNode[] = []
   let key = 0
   for (const t of tokens) {
@@ -131,6 +166,16 @@ export function VerseText({
           </ruby>
         ) : (
           <Fragment key={key++}>{base}</Fragment>
+        ),
+      )
+    } else if (glossing) {
+      const pieces = paintGlossRun(t.text, gloss!, onGlossClick!, key)
+      key += 1000
+      nodes.push(
+        t.kind === 'italic' ? (
+          <i key={key++} className="supplied">{pieces}</i>
+        ) : (
+          <Fragment key={key++}>{pieces}</Fragment>
         ),
       )
     } else {
