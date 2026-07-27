@@ -104,6 +104,27 @@ recovered mechanically from the PDF: those chapters are dense with numerals in t
 text itself (tribal lists, enumerations), which defeats splitting a page by verse
 number. They need a human reading of the printed page.
 
+## 6. Duplicate verse numbers, one verse's text lost - 10 chapters
+
+Surfaced by `scripts/check-data.mjs`. In these chapters the export gives two verses the
+same number, so the build (which keys verses by number, last wins) keeps only one and
+silently drops the other's text:
+
+```
+Numbers 13   1 Chronicles 23   Psalms 30   Psalms 44   Psalms 60
+Psalms 69    Psalms 92          Isaiah 9    Jonah 2     2 Thessalonians 2
+```
+
+It is the same root cause as sections 3 and 5 - a mis-numbering in the OSIS export -
+seen from the other side: instead of a gap, a number repeats. Two shapes recur. In the
+Psalms, the Hebrew superscription is numbered as a second verse 1 (Psalm 30: "Psaume et
+cantique de la dédicace" collides with "Je t'exalterai, ô SEIGNEUR"). Elsewhere a verse
+carries the number of a neighbour while its own number goes missing (2 Thessalonians
+2:16's text is numbered 1, and 16 is absent; Jonah 2:3's text is numbered 4, and 3 is
+absent). Resolving them means fixing the verse division, which is the publisher's call,
+so they are reported and left as-is - and allowlisted in `check-data.mjs` so the check
+still hard-fails on any *new* duplicate (as it does for a reverted Revelation 4).
+
 ## How this was determined
 
 - Export in use: `data-src/kjf.md`, built from the KJF OSIS 2022 export.

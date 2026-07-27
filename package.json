@@ -9,8 +9,9 @@
     "strongs": "node scripts/fetch-strongs.mjs",
     "glossary": "node scripts/fetch-glossary.mjs",
     "data": "node scripts/build-data.mjs",
+    "check:data": "node scripts/check-data.mjs",
     "dev": "vite",
-    "build": "npm run data && tsc --noEmit && vite build",
+    "build": "npm run check:data && npm run data && tsc --noEmit && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
