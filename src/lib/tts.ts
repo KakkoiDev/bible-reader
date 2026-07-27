@@ -10,13 +10,21 @@ const langTag = (lang: Lang) => BY_ID[lang].speech
 /** Convert stored verse text into something a modern TTS voice reads correctly. */
 export function speechText(text: string, lang: Lang): string {
   const markup = BY_ID[lang].markup
+  let s = text
   if (markup === 'ruby')
-    return text
-      .replace(/\{\{[^|}]*\|([^}]+)\}\}/g, '$1') // {{漢字|かな}} → かな (correct reading)
-      .replace(/[〔〕]/g, ' ')
-      .trim()
-  if (markup === 'kjv') return text.replace(/[{}]/g, '') // drop supplied-word braces
-  return text
+    s = s.replace(/\{\{[^|}]*\|([^}]+)\}\}/g, '$1').replace(/[〔〕]/g, ' ') // {{漢字|かな}} → かな
+  else if (markup === 'kjv') s = s.replace(/[{}]/g, '') // drop supplied-word braces
+  // Hebrew: strip niqqud and cantillation so a voice reads words instead of spelling
+  // out every pointed letter one by one; turn maqaf and paseq into spaces so joined
+  // words separate rather than fuse.
+  if (lang === 'he')
+    s = s
+      .replace(/[\u0591-\u05bd\u05bf\u05c1\u05c2\u05c4\u05c5\u05c7]/g, '')
+      .replace(/[\u05be\u05c0\u05c3\u05c6]/g, ' ')
+  // Parentheses aren't pronounced, but a ; or : hugging one is read aloud as an emoticon
+  // ("winking face"): the KJV's parenthetical clauses (…;) trigger it. Drop the parens.
+  s = s.replace(/[()]/g, ' ')
+  return s.replace(/\s+/g, ' ').trim()
 }
 
 let cached: SpeechSynthesisVoice[] = []
