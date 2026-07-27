@@ -44,6 +44,27 @@ export function onVoicesChanged(cb: () => void): () => void {
  *  the two the same labels every edition unspeakable on first paint. */
 export const voicesLoaded = () =>
   ttsSupported() && (cached.length > 0 || speechSynthesis.getVoices().length > 0)
+
+/** Run cb once the voice list is known, so a speak decision is never made against the
+ *  empty pre-load list. That window is exactly when tapping play would start silent
+ *  audio for an uninstalled language: the list isn't in yet, so nothing looks
+ *  unspeakable. Runs cb synchronously when the list is already loaded (the common
+ *  case); otherwise waits for it, falling through after a bounded delay for engines
+ *  that never emit voiceschanged. */
+function whenVoicesReady(cb: () => void) {
+  if (voicesLoaded()) return cb()
+  primeVoices()
+  let done = false
+  const finish = () => {
+    if (done) return
+    done = true
+    off()
+    clearTimeout(timer)
+    cb()
+  }
+  const off = onVoicesChanged(finish)
+  const timer = setTimeout(finish, 1500)
+}
 export type Gender = 'male' | 'female'
 // Web Speech exposes no gender field, so match well-known voice names per platform.
 const MALE = ['male', 'alex', 'daniel', 'fred', 'david', 'mark', 'guy', 'thomas', 'otoya', 'ichiro', 'keita', 'ryan']
@@ -65,6 +86,11 @@ function voicesFor(lang: Lang): SpeechSynthesisVoice[] {
 
 /** Whether this device can actually speak an edition — no voice, no play button. */
 export const hasVoice = (lang: Lang) => voicesFor(lang).length > 0
+
+/** True only once we KNOW there is no voice: the list has arrived and none matches.
+ *  Before it loads this is false, so nothing is wrongly refused (see voicesLoaded). A
+ *  caller uses it to warn instead of starting silent audio. */
+export const voiceMissing = (lang: Lang) => voicesLoaded() && !hasVoice(lang)
 
 function pickVoice(lang: Lang, gender: Gender): SpeechSynthesisVoice | undefined {
   const list = voicesFor(lang)
@@ -93,9 +119,18 @@ export function speakVerses(
     onVerse: (v: number) => void
     onDone: () => void
     onWord?: (v: number, start: number, end: number) => void
+    onNoVoice?: () => void
   },
 ) {
   if (!ttsSupported() || items.length === 0) return
+  whenVoicesReady(() => {
+    // Decide only now the list is in: refuse (and let the caller warn) rather than
+    // speak into an uninstalled voice, which is silent.
+    if (voiceMissing(lang)) return hooks.onNoVoice?.()
+    speakRun()
+  })
+
+  function speakRun() {
   const myGen = ++genToken
   clearPendingHush()
   speechSynthesis.cancel()
@@ -148,6 +183,7 @@ export function speakVerses(
     speechSynthesis.speak(u)
   }
   speakNext()
+  }
 }
 
 let genToken = 0
@@ -177,10 +213,17 @@ function clearPendingHush() {
  * the generation token, so a chapter in progress is genuinely stopped rather than
  * left firing highlight callbacks underneath.
  */
-export function speakOne(text: string, lang: Lang, rate: number, gender: Gender) {
+export function speakOne(text: string, lang: Lang, rate: number, gender: Gender, onNoVoice?: () => void) {
   if (!ttsSupported()) return
   const spoken = speechText(text, lang).trim()
   if (!spoken) return
+  whenVoicesReady(() => {
+    // Only refuse once the list is in, so the pre-load window doesn't start silent audio.
+    if (voiceMissing(lang)) return onNoVoice?.()
+    speakNow()
+  })
+
+  function speakNow() {
   genToken++
   clearPendingHush()
 
@@ -201,6 +244,7 @@ export function speakOne(text: string, lang: Lang, rate: number, gender: Gender)
     speechSynthesis.cancel()
     setTimeout(build, 60)
   } else build()
+  }
 }
 
 export function stopSpeaking() {

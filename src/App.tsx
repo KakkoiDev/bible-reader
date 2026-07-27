@@ -417,9 +417,17 @@ export default function App() {
           setPlayingLang(null)
           if (continuous) setAutoNext(lang) // advance to the next chapter
         },
+        // Reached once the voice list is in and this language has no voice: clear the
+        // playing state we set optimistically and tell the reader why nothing played.
+        onNoVoice: () => {
+          if (gen !== genRef.current) return
+          setPlayingLang(null)
+          setSpeaking(null)
+          say(t('tts_not_installed', { lang: BY_ID[lang].label }))
+        },
       })
     },
-    [canTTS, prefs.rate, prefs.voice, verseElId, pos.chapter],
+    [canTTS, prefs.rate, prefs.voice, verseElId, pos.chapter, say, t],
   )
   // "Stop at chapter end" turns off the roll-on into the next chapter/book.
   const keepGoing = !prefs.stopAtChapterEnd
@@ -476,9 +484,11 @@ export default function App() {
       // Only tear down playback if there is any: stopAudio schedules a deferred
       // cancel, and cancelling around a fresh utterance is what loses it.
       if (playingLang) stopAudio()
-      speakOne(text, lang, prefs.rate, prefs.voice)
+      speakOne(text, lang, prefs.rate, prefs.voice, () =>
+        say(t('tts_not_installed', { lang: BY_ID[lang].label })),
+      )
     },
-    [canTTS, playingLang, stopAudio, prefs.rate, prefs.voice],
+    [canTTS, playingLang, stopAudio, prefs.rate, prefs.voice, say, t],
   )
 
   /** Whether a script can actually be spoken on this device, so the sheet does not
