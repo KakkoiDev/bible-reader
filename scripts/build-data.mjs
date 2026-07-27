@@ -251,6 +251,34 @@ if (existsSync(curatedSrc)) {
   const gramForm = new Map()
   for (const c of gramClasses) for (const f of c.forms) gramForm.set(f.toLowerCase(), c)
 
+  // Names: proper-name meanings from Hitchcock (fetch-names.mjs), corrected or dropped by
+  // names-overrides.json. A capitalized token is glossed as a name only when its
+  // lower-cased form NEVER appears as an ordinary word in the KJV, so God, Lord, Rock and
+  // every sentence-initial common word are excluded. Meanings are labelled traditional.
+  const nameMeaning = new Map()
+  const namesSrc = resolve(SRC, 'hitchcock-names.json')
+  if (existsSync(namesSrc)) {
+    const rawNames = JSON.parse(readFileSync(namesSrc, 'utf8'))
+    const overSrc = resolve(SRC, 'names-overrides.json')
+    const over = existsSync(overSrc) ? JSON.parse(readFileSync(overSrc, 'utf8')) : {}
+    const suppress = new Set((over.suppress || []).map((s) => s.toLowerCase()))
+    const correct = over.correct || {}
+    for (const [name, meaning] of Object.entries(rawNames)) {
+      const lower = name.toLowerCase()
+      if (suppress.has(lower)) continue
+      nameMeaning.set(lower, correct[name] || meaning)
+    }
+    const kjvEd = editions.find((e) => e.id === 'en')
+    const everLower = new Set()
+    if (kjvEd)
+      for (const [, b] of kjvEd.books)
+        for (const [, verses] of b.chapters)
+          for (const [, r] of verses)
+            for (const m of cleanKjv(r).matchAll(/[A-Za-z]+/g))
+              if (/^[a-z]/.test(m[0])) everLower.add(m[0].toLowerCase())
+    for (const lower of [...nameMeaning.keys()]) if (everLower.has(lower)) nameMeaning.delete(lower)
+  }
+
   // New letters-only path + v:2 shape: adding grammar/name kinds changes the payload's
   // meaning, and a fresh directory forces the CacheFirst service worker to refetch (a
   // digit like glossary2 would break the /data/[a-z]+/ runtime-cache pattern).
@@ -267,12 +295,14 @@ if (existsSync(curatedSrc)) {
     const tags = {}
     const used = new Set()
     const usedGram = new Set()
+    const usedName = new Set()
     for (const [ch, verses] of book.chapters) {
       const out = {}
       for (const [v, raw] of verses) {
         const ref = `${slug}.${ch}.${v}`
         const found = []
         const seenGram = new Set()
+        const seenName = new Set()
         for (const m of cleanKjv(raw).matchAll(/[A-Za-z]+/g)) {
           const key = m[0].toLowerCase()
           const e = entries[key]
@@ -287,6 +317,12 @@ if (existsSync(curatedSrc)) {
             found.push([gc.label, gc.key])
             usedGram.add(gc.key)
             seenGram.add(gc.key)
+          }
+          // A capitalized token that is a Hitchcock name and not a common KJV word.
+          if (/^[A-Z]/.test(m[0]) && !entries[key] && nameMeaning.has(key) && !seenName.has(key)) {
+            found.push([m[0], 'nm:' + key])
+            usedName.add(key)
+            seenName.add(key)
           }
         }
         if (found.length) out[v] = found
@@ -304,6 +340,9 @@ if (existsSync(curatedSrc)) {
       const c = gramByKey.get(gk)
       e[gk] = c.m ? { m: c.m, d: c.d, k: 'grammar' } : { d: c.d, k: 'grammar' }
     }
+    for (const nlower of usedName) {
+      e['nm:' + nlower] = { d: `${nameMeaning.get(nlower)} (traditional, Hitchcock 1869)`, k: 'name' }
+    }
     const path = resolve(dir, `${slug}.json`)
     writeFileSync(path, JSON.stringify({ v: 2, t: tags, e }))
     books++
@@ -311,7 +350,7 @@ if (existsSync(curatedSrc)) {
     for (const chs of Object.values(tags)) for (const ws of Object.values(chs)) hits += ws.length
   }
   console.log(
-    `Glossary: ${curatedCount} curated + ${Object.keys(archaic).length} derived + ${gramClasses.length} grammar classes, ${hits} occurrences over ${books} books ${mb(bytes)}\n`,
+    `Glossary: ${curatedCount} curated + ${Object.keys(archaic).length} derived + ${gramClasses.length} grammar classes + ${nameMeaning.size} names, ${hits} occurrences over ${books} books ${mb(bytes)}\n`,
   )
 } else {
   console.warn('  ! glossary skipped — data-src/glossary-en.json missing\n')

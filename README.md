@@ -97,12 +97,21 @@ Catalogues used to choose the above:
 
 ### Glossary data
 
-Two sources, merged at build time, because there are two different problems.
+Four sources, merged at build time, because there are different problems.
 
-| Half | Source | Count | Licence |
+| Kind | Source | Count | Licence |
 | --- | --- | --- | --- |
-| False friends | hand-written, in repo (`data-src/glossary-en.json`) | 64 words | ours |
+| False friends | hand-written, in repo (`data-src/glossary-en.json`) | 75 words | ours |
 | Archaic words | Webster's Unabridged (1913), Gutenberg 29765 | 24 words | public domain |
+| Grammar | hand-written, in repo (`data-src/kjv-grammar.json`) | 3 form-classes | ours |
+| Proper names | Hitchcock's Bible Names Dictionary (1869), via CCEL | ~2,600 names | public domain |
+
+**Grammar and names are separated on purpose.** Grammar forms (thou, hath, saith) recur on
+most verses, so they are not marked inline and sit in a collapsed group. Name meanings are
+Hitchcock's traditional 19th-century etymology, often fanciful, so each is labelled
+"traditional (Hitchcock 1869)" and `data-src/names-overrides.json` can correct or drop any
+entry. A capitalized word is glossed as a name only when its lower-cased form never appears
+as a common word in the KJV, so God, Lord and sentence-initial words are excluded.
 
 **Why the split.** A false friend is a word still in ordinary use whose KJV sense has
 shifted: *charity*, *prevent*, *suffer*, *conversation*. No frequency filter can find

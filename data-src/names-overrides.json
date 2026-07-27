@@ -1,0 +1,17 @@
+{
+  "_readme": [
+    "Human control over the derived Hitchcock name glosses (see scripts/fetch-names.mjs).",
+    "Hitchcock's 1869 meanings are traditional and sometimes fanciful, so this file lets a",
+    "reviewer correct or drop entries without editing the fetched source.",
+    "  suppress: names dropped entirely (a bad match, or a meaning too unreliable to show).",
+    "  correct:  name -> replacement meaning, used instead of Hitchcock's.",
+    "Names are matched case-sensitively as the KJV prints them. Being wrong is worse than",
+    "being absent: when in doubt, suppress."
+  ],
+  "suppress": [
+    "Selah",
+    "Amen",
+    "Shishak"
+  ],
+  "correct": {}
+}

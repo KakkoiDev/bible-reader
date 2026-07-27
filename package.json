@@ -8,6 +8,7 @@
     "fetch": "node scripts/fetch-sources.mjs",
     "strongs": "node scripts/fetch-strongs.mjs",
     "glossary": "node scripts/fetch-glossary.mjs",
+    "names": "node scripts/fetch-names.mjs",
     "data": "node scripts/build-data.mjs",
     "check:data": "node scripts/check-data.mjs",
     "dev": "vite",
