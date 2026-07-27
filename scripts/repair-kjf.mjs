@@ -1,17 +1,22 @@
-// Repair the two KJF defects that can be fixed without guesswork.
+// Repair the KJF defects that can be fixed without guesswork.
 //
 // The KJF OSIS export this project was built from is damaged in several ways (see
-// docs/KJF-DEFECTS.md). Only two of them have an unambiguous fix, and only those are
+// docs/KJF-DEFECTS.md). Only these have an unambiguous fix, and only those are
 // applied here:
 //
-//   1. Revelation 5 is absent outright - no heading, no verses. Recovered from the
-//      publisher's own KJF_WHOLE_BIBLE_2022.pdf, verified to split into exactly the
-//      14 verses the chapter has, with the handful of extraction artefacts repaired.
+//   1. Revelation 5 has no heading of its own. Reinserted from the publisher's own
+//      KJF_WHOLE_BIBLE_2022.pdf, verified to split into exactly the 14 verses the
+//      chapter has, with the handful of extraction artefacts repaired.
 //
 //   2. John 18:24 and 1 Corinthians 7:6 were merged into the preceding verse, which
 //      still carries the swallowed verse's number inline: verse 23 ends "...me
 //      frappes-tu?, 24 Or Anne l'avait envoye...". Splitting at that marker needs no
 //      outside text at all, so it is exact.
+//
+//   3. Revelation 4 and 5 were interleaved under the single "### Revelation 4" heading
+//      with duplicate numbers (1,1,...,11,11,12,13,14). De-interleaved back to the 11
+//      true Revelation 4 verses; needs no outside text, since all eleven are already
+//      present in the block and are only selected and renumbered.
 //
 // Everything else the export gets wrong is a numbering slip that would need the PDF's
 // wording to resolve, and the PDF's text layer is too noisy to substitute wholesale.
@@ -84,6 +89,60 @@ for (const { book, chapter, verse } of MERGED) {
   lines[hostIdx] = `${m[1].trimEnd()}  `
   lines.splice(hostIdx + 1, 0, `**${verse}** ${m[2].trim()}  `)
   changes.push(`split ${book} ${chapter}:${verse - 1} to recover ${verse}`)
+}
+
+// ---- 3. de-interleave Revelation 4 ----
+// The export folded Revelation 4 and 5 into one "### Revelation 4" block with
+// duplicate numbers (1,1,2,2,...,11,11,12,13,14 - 25 lines). build-data keys verses
+// by number (last wins), so the built chapter became a 14-verse scramble, and because
+// the canonical verse count is the max across editions, that phantom 14 forced three
+// empty placeholder rows onto Revelation 4 in *every* edition. All 11 true verses are
+// present in the block, so this selects them - by a unique phrase, so no text is
+// retyped - renumbers 1-11, and drops the interleaved Revelation 5, which already
+// exists correctly below from step 1.
+{
+  const h4 = lines.findIndex((l) => l.trim() === '### Revelation 4')
+  if (h4 < 0) throw new Error('cannot find "### Revelation 4"')
+  const h5 = lines.findIndex((l, i) => i > h4 && l.startsWith('### '))
+  // Revelation 5 must already be its own chapter (step 1) so it bounds the block.
+  if (h5 < 0 || lines[h5].trim() !== '### Revelation 5')
+    throw new Error('expected "### Revelation 5" after Revelation 4 (step 1 must run first)')
+
+  const bodyIdx = []
+  for (let i = h4 + 1; i < h5; i++) if (/^\*\*\d+\*\*/.test(lines[i].trim())) bodyIdx.push(i)
+  const nums = bodyIdx.map((i) => Number(lines[i].trim().match(/^\*\*(\d+)\*\*/)[1]))
+  const corrupt =
+    new Set(nums).size !== nums.length || // a number appears twice
+    bodyIdx.some((i) => /^\*\*\d+\*\*\s+Et je vis dans la main droite/.test(lines[i].trim())) // Rev 5:1 folded in
+
+  if (corrupt) {
+    // Fail loudly if the export's shape drifted from what was characterised.
+    if (bodyIdx.length !== 25 || Math.max(...nums) !== 14)
+      throw new Error(`unexpected Revelation 4 shape: ${bodyIdx.length} lines, max ${Math.max(...nums)}`)
+    // A unique phrase from each of the 11 true Revelation 4 verses, in order, each
+    // cross-checked against the KJV. The verse text is taken from the file, not retyped.
+    const REVELATION_4 = [
+      'Après cela je regardai',
+      'Et immédiatement',
+      'paraissait semblable à une pierre de jaspe',
+      'il y avait vingt-quatre sièges',
+      'Et du trône provenaient des éclairs',
+      'il y avait une mer de verre',
+      'Et la première bête était semblable à un lion',
+      'Et les quatre bêtes avaient chacune six ailes',
+      'Et quand ces bêtes rendent gloire',
+      'Les vingt-quatre anciens tombent devant',
+      'Tu es digne, Ô Seigneur, de recevoir gloire',
+    ]
+    const verses = REVELATION_4.map((sig) => {
+      const hit = bodyIdx.filter((i) => lines[i].includes(sig))
+      if (hit.length !== 1) throw new Error(`Revelation 4 phrase "${sig}" matched ${hit.length} lines`)
+      return lines[hit[0]].trim().replace(/^\*\*\d+\*\*\s+/, '').trimEnd()
+    })
+    const block = ['### Revelation 4', ...verses.map((t, i) => `**${i + 1}** ${t}  `), '']
+    lines = [...lines.slice(0, h4), ...block, ...lines.slice(h5)]
+    changes.push('de-interleaved Revelation 4 (11 verses), removed interleaved Revelation 5')
+  }
 }
 
 if (!changes.length) {

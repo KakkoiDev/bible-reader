@@ -248,7 +248,7 @@ the publisher as-is. In summary, of the 41 verses the KJV carries and the export
 
 | | |
 | --- | --- |
-| **Fixed here** (`scripts/repair-kjf.mjs`) | **16** — Revelation 5 entire (14 verses, recovered from the PDF), plus John 18:24 and 1 Corinthians 7:6, which were merged into the preceding verse with their number left inline as literal text |
+| **Fixed here** (`scripts/repair-kjf.mjs`) | **16**: Revelation 5 entire (14 verses, recovered from the PDF), plus John 18:24 and 1 Corinthians 7:6, which were merged into the preceding verse with their number left inline as literal text. Revelation 4 is also de-interleaved: the export had folded chapters 4 and 5 under one heading with duplicate numbers, inflating Revelation 4 to 14 rows in every edition (no verses added, since the 11 true verses were present, only mislabelled) |
 | Numbering runs one ahead after a dropped number | 19 — the text is present under the wrong number. Not fixed: it needs the PDF's wording, and that text layer inserts spaces inside words, so a wholesale substitution would trade a numbering defect for a text-quality one |
 | Not defects at all | 3 — 1 Samuel 20, 1 Kings 22 and Revelation 12, where the KJF legitimately prints one fewer verse and the PDF agrees with the export |
 | Unresolved | 3 — Numbers 13:9, Psalm 57:10, Jonah 2:3, in chapters too dense with numerals for a page to be split by verse number mechanically |

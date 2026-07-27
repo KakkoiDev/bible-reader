@@ -7,9 +7,9 @@ Compared against the King James Version, which the KJF translates, and against t
 publisher's own **KJF_WHOLE_BIBLE_2022.pdf**, which is correct in every case below.
 So these are defects in the **OSIS/XML export**, not in the translation.
 
-Checked 2026-07-26. Two of the eleven items are fixed in this repository
-(`scripts/repair-kjf.mjs`); the rest are reported but left untouched, because
-resolving them means choosing a verse division and that is the publisher's call.
+Checked 2026-07-26. The Revelation 4-5 boundary and the two merged verses are fixed in
+this repository (`scripts/repair-kjf.mjs`); the rest are reported but left untouched,
+because resolving them means choosing a verse division and that is the publisher's call.
 
 ## Summary
 
@@ -20,14 +20,23 @@ resolving them means choosing a verse division and that is the publisher's call.
 | Books absent from the export entirely | Song of Solomon (in the gratis-bible copy) |
 | Distinct defect classes | 3 |
 
-## 1. Revelation 5 is missing entirely — 14 verses
+## 1. Revelation 4 and 5 mangled at the chapter boundary - 14 verses
 
-The export goes from Revelation 4:11 straight to 6:1. There is no chapter 5 element
-at all, not an empty one. Chapters 4 and 6 are complete.
+There is no `### Revelation 5` heading. What the export labels `### Revelation 4` is
+in fact Revelation 4 and 5 **interleaved** under one heading, with duplicate verse
+numbers: `1,1,2,2,...,11,11,12,13,14` - 25 verse lines. The build keys verses by number
+(last wins), so this collapsed to a 14-verse scramble for Revelation 4; and because a
+chapter's length is taken as the maximum across all editions, that phantom 14 then
+forced three empty placeholder rows onto Revelation 4 in *every* edition, not just the
+KJF. Both chapters are otherwise textually complete inside the block.
 
-The 2022 PDF has the chapter in full, on page 1242.
+The 2022 PDF has both chapters correct, on pages 1241-1242.
 
-*Fixed in this repository, from the PDF.*
+*Fixed in this repository, in two steps. First the clean Revelation 5 is reinserted
+from the PDF. Then Revelation 4 is de-interleaved back to its 11 verses; this second
+step needs no outside text, because all eleven true verses are already present in the
+block and are only selected (each by a unique phrase, cross-checked against the KJV)
+and renumbered, with the interleaved Revelation 5 dropped.*
 
 ## 2. Verses merged into their predecessor, marker left inline — 2 verses
 
