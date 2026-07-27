@@ -375,6 +375,8 @@ function Concordance({
   t,
   canSpeak,
   onSpeakWord,
+  onSpeakVerse,
+  sheetPlaying,
 }: {
   slug: string
   ch: number
@@ -385,6 +387,9 @@ function Concordance({
   /** Whether this device has a voice for a script, so the button isn't a dead end. */
   canSpeak: (l: Lang) => boolean
   onSpeakWord: (text: string, lang: Lang) => void
+  /** Pausable full-verse playback for the original-language verse. */
+  onSpeakVerse: (text: string, lang: Lang) => void
+  sheetPlaying: Lang | null
 }) {
   // 'loading' and 'failed' are distinct from an empty list on purpose: a book that
   // would not load must say so, not look like a verse with nothing tagged.
@@ -439,16 +444,16 @@ function Concordance({
         <small>{BY_ID.en.edition}</small>
         {orig && canSpeak(orig.lang) && (
           <button
-            className="cspeak cvspeak"
-            title={t('play_verse')}
-            aria-label={t('play_verse')}
-            // preventDefault so speaking the verse does not also toggle the disclosure.
+            className={`cspeak cvspeak ${sheetPlaying === orig.lang ? 'on' : ''}`}
+            title={sheetPlaying === orig.lang ? t('stop') : t('play_verse')}
+            aria-label={sheetPlaying === orig.lang ? t('stop') : t('play_verse')}
+            // preventDefault so playing the verse does not also toggle the disclosure.
             onClick={(e) => {
               e.preventDefault()
-              onSpeakWord(orig.text, orig.lang)
+              onSpeakVerse(orig.text, orig.lang)
             }}
           >
-            ▶
+            {sheetPlaying === orig.lang ? '⏹' : '▶'}
           </button>
         )}
       </summary>
@@ -565,6 +570,8 @@ export function VerseSheet({
   onNote,
   canSpeak,
   onSpeakWord,
+  onSpeakVerse,
+  sheetPlaying,
   onClose,
 }: {
   data: VerseSheetData | null
@@ -580,6 +587,10 @@ export function VerseSheet({
   onNote: () => void
   canSpeak: (l: Lang) => boolean
   onSpeakWord: (text: string, lang: Lang) => void
+  /** Full-verse playback, pausable; toggles with sheetPlaying. */
+  onSpeakVerse: (text: string, lang: Lang) => void
+  /** The edition whose full verse is currently playing (button shows stop), or null. */
+  sheetPlaying: Lang | null
   onClose: () => void
 }) {
   // The sheet owns the glossary load and which entry is open, so a grey marker tapped
@@ -639,16 +650,16 @@ export function VerseSheet({
                 {m.label} · {m.edition}
                 {!text && note && <small className="cnote">{note}</small>}
               </span>
-              {/* Play the verse from its title row. Distinct from the bottom Play, which
-                  reads on from here and closes the sheet. */}
+              {/* Play the verse from its title row, pausable. Distinct from the bottom
+                  Play, which reads on from here and closes the sheet. */}
               {text && canSpeak(l) && (
                 <button
-                  className="cspeak vspeak"
-                  title={`${t('pronounce')}: ${m.label}`}
-                  aria-label={t('pronounce')}
-                  onClick={() => onSpeakWord(text, l)}
+                  className={`cspeak vspeak ${sheetPlaying === l ? 'on' : ''}`}
+                  title={sheetPlaying === l ? t('stop') : `${t('pronounce')}: ${m.label}`}
+                  aria-label={sheetPlaying === l ? t('stop') : t('pronounce')}
+                  onClick={() => onSpeakVerse(text, l)}
                 >
-                  ▶
+                  {sheetPlaying === l ? '⏹' : '▶'}
                 </button>
               )}
             </div>
@@ -685,6 +696,8 @@ export function VerseSheet({
             t={t}
             canSpeak={canSpeak}
             onSpeakWord={onSpeakWord}
+            onSpeakVerse={onSpeakVerse}
+            sheetPlaying={sheetPlaying}
           />
         )}
         <div className="noteact wrap">

@@ -528,6 +528,39 @@ export default function App() {
     [canTTS, playingLang, stopAudio, prefs.rate, prefs.voice, say, t],
   )
 
+  // Full-verse playback from the verse sheet: pausable, tracked by edition so the button
+  // toggles ▶/⏹. Unlike speakWord (a one-shot word) this can be stopped, and unlike the
+  // reader's playVerse it doesn't autoscroll or raise the audio FAB over the sheet.
+  const [sheetPlay, setSheetPlay] = useState<Lang | null>(null)
+  const speakSheetVerse = useCallback(
+    (text: string, lang: Lang) => {
+      if (!canTTS) return
+      if (sheetPlay === lang) {
+        stopSpeaking()
+        setSheetPlay(null)
+        return
+      }
+      if (playingLang) stopAudio()
+      setSheetPlay(lang)
+      speakVerses([{ v: 0, text }], lang, prefs.rate, prefs.voice, {
+        onVerse: () => {},
+        onDone: () => setSheetPlay((p) => (p === lang ? null : p)),
+        onNoVoice: () => {
+          setSheetPlay(null)
+          say(t('tts_not_installed', { lang: BY_ID[lang].label }))
+        },
+      })
+    },
+    [canTTS, sheetPlay, playingLang, stopAudio, prefs.rate, prefs.voice, say, t],
+  )
+  // Stop and reset sheet playback whenever the open verse changes or the sheet closes.
+  useEffect(() => {
+    setSheetPlay((cur) => {
+      if (cur) stopSpeaking()
+      return null
+    })
+  }, [verseSheet])
+
   /** Whether a script can actually be spoken on this device, so the sheet does not
    *  offer a button that would do nothing. Before the voice list arrives nothing is
    *  claimed unspeakable, matching how the settings list behaves. */
@@ -1450,6 +1483,8 @@ export default function App() {
         onCopyInvite={() => verseSheet && setInviteFor(verseSheet.v)}
         canSpeak={canSpeak}
         onSpeakWord={speakWord}
+        onSpeakVerse={speakSheetVerse}
+        sheetPlaying={sheetPlay}
         onPlay={() => {
           if (verseSheet) playFrom(verseSheet.lang, verseSheet.ch, verseSheet.v)
           setVerseSheet(null)
