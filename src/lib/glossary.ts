@@ -21,7 +21,7 @@ const SHAPE = 2 // bumped with the path move to glosses/ when grammar and name k
 // 'grammar' (archaic pronouns/verb endings) and 'name' (proper-name meanings) are
 // added by the comprehensive glossary build; the on-disk shape is unchanged, so SHAPE
 // stays 1 and existing cached files stay valid.
-export type GlossKind = 'false' | 'arch' | 'grammar' | 'name'
+export type GlossKind = 'false' | 'arch' | 'grammar' | 'name' | 'spiritual'
 
 interface RawEntry {
   /** Modern equivalent, on false friends only: `charity` → `love`. */
@@ -29,6 +29,11 @@ interface RawEntry {
   /** The note. */
   d: string
   k: GlossKind
+  /** Original-language term, on spiritual entries: `faith` → `Gk. pistis`. */
+  o?: string
+  /** Spiritual terms are panel-only; `inline: true` also marks the verse text (the few
+   *  that are unfamiliar words, e.g. propitiation, not the common ones like faith). */
+  inline?: boolean
 }
 
 interface BookGloss {
@@ -45,6 +50,10 @@ export interface GlossWord {
   modern?: string
   note: string
   kind: GlossKind
+  /** Original-language term, spiritual entries only. */
+  orig?: string
+  /** Spiritual entry that should also mark the verse text inline. */
+  inline?: boolean
 }
 
 const valid = (j: unknown): j is BookGloss => {
@@ -111,7 +120,7 @@ export async function verseGloss(
     const e = book.e[key]
     if (!e) continue
     seen.add(key)
-    out.push({ word, key, modern: e.m, note: e.d, kind: e.k })
+    out.push({ word, key, modern: e.m, note: e.d, kind: e.k, orig: e.o, inline: e.inline })
   }
   return out
 }

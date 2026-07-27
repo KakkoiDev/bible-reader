@@ -1,0 +1,30 @@
+{
+  "_readme": [
+    "Spiritual vocabulary: theological terms whose WORD a modern reader knows but whose",
+    "weight and original-language sense they may not. Unlike glossary-en.json (false",
+    "friends) these have no modern substitute, so there is no `m`: you cannot swap the word,",
+    "only explain it. `d` is a neutral, definitional note; `o` the Greek/Hebrew term in",
+    "transliteration. Notes stay non-adjudicating: where a meaning is contested across",
+    "traditions (faith, salvation, justification, propitiation) the note says so rather than",
+    "picking a side, per docs/KJV-ONLY-CLAIMS.md. Common terms render in the Spiritual-terms",
+    "block only (no inline markers, or faith at 254 hits would bury the false friends). The",
+    "few that are also unfamiliar WORDS carry `inline: true` so they still mark the text.",
+    "Keys must be lower case."
+  ],
+  "faith": { "d": "Belief, trust and reliance. The Greek pistis spans intellectual assent, personal trust, and faithfulness or loyalty; which of these it centres on is understood differently across traditions.", "o": "Gk. pistis" },
+  "grace": { "d": "Favour freely given and unearned. The Greek charis also means a gift or an act of kindness.", "o": "Gk. charis" },
+  "mercy": { "d": "Compassion or clemency, especially the withholding of deserved judgement. Behind it stand Greek eleos and Hebrew chesed, steadfast covenant love.", "o": "Gk. eleos, Heb. chesed" },
+  "salvation": { "d": "Deliverance, rescue, or being made whole and safe. Whether it is spoken of as a past event, a present process, or a future hope varies across traditions.", "o": "Gk. soteria" },
+  "righteousness": { "d": "Being right or just, and standing in a right relationship. The same root gives 'just' and 'justify'; Hebrew tsedaqah, Greek dikaiosyne.", "o": "Gk. dikaiosyne, Heb. tsedaqah" },
+  "love": { "d": "Committed, self-giving love. The Greek agape is the word the KJV often renders 'charity'; it is distinct from friendship (philia) and desire (eros).", "o": "Gk. agape" },
+  "redemption": { "d": "Buying back or ransoming, as a captive or slave was freed by a price. Greek apolytrosis; the Hebrew go'el is the kinsman who redeems.", "o": "Gk. apolytrosis" },
+  "atonement": { "d": "Reconciliation, and the covering or removal of sin. Hebrew kaphar means to cover. In the KJV New Testament the word appears once, at Romans 5:11, for Greek katallage, reconciliation.", "o": "Heb. kaphar" },
+  "sanctification": { "d": "Being set apart, or made holy. Greek hagiasmos, from the same root as 'holy' and 'saint'.", "o": "Gk. hagiasmos" },
+  "justification": { "d": "Being acquitted or set right. From the same root as 'righteous'; whether it means to declare righteous or to make righteous is debated across traditions.", "o": "Gk. dikaiosis" },
+  "forgiveness": { "d": "Pardon, or release from a debt or wrong. The Greek aphesis is literally a sending away or letting go.", "o": "Gk. aphesis" },
+  "propitiation": { "d": "A sacrifice that deals with sin. Whether the Greek hilasmos stresses turning aside wrath (propitiation) or wiping away sin (expiation) has long been debated.", "o": "Gk. hilasmos", "inline": true },
+  "longsuffering": { "d": "Patient forbearance; slowness to anger under provocation. Greek makrothumia, literally long-tempered.", "o": "Gk. makrothumia", "inline": true },
+  "lovingkindness": { "d": "Steadfast, loyal covenant love. Coined by Coverdale to render Hebrew chesed, which has no single English word.", "o": "Heb. chesed", "inline": true },
+  "remission": { "d": "Release or pardon, especially of sins or debts. The Greek aphesis is the same word elsewhere rendered 'forgiveness'.", "o": "Gk. aphesis", "inline": true },
+  "reconciliation": { "d": "The restoring of a broken relationship to peace. Greek katallage; the KJV also renders it 'atonement' at Romans 5:11.", "o": "Gk. katallage", "inline": true }
+}

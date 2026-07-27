@@ -264,6 +264,8 @@ function Glossary({
   onOpenChange,
   vocabOpen,
   onVocabOpenChange,
+  spiritualOpen,
+  onSpiritualOpenChange,
   t,
   canSpeak,
   onSpeakWord,
@@ -273,15 +275,19 @@ function Glossary({
   onOpenChange: (key: string | null) => void
   vocabOpen: boolean
   onVocabOpenChange: (open: boolean) => void
+  spiritualOpen: boolean
+  onSpiritualOpenChange: (open: boolean) => void
   t: T
   canSpeak: (l: Lang) => boolean
   onSpeakWord: (text: string, lang: Lang) => void
 }) {
-  // Content words (false friends, archaic, names) list in Vocabulary and are marked
-  // inline; grammar forms are frequent, so they get their own block and no inline marks.
-  const content = words.filter((w) => w.kind !== 'grammar')
+  // False friends, archaic and names list in Vocabulary and are marked inline. Grammar
+  // (thou, -eth) and spiritual terms (faith, grace) are frequent, so each gets its own
+  // block; grammar is never inline, spiritual only where an entry opts in.
+  const content = words.filter((w) => w.kind !== 'grammar' && w.kind !== 'spiritual')
   const grammar = words.filter((w) => w.kind === 'grammar')
-  if (!content.length && !grammar.length) return null
+  const spiritual = words.filter((w) => w.kind === 'spiritual')
+  if (!content.length && !grammar.length && !spiritual.length) return null
   return (
     <>
       {content.length > 0 && (
@@ -350,6 +356,53 @@ function Glossary({
                 <span className="gramnote">{w.note}</span>
               </li>
             ))}
+          </ul>
+        </details>
+      )}
+      {spiritual.length > 0 && (
+        // Its own block, collapsed by default; an inline-flagged term tapped in the verse
+        // opens it (controlled). No modern equivalent, only a note and the original term.
+        <details
+          className="conc worddrop"
+          open={spiritualOpen}
+          onToggle={(e) => onSpiritualOpenChange(e.currentTarget.open)}
+        >
+          <summary>
+            <b>{t('glossary_spiritual')}</b>
+          </summary>
+          <ul className="conclist">
+            {spiritual.map((w) => {
+              const isOpen = open === w.key
+              return (
+                <li key={w.key} id={`gloss-${w.key}`}>
+                  <div className="crowline">
+                    <button
+                      className={`crowbtn ${isOpen ? 'on' : ''}`}
+                      aria-expanded={isOpen}
+                      onClick={() => onOpenChange(isOpen ? null : w.key)}
+                    >
+                      <span className="cword">{w.word}</span>
+                      {w.orig && <small className="ccode">{w.orig}</small>}
+                    </button>
+                    {canSpeak('en') && (
+                      <button
+                        className="cspeak"
+                        title={`${t('pronounce')}: ${w.word}`}
+                        aria-label={`${t('pronounce')}: ${w.word}`}
+                        onClick={() => onSpeakWord(w.word, 'en')}
+                      >
+                        ▶
+                      </button>
+                    )}
+                  </div>
+                  {isOpen && (
+                    <div className="cdef">
+                      <span>{w.note}</span>
+                    </div>
+                  )}
+                </li>
+              )
+            })}
           </ul>
         </details>
       )}
@@ -604,9 +657,11 @@ export function VerseSheet({
   const [glossWords, setGlossWords] = useState<GlossWord[]>([])
   const [openGloss, setOpenGloss] = useState<string | null>(null)
   const [vocabOpen, setVocabOpen] = useState(false)
+  const [spiritualOpen, setSpiritualOpen] = useState(false)
   useEffect(() => {
     setOpenGloss(null)
     setVocabOpen(false)
+    setSpiritualOpen(false)
     if (!data || data.lang !== 'en') {
       setGlossWords([])
       return
@@ -622,7 +677,12 @@ export function VerseSheet({
   // Content words get inline markers; grammar forms (thou, hath, -eth) do not, or they
   // would light up most of the verse. Grammar lives in a collapsed group in the panel.
   const glossMap = useMemo(
-    () => new Map(glossWords.filter((w) => w.kind !== 'grammar').map((w) => [w.word.toLowerCase(), w.key])),
+    () =>
+      new Map(
+        glossWords
+          .filter((w) => w.kind !== 'grammar' && (w.kind !== 'spiritual' || w.inline))
+          .map((w) => [w.word.toLowerCase(), w.key]),
+      ),
     [glossWords],
   )
   if (!data) return null
@@ -633,7 +693,9 @@ export function VerseSheet({
   // Open a glossary entry from a marker tapped in the verse, and bring the row into view.
   const openGlossEntry = (key: string) => {
     setOpenGloss(key)
-    setVocabOpen(true) // the vocabulary block is collapsed by default; a marker opens it
+    // The block is collapsed by default; a marker opens whichever holds this entry.
+    if (glossWords.find((w) => w.key === key)?.kind === 'spiritual') setSpiritualOpen(true)
+    else setVocabOpen(true)
     requestAnimationFrame(() =>
       document.getElementById(`gloss-${key}`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }),
     )
@@ -700,6 +762,8 @@ export function VerseSheet({
             onOpenChange={setOpenGloss}
             vocabOpen={vocabOpen}
             onVocabOpenChange={setVocabOpen}
+            spiritualOpen={spiritualOpen}
+            onSpiritualOpenChange={setSpiritualOpen}
             t={t}
             canSpeak={canSpeak}
             onSpeakWord={onSpeakWord}

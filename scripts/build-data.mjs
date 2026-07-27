@@ -236,6 +236,17 @@ if (existsSync(curatedSrc)) {
   const archaic = existsSync(archaicSrc) ? JSON.parse(readFileSync(archaicSrc, 'utf8')) : {}
   const entries = {}
   for (const [w, e] of Object.entries(archaic)) entries[w] = { d: e.d, k: 'arch' }
+  // Spiritual vocabulary (kjv-spiritual.json): theological terms with no modern swap, only
+  // a note and the original term. Above 'arch' (a term like remission is both), below the
+  // curated false friends. `o` = Greek/Hebrew, `inline` = also mark the verse text.
+  const spiritSrc = resolve(SRC, 'kjv-spiritual.json')
+  const spiritual = existsSync(spiritSrc) ? JSON.parse(readFileSync(spiritSrc, 'utf8')) : {}
+  let spiritualCount = 0
+  for (const [w, e] of Object.entries(spiritual)) {
+    if (w.startsWith('_')) continue
+    entries[w] = { d: e.d, k: 'spiritual', o: e.o, inline: e.inline }
+    spiritualCount++
+  }
   let curatedCount = 0
   for (const [w, e] of Object.entries(curated)) {
     if (w.startsWith('_')) continue // the file's own readme block
@@ -333,8 +344,12 @@ if (existsSync(curatedSrc)) {
     // Self-contained per book, like the concordance cards: one fetch, no shared file.
     const e = {}
     for (const key of used) {
-      const { m, d, k } = entries[key]
-      e[key] = m ? { m, d, k } : { d, k }
+      const { m, d, k, o, inline } = entries[key]
+      const rec = { d, k }
+      if (m) rec.m = m
+      if (o) rec.o = o
+      if (inline) rec.inline = inline
+      e[key] = rec
     }
     for (const gk of usedGram) {
       const c = gramByKey.get(gk)
@@ -350,7 +365,7 @@ if (existsSync(curatedSrc)) {
     for (const chs of Object.values(tags)) for (const ws of Object.values(chs)) hits += ws.length
   }
   console.log(
-    `Glossary: ${curatedCount} curated + ${Object.keys(archaic).length} derived + ${gramClasses.length} grammar classes + ${nameMeaning.size} names, ${hits} occurrences over ${books} books ${mb(bytes)}\n`,
+    `Glossary: ${curatedCount} curated + ${Object.keys(archaic).length} derived + ${spiritualCount} spiritual + ${gramClasses.length} grammar classes + ${nameMeaning.size} names, ${hits} occurrences over ${books} books ${mb(bytes)}\n`,
   )
 } else {
   console.warn('  ! glossary skipped — data-src/glossary-en.json missing\n')
