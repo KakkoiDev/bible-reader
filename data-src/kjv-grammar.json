@@ -1,0 +1,33 @@
+{
+  "_readme": [
+    "Archaic KJV grammar: pronouns and verb forms modern English has dropped. Grouped",
+    "into form-classes, each with ONE shared note, because these are function words that",
+    "recur on most verses (saith alone is over 1200 times). At build time a class fires",
+    "once per verse in which any of its forms appears, so a verse shows a single grammar",
+    "row, not one per word. The reader keeps these in a collapsed group and does not mark",
+    "them inline, so the running text is not drowned. These are the app's own factual",
+    "notes, not sourced from a copyrighted work.",
+    "Forms are matched exact, lower-cased, whole-word, like the rest of the glossary."
+  ],
+  "classes": [
+    {
+      "key": "gram-thou",
+      "label": "thou, thee, ye",
+      "m": "you",
+      "forms": ["thou", "thee", "thy", "thine", "ye"],
+      "d": "Archaic second person. Thou and thee are the singular you, subject and object; thy and thine are your and yours; ye is the plural you (subject). Modern English has dropped the singular/plural split and uses you and your throughout."
+    },
+    {
+      "key": "gram-thou-verb",
+      "label": "hast, art, shalt",
+      "forms": ["hast", "art", "wast", "wert", "wilt", "shalt", "dost", "doest", "hadst", "shouldest", "wouldest", "couldest", "mayest", "mightest", "knowest", "sayest", "seest", "hearest", "hast", "canst", "gavest", "sentest"],
+      "d": "Old second-person singular verb forms that pair with thou, marked by a -st or -est ending: hast = have, art = are, wast and wert = was and were, shalt = shall, wilt = will, dost and doest = do, hadst = had, canst = can, mayest = may."
+    },
+    {
+      "key": "gram-3s",
+      "label": "hath, doth, saith",
+      "forms": ["hath", "doth", "doeth", "saith"],
+      "d": "Old third-person singular forms ending in -th where modern English uses -s: hath = has, doth and doeth = does, saith = says. The same -eth ending is on many other KJV verbs (walketh, believeth), each meaning the plain modern -s form."
+    }
+  ]
+}

@@ -243,7 +243,18 @@ if (existsSync(curatedSrc)) {
     curatedCount++
   }
 
-  const dir = resolve(OUT, 'glossary')
+  // Grammar: pronoun / verb form-classes (kjv-grammar.json). Each class fires once per
+  // verse in which any of its forms appears, so a verse shows a single grammar row.
+  const gramSrc = resolve(SRC, 'kjv-grammar.json')
+  const gramClasses = existsSync(gramSrc) ? JSON.parse(readFileSync(gramSrc, 'utf8')).classes || [] : []
+  const gramByKey = new Map(gramClasses.map((c) => [c.key, c]))
+  const gramForm = new Map()
+  for (const c of gramClasses) for (const f of c.forms) gramForm.set(f.toLowerCase(), c)
+
+  // New letters-only path + v:2 shape: adding grammar/name kinds changes the payload's
+  // meaning, and a fresh directory forces the CacheFirst service worker to refetch (a
+  // digit like glossary2 would break the /data/[a-z]+/ runtime-cache pattern).
+  const dir = resolve(OUT, 'glosses')
   mkdirSync(dir, { recursive: true })
   const kjv = editions.find((e) => e.id === 'en')
   let books = 0
@@ -255,18 +266,28 @@ if (existsSync(curatedSrc)) {
     const slug = slugOf(en)
     const tags = {}
     const used = new Set()
+    const usedGram = new Set()
     for (const [ch, verses] of book.chapters) {
       const out = {}
       for (const [v, raw] of verses) {
         const ref = `${slug}.${ch}.${v}`
         const found = []
+        const seenGram = new Set()
         for (const m of cleanKjv(raw).matchAll(/[A-Za-z]+/g)) {
           const key = m[0].toLowerCase()
           const e = entries[key]
-          if (!e) continue
-          if (e.refs && !e.refs.includes(ref)) continue // sense does not apply here
-          found.push([m[0], key])
-          used.add(key)
+          if (e && (!e.refs || e.refs.includes(ref))) {
+            found.push([m[0], key])
+            used.add(key)
+          }
+          // A grammar class fires once per verse: sayeth + doeth + hath in one verse
+          // yields a single "hath / doth / saith" row, not three.
+          const gc = gramForm.get(key)
+          if (gc && !seenGram.has(gc.key)) {
+            found.push([gc.label, gc.key])
+            usedGram.add(gc.key)
+            seenGram.add(gc.key)
+          }
         }
         if (found.length) out[v] = found
       }
@@ -279,14 +300,18 @@ if (existsSync(curatedSrc)) {
       const { m, d, k } = entries[key]
       e[key] = m ? { m, d, k } : { d, k }
     }
+    for (const gk of usedGram) {
+      const c = gramByKey.get(gk)
+      e[gk] = c.m ? { m: c.m, d: c.d, k: 'grammar' } : { d: c.d, k: 'grammar' }
+    }
     const path = resolve(dir, `${slug}.json`)
-    writeFileSync(path, JSON.stringify({ v: 1, t: tags, e }))
+    writeFileSync(path, JSON.stringify({ v: 2, t: tags, e }))
     books++
     bytes += statSync(path).size
     for (const chs of Object.values(tags)) for (const ws of Object.values(chs)) hits += ws.length
   }
   console.log(
-    `Glossary: ${curatedCount} curated + ${Object.keys(archaic).length} derived words, ${hits} occurrences over ${books} books ${mb(bytes)}\n`,
+    `Glossary: ${curatedCount} curated + ${Object.keys(archaic).length} derived + ${gramClasses.length} grammar classes, ${hits} occurrences over ${books} books ${mb(bytes)}\n`,
   )
 } else {
   console.warn('  ! glossary skipped — data-src/glossary-en.json missing\n')

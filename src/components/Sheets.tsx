@@ -272,54 +272,73 @@ function Glossary({
   canSpeak: (l: Lang) => boolean
   onSpeakWord: (text: string, lang: Lang) => void
 }) {
-  if (!words.length) return null
+  // Content words (false friends, archaic, names) list normally and are marked inline.
+  // Grammar forms are frequent, so they sit in a collapsed group and are not marked.
+  const content = words.filter((w) => w.kind !== 'grammar')
+  const grammar = words.filter((w) => w.kind === 'grammar')
+  if (!content.length && !grammar.length) return null
   return (
     <div className="conc gloss">
       <div className="conchead">
         <b>{t('glossary')}</b>
         <small>{t('glossary_sub')}</small>
       </div>
-      <ul className="conclist">
-        {words.map((w) => {
-          const isOpen = open === w.key
-          const badge = KIND_LABEL[w.kind]
-          return (
-            <li key={w.key} id={`gloss-${w.key}`}>
-              <div className="crowline">
-                <button
-                  className={`crowbtn ${isOpen ? 'on' : ''}`}
-                  aria-expanded={isOpen}
-                  onClick={() => onOpenChange(isOpen ? null : w.key)}
-                >
-                  <span className="cword">{w.word}</span>
-                  {w.modern && <span className="gmod">{w.modern}</span>}
-                  {badge && <small className="ccode">{t(badge)}</small>}
-                </button>
-                {canSpeak('en') && (
+      {content.length > 0 && (
+        <ul className="conclist">
+          {content.map((w) => {
+            const isOpen = open === w.key
+            const badge = KIND_LABEL[w.kind]
+            return (
+              <li key={w.key} id={`gloss-${w.key}`}>
+                <div className="crowline">
                   <button
-                    className="cspeak"
-                    title={`${t('pronounce')}: ${w.word}`}
-                    aria-label={`${t('pronounce')}: ${w.word}`}
-                    onClick={() => onSpeakWord(w.word, 'en')}
+                    className={`crowbtn ${isOpen ? 'on' : ''}`}
+                    aria-expanded={isOpen}
+                    onClick={() => onOpenChange(isOpen ? null : w.key)}
                   >
-                    ▶
+                    <span className="cword">{w.word}</span>
+                    {w.modern && <span className="gmod">{w.modern}</span>}
+                    {badge && <small className="ccode">{t(badge)}</small>}
                   </button>
-                )}
-              </div>
-              {isOpen && (
-                <div className="cdef">
-                  <span>{w.note}</span>
-                  {w.modern && canSpeak('en') && (
-                    <button className="mini gsay" onClick={() => onSpeakWord(w.modern!, 'en')}>
-                      ▶ {w.modern}
+                  {canSpeak('en') && (
+                    <button
+                      className="cspeak"
+                      title={`${t('pronounce')}: ${w.word}`}
+                      aria-label={`${t('pronounce')}: ${w.word}`}
+                      onClick={() => onSpeakWord(w.word, 'en')}
+                    >
+                      ▶
                     </button>
                   )}
                 </div>
-              )}
-            </li>
-          )
-        })}
-      </ul>
+                {isOpen && (
+                  <div className="cdef">
+                    <span>{w.note}</span>
+                    {w.modern && canSpeak('en') && (
+                      <button className="mini gsay" onClick={() => onSpeakWord(w.modern!, 'en')}>
+                        ▶ {w.modern}
+                      </button>
+                    )}
+                  </div>
+                )}
+              </li>
+            )
+          })}
+        </ul>
+      )}
+      {grammar.length > 0 && (
+        <details className="gramdrop">
+          <summary>{t('glossary_grammar')}</summary>
+          <ul className="conclist">
+            {grammar.map((w) => (
+              <li key={w.key} className="gramrow">
+                <span className="cword">{w.word}</span>
+                <span className="gramnote">{w.note}</span>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
     </div>
   )
 }
@@ -562,8 +581,10 @@ export function VerseSheet({
       live = false
     }
   }, [data?.slug, data?.ch, data?.v, data?.lang])
+  // Content words get inline markers; grammar forms (thou, hath, -eth) do not, or they
+  // would light up most of the verse. Grammar lives in a collapsed group in the panel.
   const glossMap = useMemo(
-    () => new Map(glossWords.map((w) => [w.word.toLowerCase(), w.key])),
+    () => new Map(glossWords.filter((w) => w.kind !== 'grammar').map((w) => [w.word.toLowerCase(), w.key])),
     [glossWords],
   )
   if (!data) return null

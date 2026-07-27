@@ -16,7 +16,7 @@ const BASE = import.meta.env.BASE_URL
 
 /** Bump together with the path if the payload shape changes — see the CacheFirst note
  *  in strongs.ts for why that rule exists. */
-const SHAPE = 1
+const SHAPE = 2 // bumped with the path move to glosses/ when grammar and name kinds were added
 
 // 'grammar' (archaic pronouns/verb endings) and 'name' (proper-name meanings) are
 // added by the comprehensive glossary build; the on-disk shape is unchanged, so SHAPE
@@ -55,7 +55,7 @@ const valid = (j: unknown): j is BookGloss => {
 const books = new Map<string, BookGloss>()
 const loads = new Map<string, Promise<BookGloss | null>>()
 
-const url = (slug: string) => `${BASE}data/glossary/${slug}.json`
+const url = (slug: string) => `${BASE}data/glosses/${slug}.json`
 
 function load(slug: string, force = false): Promise<BookGloss | null> {
   const have = books.get(slug)

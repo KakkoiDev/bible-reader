@@ -773,6 +773,19 @@ html.modal-open { overflow: hidden; }
 .gmod { color: var(--accent); font-weight: 600; }
 .gmod::before { content: '→ '; color: var(--muted); font-weight: 400; }
 .cdef .gsay { align-self: flex-start; margin-top: 2px; }
+/* Archaic grammar sits in a collapsed group below the content words, since its forms
+   (thou, hath, saith) recur on most verses and would otherwise bury the rare words. */
+.gramdrop { margin-top: 8px; }
+.gramdrop > summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 6px 4px;
+}
+.gramrow { display: flex; flex-direction: column; gap: 2px; padding: 8px 4px; }
+.gramrow .gramnote { color: var(--muted); font-size: 13px; line-height: 1.5; }
 
 /* ---------- texts & licences ---------- */
 .sheet.licences { width: min(620px, 94vw); }
