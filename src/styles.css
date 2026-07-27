@@ -686,6 +686,10 @@ html.modal-open { overflow: hidden; }
   font-size: 13px;
 }
 .conchead small { color: var(--muted); font-size: 11px; }
+/* the original-language verse above the concordance terms, with its play button */
+.cverse { display: flex; align-items: flex-start; gap: 6px; margin: 2px 0 10px; }
+.cvtext { flex: 1; min-width: 0; margin: 0; font-size: 18px; line-height: 1.6; }
+.cvspeak { font-size: 13px; color: var(--accent); }
 .conclist { list-style: none; margin: 0; padding: 0; font-family: system-ui, sans-serif; }
 .conclist li + li { border-top: 1px solid var(--line); }
 .crowline { display: flex; align-items: stretch; gap: 2px; }

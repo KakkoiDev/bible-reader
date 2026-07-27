@@ -298,6 +298,43 @@ export default function App() {
   }, [loaded, pos.slug])
   const ready = loaded.slug === pos.slug && !!book
 
+  // The original-language verse behind the open KJV concordance: Hebrew (WLC) for an OT
+  // book, Greek (TR) for an NT one. Loaded lazily, only while a KJV sheet is open, through
+  // the same per-book cache the reader uses, so a visible he/el column costs no 2nd fetch.
+  // null = sheet closed, not KJV, or no matching verse (WLC/KJV versification diverges).
+  const [origVerse, setOrigVerse] = useState<{ lang: Lang; text: string } | null>(null)
+  useEffect(() => {
+    setOrigVerse(null)
+    if (!verseSheet || verseSheet.lang !== 'en') return
+    const { slug, ch, v } = verseSheet
+    const bi = index.findIndex((b) => b.slug === slug)
+    if (bi < 0) return
+    const oLang: Lang = bi < 39 ? 'he' : 'el' // OT = Hebrew, NT = Greek (matches coversBook)
+    let alive = true
+    const pick = (b?: EditionBook) =>
+      b?.chapters.find((c) => c.n === ch)?.verses.find((x) => x.v === v)?.t ?? null
+    const have = verseText[oLang]?.get(`${ch}.${v}`) // fast path: that edition is a visible column
+    if (have) return setOrigVerse({ lang: oLang, text: have })
+    const key = `${oLang}/${slug}`
+    const apply = (b: EditionBook) => {
+      if (!alive) return
+      const txt = pick(b)
+      setOrigVerse(txt ? { lang: oLang, text: txt } : null)
+    }
+    const cached = cache.current.get(key)
+    if (cached) return apply(cached)
+    fetch(`${BASE}data/${oLang}/${slug}.json`)
+      .then((r) => (r.ok ? (r.json() as Promise<EditionBook>) : ({ chapters: [] } as EditionBook)))
+      .catch(() => ({ chapters: [] }) as EditionBook)
+      .then((b) => {
+        cache.current.set(key, b)
+        apply(b)
+      })
+    return () => {
+      alive = false
+    }
+  }, [verseSheet, index, verseText])
+
   // Warm the book's concordance cards once the text itself is up, so the first verse
   // tap opens with the words already there. Deferred to idle (with a timeout, since
   // Safari has no requestIdleCallback) so it never competes with rendering the
@@ -1401,6 +1438,7 @@ export default function App() {
 
       <VerseSheet
         data={verseSheet}
+        origVerse={origVerse}
         showFurigana={prefs.furigana}
         t={t}
         onCopyText={() =>

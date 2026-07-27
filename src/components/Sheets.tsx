@@ -338,6 +338,7 @@ function Concordance({
   slug,
   ch,
   v,
+  orig,
   t,
   canSpeak,
   onSpeakWord,
@@ -345,6 +346,8 @@ function Concordance({
   slug: string
   ch: number
   v: number
+  /** The Hebrew/Greek verse behind this KJV verse; null when versification has no match. */
+  orig: { lang: Lang; text: string } | null
   t: T
   /** Whether this device has a voice for a script, so the button isn't a dead end. */
   canSpeak: (l: Lang) => boolean
@@ -401,6 +404,25 @@ function Concordance({
         <b>{t('concordance')}</b>
         <small>{BY_ID.en.edition}</small>
       </div>
+      {orig && (
+        // The whole verse in the original tongue, with one button to hear it. dir sits
+        // on the text so the ▶ keeps a consistent side even for right-to-left Hebrew.
+        <div className="cverse">
+          <p className="cvtext" lang={BY_ID[orig.lang].htmlLang} dir={BY_ID[orig.lang].dir}>
+            {orig.text}
+          </p>
+          {canSpeak(orig.lang) && (
+            <button
+              className="cspeak cvspeak"
+              title={t('play_verse')}
+              aria-label={t('play_verse')}
+              onClick={() => onSpeakWord(orig.text, orig.lang)}
+            >
+              ▶
+            </button>
+          )}
+        </div>
+      )}
       {words === 'loading' && (
         <p className="empty loadrow">
           <span className="spin" aria-hidden="true" />
@@ -416,7 +438,7 @@ function Concordance({
         </p>
       )}
       {Array.isArray(words) && (
-        <ul className="conclist">
+        <ul className="conclist termlist">
           {words.map((w, i) => {
             const isOpen = open === w.code
             const entry = def?.code === w.code ? def.entry : null
@@ -495,6 +517,7 @@ export interface VerseSheetData {
 
 export function VerseSheet({
   data,
+  origVerse,
   showFurigana,
   t,
   onCopyText,
@@ -507,6 +530,9 @@ export function VerseSheet({
   onClose,
 }: {
   data: VerseSheetData | null
+  /** Original-language verse (Hebrew/Greek) for the KJV concordance header; null when
+   *  none applies or its versification has no matching verse. */
+  origVerse: { lang: Lang; text: string } | null
   showFurigana: boolean
   t: T
   onCopyText: () => void
@@ -610,6 +636,7 @@ export function VerseSheet({
             slug={data.slug}
             ch={data.ch}
             v={data.v}
+            orig={origVerse}
             t={t}
             canSpeak={canSpeak}
             onSpeakWord={onSpeakWord}
