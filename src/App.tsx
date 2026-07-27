@@ -38,6 +38,12 @@ const BASE = import.meta.env.BASE_URL
 const SWIPE_MIN = 45
 const REPO_URL = 'https://github.com/KakkoiDev/bible-reader'
 
+// The browser's deferred PWA-install prompt (Chromium only; not in the DOM lib types).
+type InstallPromptEvent = Event & {
+  prompt: () => Promise<void>
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
+}
+
 interface Pos {
   slug: string
   chapter: number
@@ -154,6 +160,7 @@ export default function App() {
   const [navOpen, setNavOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [licencesOpen, setLicencesOpen] = useState(false)
+  const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null)
   const [verseSheet, setVerseSheet] = useState<VerseSheetData | null>(null)
   const [paras, setParas] = useState<Paragraphs>({})
   const [invite, setInvite] = useState<Invite | null>(initHash.invite ?? null)
@@ -565,6 +572,31 @@ export default function App() {
    *  offer a button that would do nothing. Before the voice list arrives nothing is
    *  claimed unspeakable, matching how the settings list behaves. */
   const canSpeak = useCallback((l: Lang) => canTTS && !noVoice.has(l), [canTTS, noVoice])
+
+  // Offer to install the PWA when the browser says it can, unless we're already the
+  // installed app (standalone), where there's no prompt to give and the button stays hidden.
+  useEffect(() => {
+    const standalone =
+      window.matchMedia?.('(display-mode: standalone)').matches ||
+      (navigator as { standalone?: boolean }).standalone === true
+    if (standalone) return
+    const onPrompt = (e: Event) => {
+      e.preventDefault() // keep the browser from showing its own mini-infobar
+      setInstallPrompt(e as InstallPromptEvent)
+    }
+    const onInstalled = () => setInstallPrompt(null)
+    window.addEventListener('beforeinstallprompt', onPrompt)
+    window.addEventListener('appinstalled', onInstalled)
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onPrompt)
+      window.removeEventListener('appinstalled', onInstalled)
+    }
+  }, [])
+  const install = useCallback(() => {
+    if (!installPrompt) return
+    void installPrompt.prompt()
+    setInstallPrompt(null) // a captured prompt is single-use
+  }, [installPrompt])
 
   // Where playback was when the app went to the background, so it can be offered back.
   const [resumeAt, setResumeAt] = useState<{ lang: Lang; ch: number; v: number } | null>(null)
@@ -1352,6 +1384,12 @@ export default function App() {
         </nav>
 
         <footer className="attrib">
+          {installPrompt && (
+            <>
+              <button className="liclink" onClick={install}>{t('install_app')}</button>
+              {' · '}
+            </>
+          )}
           <button className="liclink" onClick={() => setLicencesOpen(true)}>{t('licences')}</button>
           {' · '}
           <a href={REPO_URL} target="_blank" rel="noreferrer noopener">{t('source_code')}</a>
