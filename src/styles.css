@@ -686,9 +686,28 @@ html.modal-open { overflow: hidden; }
   font-size: 13px;
 }
 .conchead small { color: var(--muted); font-size: 11px; }
-/* the original-language verse above the concordance terms, with its play button */
-.cverse { display: flex; align-items: flex-start; gap: 6px; margin: 2px 0 10px; }
-.cvtext { flex: 1; min-width: 0; margin: 0; font-size: 18px; line-height: 1.6; }
+/* Vocabulary, grammar and concordance are each a block collapsed by default; the summary
+   is the old header made clickable, with a disclosure caret and, where present, the play
+   button pushed to the end of the title row. */
+.worddrop > summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0;
+  cursor: pointer;
+  font-family: system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  list-style: none;
+}
+.worddrop > summary::-webkit-details-marker { display: none; }
+.worddrop > summary::before { content: '▸'; color: var(--muted); font-size: 10px; font-weight: 400; }
+.worddrop[open] > summary::before { content: '▾'; }
+.worddrop > summary small { color: var(--muted); font-size: 11px; font-weight: 400; }
+.worddrop > summary .cvspeak { margin-inline-start: auto; }
+/* the original-language verse above the concordance terms */
+.cverse { margin: 2px 0 10px; }
+.cvtext { min-width: 0; margin: 0; font-size: 18px; line-height: 1.6; }
 .cvspeak { font-size: 13px; color: var(--accent); }
 .conclist { list-style: none; margin: 0; padding: 0; font-family: system-ui, sans-serif; }
 .conclist li + li { border-top: 1px solid var(--line); }
@@ -773,17 +792,7 @@ html.modal-open { overflow: hidden; }
 .gmod { color: var(--accent); font-weight: 600; }
 .gmod::before { content: '→ '; color: var(--muted); font-weight: 400; }
 .cdef .gsay { align-self: flex-start; margin-top: 2px; }
-/* Archaic grammar sits in a collapsed group below the content words, since its forms
-   (thou, hath, saith) recur on most verses and would otherwise bury the rare words. */
-.gramdrop { margin-top: 8px; }
-.gramdrop > summary {
-  cursor: pointer;
-  color: var(--muted);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  padding: 6px 4px;
-}
+/* Grammar rows are reference notes (a shared note per form-class), not tappable defs. */
 .gramrow { display: flex; flex-direction: column; gap: 2px; padding: 8px 4px; }
 .gramrow .gramnote { color: var(--muted); font-size: 13px; line-height: 1.5; }
 

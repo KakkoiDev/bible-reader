@@ -256,11 +256,14 @@ const KIND_LABEL: Partial<Record<GlossKind, StringKey>> = {
 }
 
 // Presentational: the verse sheet owns the loaded words and which entry is open, so a
-// grey marker tapped in the verse text can drive this panel (open the row, scroll to it).
+// grey marker tapped in the verse text can drive this panel (open the block + row, scroll
+// to it). Vocabulary and grammar are separate blocks, each collapsed by default.
 function Glossary({
   words,
   open,
   onOpenChange,
+  vocabOpen,
+  onVocabOpenChange,
   t,
   canSpeak,
   onSpeakWord,
@@ -268,67 +271,78 @@ function Glossary({
   words: GlossWord[]
   open: string | null
   onOpenChange: (key: string | null) => void
+  vocabOpen: boolean
+  onVocabOpenChange: (open: boolean) => void
   t: T
   canSpeak: (l: Lang) => boolean
   onSpeakWord: (text: string, lang: Lang) => void
 }) {
-  // Content words (false friends, archaic, names) list normally and are marked inline.
-  // Grammar forms are frequent, so they sit in a collapsed group and are not marked.
+  // Content words (false friends, archaic, names) list in Vocabulary and are marked
+  // inline; grammar forms are frequent, so they get their own block and no inline marks.
   const content = words.filter((w) => w.kind !== 'grammar')
   const grammar = words.filter((w) => w.kind === 'grammar')
   if (!content.length && !grammar.length) return null
   return (
-    <div className="conc gloss">
-      <div className="conchead">
-        <b>{t('glossary')}</b>
-        <small>{t('glossary_sub')}</small>
-      </div>
+    <>
       {content.length > 0 && (
-        <ul className="conclist">
-          {content.map((w) => {
-            const isOpen = open === w.key
-            const badge = KIND_LABEL[w.kind]
-            return (
-              <li key={w.key} id={`gloss-${w.key}`}>
-                <div className="crowline">
-                  <button
-                    className={`crowbtn ${isOpen ? 'on' : ''}`}
-                    aria-expanded={isOpen}
-                    onClick={() => onOpenChange(isOpen ? null : w.key)}
-                  >
-                    <span className="cword">{w.word}</span>
-                    {w.modern && <span className="gmod">{w.modern}</span>}
-                    {badge && <small className="ccode">{t(badge)}</small>}
-                  </button>
-                  {canSpeak('en') && (
+        // Collapsed by default; a marker tapped in the verse opens it (controlled).
+        <details
+          className="conc worddrop"
+          open={vocabOpen}
+          onToggle={(e) => onVocabOpenChange(e.currentTarget.open)}
+        >
+          <summary>
+            <b>{t('glossary')}</b>
+            <small>{t('glossary_sub')}</small>
+          </summary>
+          <ul className="conclist">
+            {content.map((w) => {
+              const isOpen = open === w.key
+              const badge = KIND_LABEL[w.kind]
+              return (
+                <li key={w.key} id={`gloss-${w.key}`}>
+                  <div className="crowline">
                     <button
-                      className="cspeak"
-                      title={`${t('pronounce')}: ${w.word}`}
-                      aria-label={`${t('pronounce')}: ${w.word}`}
-                      onClick={() => onSpeakWord(w.word, 'en')}
+                      className={`crowbtn ${isOpen ? 'on' : ''}`}
+                      aria-expanded={isOpen}
+                      onClick={() => onOpenChange(isOpen ? null : w.key)}
                     >
-                      ▶
+                      <span className="cword">{w.word}</span>
+                      {w.modern && <span className="gmod">{w.modern}</span>}
+                      {badge && <small className="ccode">{t(badge)}</small>}
                     </button>
-                  )}
-                </div>
-                {isOpen && (
-                  <div className="cdef">
-                    <span>{w.note}</span>
-                    {w.modern && canSpeak('en') && (
-                      <button className="mini gsay" onClick={() => onSpeakWord(w.modern!, 'en')}>
-                        ▶ {w.modern}
+                    {canSpeak('en') && (
+                      <button
+                        className="cspeak"
+                        title={`${t('pronounce')}: ${w.word}`}
+                        aria-label={`${t('pronounce')}: ${w.word}`}
+                        onClick={() => onSpeakWord(w.word, 'en')}
+                      >
+                        ▶
                       </button>
                     )}
                   </div>
-                )}
-              </li>
-            )
-          })}
-        </ul>
+                  {isOpen && (
+                    <div className="cdef">
+                      <span>{w.note}</span>
+                      {w.modern && canSpeak('en') && (
+                        <button className="mini gsay" onClick={() => onSpeakWord(w.modern!, 'en')}>
+                          ▶ {w.modern}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        </details>
       )}
       {grammar.length > 0 && (
-        <details className="gramdrop">
-          <summary>{t('glossary_grammar')}</summary>
+        <details className="conc worddrop">
+          <summary>
+            <b>{t('glossary_grammar')}</b>
+          </summary>
           <ul className="conclist">
             {grammar.map((w) => (
               <li key={w.key} className="gramrow">
@@ -339,7 +353,7 @@ function Glossary({
           </ul>
         </details>
       )}
-    </div>
+    </>
   )
 }
 
@@ -418,28 +432,33 @@ function Concordance({
   if (Array.isArray(words) && words.length === 0) return null
 
   return (
-    <div className="conc strongs">
-      <div className="conchead">
+    // Collapsed by default; the play button in the title speaks the original verse.
+    <details className="conc strongs worddrop">
+      <summary>
         <b>{t('concordance')}</b>
         <small>{BY_ID.en.edition}</small>
-      </div>
+        {orig && canSpeak(orig.lang) && (
+          <button
+            className="cspeak cvspeak"
+            title={t('play_verse')}
+            aria-label={t('play_verse')}
+            // preventDefault so speaking the verse does not also toggle the disclosure.
+            onClick={(e) => {
+              e.preventDefault()
+              onSpeakWord(orig.text, orig.lang)
+            }}
+          >
+            ▶
+          </button>
+        )}
+      </summary>
       {orig && (
-        // The whole verse in the original tongue, with one button to hear it. dir sits
-        // on the text so the ▶ keeps a consistent side even for right-to-left Hebrew.
+        // The whole verse in the original tongue. dir sits on the text so right-to-left
+        // Hebrew lays out correctly.
         <div className="cverse">
           <p className="cvtext" lang={BY_ID[orig.lang].htmlLang} dir={BY_ID[orig.lang].dir}>
             {orig.text}
           </p>
-          {canSpeak(orig.lang) && (
-            <button
-              className="cspeak cvspeak"
-              title={t('play_verse')}
-              aria-label={t('play_verse')}
-              onClick={() => onSpeakWord(orig.text, orig.lang)}
-            >
-              ▶
-            </button>
-          )}
         </div>
       )}
       {words === 'loading' && (
@@ -519,7 +538,7 @@ function Concordance({
           })}
         </ul>
       )}
-    </div>
+    </details>
   )
 }
 
@@ -567,8 +586,10 @@ export function VerseSheet({
   // in the verse text can open (and scroll to) the matching row in the panel below.
   const [glossWords, setGlossWords] = useState<GlossWord[]>([])
   const [openGloss, setOpenGloss] = useState<string | null>(null)
+  const [vocabOpen, setVocabOpen] = useState(false)
   useEffect(() => {
     setOpenGloss(null)
+    setVocabOpen(false)
     if (!data || data.lang !== 'en') {
       setGlossWords([])
       return
@@ -595,6 +616,7 @@ export function VerseSheet({
   // Open a glossary entry from a marker tapped in the verse, and bring the row into view.
   const openGlossEntry = (key: string) => {
     setOpenGloss(key)
+    setVocabOpen(true) // the vocabulary block is collapsed by default; a marker opens it
     requestAnimationFrame(() =>
       document.getElementById(`gloss-${key}`)?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }),
     )
@@ -617,6 +639,18 @@ export function VerseSheet({
                 {m.label} · {m.edition}
                 {!text && note && <small className="cnote">{note}</small>}
               </span>
+              {/* Play the verse from its title row. Distinct from the bottom Play, which
+                  reads on from here and closes the sheet. */}
+              {text && canSpeak(l) && (
+                <button
+                  className="cspeak vspeak"
+                  title={`${t('pronounce')}: ${m.label}`}
+                  aria-label={t('pronounce')}
+                  onClick={() => onSpeakWord(text, l)}
+                >
+                  ▶
+                </button>
+              )}
             </div>
             <div className="ctext">
               <VerseText
@@ -628,18 +662,6 @@ export function VerseSheet({
                 onGlossClick={l === 'en' ? openGlossEntry : undefined}
               />
             </div>
-            {/* Speak this one verse in place. Distinct from the bottom Play, which reads
-                on from here and closes the sheet. */}
-            {text && canSpeak(l) && (
-              <button
-                className="cspeak vspeak"
-                title={`${t('pronounce')}: ${m.label}`}
-                aria-label={t('pronounce')}
-                onClick={() => onSpeakWord(text, l)}
-              >
-                ▶
-              </button>
-            )}
           </div>
         </div>
         {WORD_PANEL[data.lang]?.includes('glossary') && (
@@ -647,6 +669,8 @@ export function VerseSheet({
             words={glossWords}
             open={openGloss}
             onOpenChange={setOpenGloss}
+            vocabOpen={vocabOpen}
+            onVocabOpenChange={setVocabOpen}
             t={t}
             canSpeak={canSpeak}
             onSpeakWord={onSpeakWord}
