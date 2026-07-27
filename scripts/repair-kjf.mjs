@@ -145,6 +145,57 @@ for (const { book, chapter, verse } of MERGED) {
   }
 }
 
+// ---- 4. de-duplicate single-verse displacements ----
+// One verse's text was left under a duplicate number while its own number went missing
+// (docs/KJF-DEFECTS.md section 6). Each fix names the displaced verse by a unique phrase,
+// moves it to its true number (cross-checked against the KJV), and asserts the chapter is
+// then a clean 1..N. Only single-verse displacements are handled here: the multi-verse
+// numbering shifts (Psalms 60, 69, 92) and the superscription (Psalm 30) need the
+// publisher's verse divisions and stay documented rather than guessed at.
+const DISPLACED = [
+  { book: 'Numbers', chapter: 13, sig: 'Palti, le fils de Raphu', to: 9 },
+  { book: '1 Chronicles', chapter: 23, sig: 'plus à porter le tabernacle', to: 26 },
+  { book: 'Psalms', chapter: 44, sig: 'Réveille-toi, pourquoi dors-tu', to: 23 },
+  { book: 'Isaiah', chapter: 9, sig: 'aucune joie en leurs jeunes gens', to: 17, strip: '7 ' },
+  { book: 'Jonah', chapter: 2, sig: 'au milieu des mers', to: 3 },
+  { book: '2 Thessalonians', chapter: 2, sig: 'Maintenant que notre Seigneur', to: 16 },
+]
+for (const fix of DISPLACED) {
+  const head = lines.findIndex((l) => l.trim() === `### ${fix.book} ${fix.chapter}`)
+  if (head < 0) throw new Error(`cannot find "### ${fix.book} ${fix.chapter}"`)
+  const end = lines.findIndex((l, i) => i > head && l.startsWith('### '))
+  const stop = end < 0 ? lines.length : end
+  const idx = []
+  for (let i = head + 1; i < stop; i++) if (/^\*\*\d+\*\*/.test(lines[i].trim())) idx.push(i)
+  const nums = idx.map((i) => Number(lines[i].trim().match(/^\*\*(\d+)\*\*/)[1]))
+  const clean = new Set(nums).size === nums.length && nums.every((n, k) => n === k + 1)
+  if (clean) continue // already repaired
+  if (idx[idx.length - 1] - idx[0] + 1 !== idx.length)
+    throw new Error(`${fix.book} ${fix.chapter}: non-verse lines inside the chapter`)
+  const hit = idx.filter((i) => lines[i].includes(fix.sig))
+  if (hit.length !== 1) throw new Error(`${fix.book} ${fix.chapter}: phrase "${fix.sig}" matched ${hit.length} lines`)
+  const verses = idx.map((i) => {
+    const m = lines[i].trim().match(/^\*\*(\d+)\*\*\s+(.*)$/)
+    let n = Number(m[1])
+    let t = m[2]
+    if (i === hit[0]) {
+      n = fix.to
+      if (fix.strip) {
+        if (!t.startsWith(fix.strip)) throw new Error(`${fix.book} ${fix.chapter}: expected stray "${fix.strip.trim()}"`)
+        t = t.slice(fix.strip.length)
+      }
+    }
+    return { n, t: t.replace(/\s+$/, '') }
+  })
+  verses.sort((a, b) => a.n - b.n)
+  verses.forEach((v, k) => {
+    if (v.n !== k + 1) throw new Error(`${fix.book} ${fix.chapter}: not a clean 1..N after fix (${v.n} at ${k + 1})`)
+  })
+  const block = verses.map((v) => `**${v.n}** ${v.t}  `)
+  lines = [...lines.slice(0, idx[0]), ...block, ...lines.slice(idx[idx.length - 1] + 1)]
+  changes.push(`de-duplicated ${fix.book} ${fix.chapter} (recovered verse ${fix.to})`)
+}
+
 if (!changes.length) {
   console.log('kjf.md already repaired; nothing to do.')
 } else {

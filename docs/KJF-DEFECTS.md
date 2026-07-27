@@ -108,22 +108,27 @@ number. They need a human reading of the printed page.
 
 Surfaced by `scripts/check-data.mjs`. In these chapters the export gives two verses the
 same number, so the build (which keys verses by number, last wins) keeps only one and
-silently drops the other's text:
+silently drops the other's text. It is the same root cause as sections 3 and 5, seen
+from the other side: instead of a gap, a number repeats.
+
+**Six are fixed** (`scripts/repair-kjf.mjs` step 4), because a single verse's text was
+merely mislabelled and its true number, cross-checked against the KJV, was the missing
+one. The fix moves that verse to its number and asserts the chapter is then a clean
+1..N; no outside text is used.
 
 ```
-Numbers 13   1 Chronicles 23   Psalms 30   Psalms 44   Psalms 60
-Psalms 69    Psalms 92          Isaiah 9    Jonah 2     2 Thessalonians 2
+Numbers 13 (v9)   1 Chronicles 23 (v26)   Psalms 44 (v23)
+Isaiah 9 (v17)    Jonah 2 (v3)            2 Thessalonians 2 (v16)
 ```
 
-It is the same root cause as sections 3 and 5 - a mis-numbering in the OSIS export -
-seen from the other side: instead of a gap, a number repeats. Two shapes recur. In the
-Psalms, the Hebrew superscription is numbered as a second verse 1 (Psalm 30: "Psaume et
-cantique de la dédicace" collides with "Je t'exalterai, ô SEIGNEUR"). Elsewhere a verse
-carries the number of a neighbour while its own number goes missing (2 Thessalonians
-2:16's text is numbered 1, and 16 is absent; Jonah 2:3's text is numbered 4, and 3 is
-absent). Resolving them means fixing the verse division, which is the publisher's call,
-so they are reported and left as-is - and allowlisted in `check-data.mjs` so the check
-still hard-fails on any *new* duplicate (as it does for a reverted Revelation 4).
+(This supersedes section 5's claim that Numbers 13:9 and Jonah 2:3 were unrecoverable:
+the text was present all along, only mis-numbered, so no PDF reading was needed.)
+
+**Four are left as-is**, because fixing them means choosing a verse division and that is
+the publisher's call: Psalm 30 numbers the Hebrew superscription as a second verse 1,
+and Psalms 60, 69 and 92 carry a multi-verse numbering shift (several verses each one
+number too high after a dropped number) rather than a single displaceable verse. These
+stay allowlisted in `check-data.mjs`; the check still hard-fails on any *new* duplicate.
 
 ## How this was determined
 

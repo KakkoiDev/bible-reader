@@ -83,10 +83,12 @@ const KNOWN_DIVERGE = new Set(['fr/1 Samuel/20', 'fr/1 Kings/22', 'fr/Revelation
 // the last of each pair, so one verse's text is currently lost in these chapters. This
 // is a WARN, not a FAIL. Revelation 4 is deliberately NOT here: its interleave was
 // mechanically recoverable and is fixed, so a revert re-fails the duplicate check.
-const KNOWN_DUPS = new Set([
-  'fr/Numbers/13', 'fr/1 Chronicles/23', 'fr/Psalms/30', 'fr/Psalms/44', 'fr/Psalms/60',
-  'fr/Psalms/69', 'fr/Psalms/92', 'fr/Isaiah/9', 'fr/Jonah/2', 'fr/2 Thessalonians/2',
-])
+// The six single-verse displacements (Numbers 13, 1 Chronicles 23, Psalms 44, Isaiah 9,
+// Jonah 2, 2 Thessalonians 2) are now repaired by repair-kjf.mjs, so they are NOT here:
+// a regression re-introduces the duplicate and hard-fails. What remains needs the
+// publisher's verse divisions (Psalm 30's superscription, the multi-verse shifts in
+// Psalms 60/69/92) and stays documented.
+const KNOWN_DUPS = new Set(['fr/Psalms/30', 'fr/Psalms/60', 'fr/Psalms/69', 'fr/Psalms/92'])
 
 const fails = []
 const warns = []
