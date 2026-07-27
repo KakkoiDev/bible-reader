@@ -580,6 +580,8 @@ export default function App() {
       window.matchMedia?.('(display-mode: standalone)').matches ||
       (navigator as { standalone?: boolean }).standalone === true
     if (standalone) return
+    const w = window as Window & { __bip?: InstallPromptEvent }
+    if (w.__bip) setInstallPrompt(w.__bip) // fired before this mounted (see index.html)
     const onPrompt = (e: Event) => {
       e.preventDefault() // keep the browser from showing its own mini-infobar
       setInstallPrompt(e as InstallPromptEvent)
@@ -596,6 +598,7 @@ export default function App() {
     if (!installPrompt) return
     void installPrompt.prompt()
     setInstallPrompt(null) // a captured prompt is single-use
+    ;(window as { __bip?: InstallPromptEvent | null }).__bip = null
   }, [installPrompt])
 
   // Where playback was when the app went to the background, so it can be offered back.

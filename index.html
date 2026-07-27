@@ -9,6 +9,18 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>Bible · 12 editions</title>
+    <script>
+      // Capture the PWA install prompt as soon as the browser offers it. It can fire
+      // before the app bundle mounts (a warm repeat visit), so stash it on window and
+      // let the app read it on mount; without this the footer Install button can miss it.
+      window.addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault()
+        window.__bip = e
+      })
+      window.addEventListener('appinstalled', function () {
+        window.__bip = null
+      })
+    </script>
     <!--
       Splash screen. Lives in the document (not in a component) and is styled inline
       so it paints on the very first frame, before the JS bundle or styles.css load —
