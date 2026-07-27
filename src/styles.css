@@ -531,6 +531,9 @@ html.modal-open { overflow: hidden; }
 .clang { font-family: system-ui, sans-serif; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin-bottom: 3px; }
 .ctext { font-size: 18px; line-height: 1.75; }
 :lang(ja) .ctext { line-height: 2.05; }
+/* The per-verse pronounce button under the verse text (reuses the concordance's 44px
+   .cspeak square); a touch of top gap sets it off from the text above. */
+.cspeak.vspeak { margin-top: 2px; }
 
 .databtns { display: inline-flex; gap: 8px; }
 .mini {

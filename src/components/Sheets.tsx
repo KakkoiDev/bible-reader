@@ -552,6 +552,18 @@ export function VerseSheet({
             <div className="ctext">
               <VerseText text={text ?? ''} lang={l} showFurigana={showFurigana} showHighlights={false} />
             </div>
+            {/* Speak this one verse in place. Distinct from the bottom Play, which reads
+                on from here and closes the sheet. */}
+            {text && canSpeak(l) && (
+              <button
+                className="cspeak vspeak"
+                title={`${t('pronounce')}: ${m.label}`}
+                aria-label={t('pronounce')}
+                onClick={() => onSpeakWord(text, l)}
+              >
+                ▶
+              </button>
+            )}
           </div>
         </div>
         {WORD_PANEL[data.lang]?.includes('glossary') && (
