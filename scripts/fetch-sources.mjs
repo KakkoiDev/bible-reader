@@ -52,6 +52,19 @@ async function fromEbible(src) {
   return books
 }
 
+/** Decode the HTML entities getbible leaves in verse text (japkougo uses &#x2015; for
+ *  its dash breaks), so they are stored as real characters, not literal "&#x2015;". */
+const decodeEntities = (s) =>
+  s
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(Number(d)))
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&(?:#39|apos);/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+
 /** getbible.net whole-Bible JSON → the same shape. */
 async function fromGetbible(src) {
   const buf = await get(`https://api.getbible.net/v2/${src.ref}.json`, `${src.id} (getbible ${src.ref})`)
@@ -65,7 +78,7 @@ async function fromGetbible(src) {
       const n = Number(c.chapter)
       const verses = new Map()
       for (const vv of c.verses || []) {
-        const t = String(vv.text || '').replace(/\s+/g, ' ').trim()
+        const t = decodeEntities(String(vv.text || '')).replace(/\s+/g, ' ').trim()
         if (t) verses.set(Number(vv.verse), t)
       }
       if (verses.size) chapters.set(n, verses)
