@@ -102,16 +102,20 @@ export function VerseText({
   lang,
   showFurigana,
   highlights,
+  showHighlights = true,
 }: {
   text: string
   lang: Lang
   showFurigana: boolean
   highlights?: HL[]
+  /** The verse sheet turns this off so saved colour highlights don't muddy what Copy
+   *  will grab; the reader leaves it on. */
+  showHighlights?: boolean
 }): ReactNode {
   if (!text) return <span className="missing">·</span>
   const tokens = tokenize(text, lang)
   const total = tokens.reduce((a, t) => a + t.len, 0)
-  const colors = highlights && highlights.length ? colorMap(total, highlights) : null
+  const colors = showHighlights && highlights && highlights.length ? colorMap(total, highlights) : null
   const nodes: ReactNode[] = []
   let key = 0
   for (const t of tokens) {

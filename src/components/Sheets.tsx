@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { IndexItem } from '../lib/types'
 import { bookName } from '../lib/types'
 import { BY_ID, VERSIONS, type Lang } from '../lib/versions'
-import { VerseText, type HL } from '../lib/format'
+import { VerseText } from '../lib/format'
 import { search, parseReference, bookLookup, minQueryLen, type Hit } from '../lib/search'
 import { verseWords, wordDef, cardReady, prefetchDefs, type StrongWord, type StrongDef } from '../lib/strongs'
 import { verseGloss, ready as glossReady, type GlossWord } from '../lib/glossary'
@@ -502,38 +502,34 @@ export interface VerseSheetData {
 
 export function VerseSheet({
   data,
-  columns,
   showFurigana,
-  highlights,
   t,
   onCopyText,
   onCopyLink,
   onCopyInvite,
   onPlay,
   onNote,
-  onClearHighlight,
   canSpeak,
   onSpeakWord,
   onClose,
 }: {
   data: VerseSheetData | null
-  /** Visible editions, in the reader's own order. */
-  columns: Lang[]
   showFurigana: boolean
-  /** Saved highlights for this verse, keyed by edition. */
-  highlights: Partial<Record<Lang, HL[]>>
   t: T
   onCopyText: () => void
   onCopyLink: () => void
   onCopyInvite: () => void
   onPlay: () => void
   onNote: () => void
-  onClearHighlight: (lang: Lang) => void
   canSpeak: (l: Lang) => boolean
   onSpeakWord: (text: string, lang: Lang) => void
   onClose: () => void
 }) {
   if (!data) return null
+  const l = data.lang
+  const m = BY_ID[l]
+  const text = data.text[l]
+  const note = coverageNote(t, l)
   return (
     <div className="sheet-backdrop" onClick={onClose}>
       <div className="sheet verse-sheet" onClick={(e) => e.stopPropagation()}>
@@ -541,38 +537,22 @@ export function VerseSheet({
           <b>{data.label}</b>
           <button className="icon" onClick={onClose} aria-label={t('close')}>✕</button>
         </div>
-        {/* An edition with a word panel of its own shows only itself: the panel is
-            the reason you opened the verse, and on a wide screen the other editions
-            are already side by side in the reader. An edition without one falls back
-            to comparing across editions, which is the next best help it can give. */}
+        {/* Only the edition you opened is shown, with its saved colour highlights
+            suppressed, so there is no doubt which single verse Copy will take. */}
         <div className="compare">
-          {(WORD_PANEL[data.lang]?.length ? [data.lang] : columns).map((l) => {
-            const m = BY_ID[l]
-            const text = data.text[l]
-            const hl = highlights[l]
-            const note = coverageNote(t, l)
-            return (
-              // id lets selectionContext() resolve a selection made in here, so text
-              // is highlighted by selecting the words you want — same gesture as in
-              // the reader — rather than colouring the whole verse.
-              <div key={l} id={`sv-${l}-${data.ch}-${data.v}`} className="crow" lang={m.htmlLang} dir={m.dir}>
-                <div className="clang">
-                  <span>
-                    {m.label} · {m.edition}
-                    {!text && note && <small className="cnote">{note}</small>}
-                  </span>
-                  {text && hl && hl.length > 0 && (
-                    <button className="abtn tiny" title={t('remove_highlight')} onClick={() => onClearHighlight(l)}>
-                      ⌫
-                    </button>
-                  )}
-                </div>
-                <div className="ctext">
-                  <VerseText text={text ?? ''} lang={l} showFurigana={showFurigana} highlights={hl} />
-                </div>
-              </div>
-            )
-          })}
+          {/* id lets selectionContext() resolve a selection made in here: a reader can
+              still highlight by selecting words, it just shows back in the reader. */}
+          <div id={`sv-${l}-${data.ch}-${data.v}`} className="crow" lang={m.htmlLang} dir={m.dir}>
+            <div className="clang">
+              <span>
+                {m.label} · {m.edition}
+                {!text && note && <small className="cnote">{note}</small>}
+              </span>
+            </div>
+            <div className="ctext">
+              <VerseText text={text ?? ''} lang={l} showFurigana={showFurigana} showHighlights={false} />
+            </div>
+          </div>
         </div>
         {WORD_PANEL[data.lang]?.includes('glossary') && (
           <Glossary

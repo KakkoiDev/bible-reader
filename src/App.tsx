@@ -780,18 +780,6 @@ export default function App() {
     [book, t],
   )
 
-  /** Saved highlights for one verse, grouped by edition — for the verse sheet. */
-  const highlightsFor = useCallback(
-    (ch: number, v: number): Partial<Record<Lang, HL[]>> => {
-      const ann = store[vref(pos.slug, ch, v)]
-      if (!ann?.highlights?.length) return {}
-      const out: Partial<Record<Lang, HL[]>> = {}
-      for (const h of ann.highlights) (out[h.lang] ||= []).push(h)
-      return out
-    },
-    [store, pos.slug],
-  )
-
   const openVerseAt = useCallback(
     (lang: Lang, ch: number, v: number) => {
       const text: Partial<Record<Lang, string>> = {}
@@ -1413,9 +1401,7 @@ export default function App() {
 
       <VerseSheet
         data={verseSheet}
-        columns={prefs.columns}
         showFurigana={prefs.furigana}
-        highlights={verseSheet ? highlightsFor(verseSheet.ch, verseSheet.v) : {}}
         t={t}
         onCopyText={() =>
           verseSheet &&
@@ -1426,10 +1412,6 @@ export default function App() {
         onCopyInvite={() => verseSheet && setInviteFor(verseSheet.v)}
         canSpeak={canSpeak}
         onSpeakWord={speakWord}
-        onClearHighlight={(lang) =>
-          verseSheet &&
-          clearHighlightsIn(vref(verseSheet.slug, verseSheet.ch, verseSheet.v), lang, 0, Number.MAX_SAFE_INTEGER)
-        }
         onPlay={() => {
           if (verseSheet) playFrom(verseSheet.lang, verseSheet.ch, verseSheet.v)
           setVerseSheet(null)
