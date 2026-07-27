@@ -39,12 +39,14 @@ export default defineConfig({
           'data/{en,ja,fr}/*.json',
         ],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
-        // The other eight editions are cached the first time they're read, and stay
-        // available offline from then on.
+        // Editions and glosses are cached the first time they're read and stay available
+        // offline. StaleWhileRevalidate (not CacheFirst) so a re-fetch runs in the
+        // background: a data update (e.g. added furigana, a repaired verse) is served on
+        // the next visit instead of being pinned to the first-ever cached copy forever.
         runtimeCaching: [
           {
             urlPattern: ({ url }) => /\/data\/[a-z]+\/[a-z0-9-]+\.json$/.test(url.pathname),
-            handler: 'CacheFirst',
+            handler: 'StaleWhileRevalidate',
             options: {
               cacheName: 'bible-editions',
               expiration: { maxEntries: 800 },
