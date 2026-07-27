@@ -694,6 +694,11 @@ html.modal-open { overflow: hidden; }
 .conclist li + li { border-top: 1px solid var(--line); }
 .crowline { display: flex; align-items: stretch; gap: 2px; }
 .crowline .crowbtn { flex: 1; min-width: 0; }
+/* The hover/active fill sits on the whole row, flush to the li dividers, so it spans
+   the full width and stays square, instead of the inset button which stopped short of
+   the 44px speak target with rounded corners. Shared by the concordance and glossary. */
+.crowline:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.crowline:has(> .crowbtn.on) { background: var(--accent-bg); }
 /* Its own 44px square, because it sits beside a target that is already 44px and a
    thumb aiming at one must not hit the other. The glyph matches the verse play
    button (.vplay) so one arrow means "speak this" everywhere in the reader. */
@@ -724,7 +729,6 @@ html.modal-open { overflow: hidden; }
   padding: 8px 4px;
   background: none;
   border: 0;
-  border-radius: 8px;
   color: inherit;
   font: inherit;
   font-size: 13px;
@@ -732,8 +736,9 @@ html.modal-open { overflow: hidden; }
   text-align: start;
   cursor: pointer;
 }
-.crowbtn:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
-.crowbtn.on { background: var(--accent-bg); }
+/* Fill lives on .crowline now; keep the button transparent so nothing rounds a corner. */
+.crowbtn:hover,
+.crowbtn.on { background: none; }
 .cword { font-weight: 600; }
 /* The lemma is the point of the row, so it gets the reading size and the script's
    own font — a 13px Hebrew lemma with vowel points is unreadable. */
