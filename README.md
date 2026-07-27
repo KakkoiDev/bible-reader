@@ -81,6 +81,7 @@ the machine-readable version; this table is the audit trail. Retrieved 2026-07-2
 | --- | --- | --- | --- |
 | `en` | hand-curated, in repo | `data-src/kjv.md` | public domain |
 | `ja` | hand-curated, in repo | `data-src/bungo.md` | public domain |
+| `jako` | getbible.net v2 | `https://api.getbible.net/v2/japkougo.json` | public domain in Japan (2006); US status uncertain, see FUTURE.md |
 | `fr` | hand-curated, in repo | `data-src/kjf.md`, from the KJF OSIS 2022 export, partly repaired — see below | © Nadine L. Stratford |
 | `zht` | eBible.org | `https://ebible.org/Scriptures/cmn-cu89t_usfm.zip` | public domain |
 | `zhs` | eBible.org | `https://ebible.org/Scriptures/cmn-cu89s_usfm.zip` | public domain |

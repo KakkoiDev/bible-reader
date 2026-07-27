@@ -114,8 +114,6 @@ is one entry plus `npm run fetch && npm run data`. Eleven ship today.
 
 Still worth adding:
 
-- **口語訳** (modern Japanese) to read against the 文語訳 — the plain-language
-  contrast the original note wanted.
 - **文理和合譯本**, the Classical Chinese Union Version. It is the truest register
   match to the KJV and 文語訳 (the 和合本 we ship is the vernacular 1919 text), and
   it is public domain — getbible id `chiunl`.
@@ -129,6 +127,24 @@ Sociedade Bíblica do Brasil copyright. This was raised and accepted at the time
 it is the one edition whose licence is not clean. Swapping it is a one-line change in
 `scripts/sources.mjs` — candidates are `livretr` (Bíblia Livre – Textus Receptus,
 CC BY 3.0 BR, and TR-based like the KJV) or eBible's `porbrbsl` (public domain).
+
+### 口語訳 licence and corruption vetting
+
+Added as `jako` (default off): the Colloquial Japanese Bible (口語訳, 1954/1955), from
+getbible module `japkougo`, the plain-language contrast to the 文語訳 the original note
+wanted. It is public domain in Japan since 2006 (the Japan Bible Society held it as a
+corporate work, 50-year term), but its US copyright has not expired, and this app
+deploys to US-hosted GitHub Pages. That is a real, documented exposure, the same
+category as the Almeida note above; it ships default-off and the risk is recorded here
+rather than hidden.
+
+Vetted against the two readings a KJV reader asks about, from the built text:
+
+- Matthew 5:32 keeps the fornication/adultery distinction: the divorce exception is
+  不品行 (fuhinkou), distinct from 姦淫 (kan'in, adultery) in 5:27-28. Not flattened.
+- 1 John 5:7 is the short reading (あかしをするものが、三つある), without the
+  heavenly-witnesses clause. Expected of a critical-text version, and the same reading
+  the 文語訳 has always shipped. This is a mixed-tradition corpus, not a uniform one.
 
 ## 6. Reading plans / daily verse
 

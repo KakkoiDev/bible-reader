@@ -278,7 +278,9 @@ export function Settings({
         <div className="srow">
           <span>{t('ui_language')}</span>
           <select className="sel" value={ui} onChange={(e) => onUi(e.target.value as Lang)}>
-            {VERSIONS.map((v) => (
+            {/* jako is a second Japanese edition, not a second UI language (it reuses
+                ja's strings), so it is not offered here as a duplicate 日本語. */}
+            {VERSIONS.filter((v) => v.id !== 'jako').map((v) => (
               <option key={v.id} value={v.id}>
                 {v.label}
               </option>

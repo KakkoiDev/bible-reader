@@ -5,7 +5,7 @@
 // language codes so links shared before this change, and every saved annotation,
 // still resolve.
 
-export type Lang = 'en' | 'ja' | 'fr' | 'zht' | 'zhs' | 'pt' | 'es' | 'ar' | 'tl' | 'el' | 'he'
+export type Lang = 'en' | 'ja' | 'jako' | 'fr' | 'zht' | 'zhs' | 'pt' | 'es' | 'ar' | 'tl' | 'el' | 'he'
 
 /** How a verse's stored text is marked up — drives tokenizing in format.tsx. */
 export type Markup =
@@ -62,6 +62,20 @@ export const VERSIONS: VersionMeta[] = [
     coverage: 'all',
     defaultOn: true,
     attribution: '日本語: 文語訳聖書 (明治元訳・大正改訳), public domain',
+  },
+  {
+    id: 'jako',
+    label: '日本語',
+    edition: '口語訳',
+    fullName: '口語訳聖書 (1954/1955)',
+    htmlLang: 'ja',
+    dir: 'ltr',
+    speech: 'ja-JP',
+    markup: 'plain',
+    coverage: 'all',
+    defaultOn: false,
+    attribution:
+      '日本語: 口語訳聖書 (1954/1955), 日本聖書協会. パブリックドメイン (日本, 2006年). 米国での著作権状態は未確定 (see FUTURE.md).',
   },
   {
     id: 'fr',

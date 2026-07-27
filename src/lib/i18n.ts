@@ -568,7 +568,8 @@ const he: Dict = {
   justify: 'יישור לשני הצדדים',
 }
 
-const STRINGS: Record<Lang, Dict> = { en, ja, fr, zht, zhs, pt, es, ar, tl, el, he }
+// jako is a Japanese edition, so its UI strings are the Japanese ones.
+const STRINGS: Record<Lang, Dict> = { en, ja, jako: ja, fr, zht, zhs, pt, es, ar, tl, el, he }
 
 export type T = (key: StringKey, vars?: Record<string, string | number>) => string
 
