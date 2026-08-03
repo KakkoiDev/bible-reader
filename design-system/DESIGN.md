@@ -100,6 +100,16 @@ Recorded here so the document and the code do not tell different stories.
   neither opens a sheet: only Study does.
 - **`.gloss-mark` is left as text.** A glossed word is a word in the measure;
   the atom sheet lists it under text atoms, not controls.
+- **A missing verse is two tags, and an unused row is not drawn.** The document
+  has no atom for a verse number with no text behind it; the reader used to put
+  a bare `·` there. It is now `.vgap`, 12px UI type on a dotted rule, reading
+  *not in this edition* when the KJV carries the verse and *numbered
+  differently here*, in italic, when the number belongs to another tradition's
+  counting. The two are told apart by `index.json`'s new `spine[]`, the KJV's
+  own verse ceiling, against the existing `chapters[]`, which is the ceiling
+  across every edition. A row no displayed edition has text for is dropped
+  before render, so the Hebrew's extra Psalms rows only appear while the Hebrew
+  column is on screen.
 
 ## Data this design assumes
 

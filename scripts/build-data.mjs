@@ -110,6 +110,18 @@ for (const en of BOOK_ORDER) {
     verseCounts.push(max)
   }
 
+  // The KJV's own ceiling per chapter, beside the union. The reader needs both to tell
+  // apart the two reasons an edition has nothing at a row: the KJV carries that verse
+  // and this edition dropped it, or the number only exists because another tradition
+  // counts differently. Psalm 3 is 8 verses in the KJV and 9 in the Hebrew, which
+  // counts the superscription, so row 9 is the second case and not a gap in the KJV.
+  const enBook = editions.find((e) => e.id === 'en')?.books.get(en)
+  const spine = []
+  for (let c = 1; c <= lastChapter; c++) {
+    const vs = enBook?.chapters.get(c)
+    spine.push(vs ? Math.max(...vs.keys()) : 0)
+  }
+
   // The curated table beats the heading the export happened to carry. getbible names
   // one 口語訳 book differently from our canonical name, so its heading came through
   // as "Revelation of John (Revelation)" and the reader showed an English title in a
@@ -150,7 +162,7 @@ for (const en of BOOK_ORDER) {
     s.bytes += statSync(path).size
   }
 
-  index.push({ slug, chapters: verseCounts, names })
+  index.push({ slug, chapters: verseCounts, spine, names })
 }
 
 writeFileSync(resolve(OUT, 'index.json'), JSON.stringify(index))

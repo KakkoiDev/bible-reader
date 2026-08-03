@@ -211,6 +211,16 @@ body {
 .col:lang(ja) .verse { line-height: 2.1; }
 .supplied { font-style: italic; }
 .missing { color: var(--muted); }
+/* A verse this edition has no text for. The label says which of the two reasons it is,
+   because a bare placeholder made a numbering difference look like a defect. Set in the
+   UI font so it never reads as part of the verse. */
+.vgap {
+  font-family: var(--f-ui);
+  font-size: 12px;
+  color: var(--muted);
+  border-bottom: 1px dotted var(--line-strong);
+}
+.vgap.versification { font-style: italic; }
 ruby rt { font-size: 0.55em; color: var(--muted); font-family: var(--f-ui); }
 
 /* chapter nav */

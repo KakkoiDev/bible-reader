@@ -377,13 +377,21 @@ export default function App() {
   }, [chapterCount, pos.chapter, navigate])
 
   const langsToShow: Lang[] = flow || !wide ? [pos.lang] : prefs.columns
+  const showKey = langsToShow.join(',')
 
-  /** Rows of the open chapter — one per verse number in the canonical union. */
-  const chapter: Chapter | null = useMemo(() => {
-    if (!book) return null
+  /** Rows of the open chapter, one per verse number in the canonical union, less the
+   *  numbers no shown edition uses. Psalm 3 has nine rows in the union because the
+   *  Hebrew counts the superscription; with the Hebrew column off, the ninth was a
+   *  row with a placeholder in every column and nothing behind it.
+   *
+   *  Second return: the editions with no text anywhere in this chapter, taken before
+   *  the filter, because once every row is gone there is nothing left to notice it by. */
+  const [chapter, absentIn]: [Chapter | null, Set<Lang>] = useMemo(() => {
+    const none = new Set<Lang>()
+    if (!book) return [null, none]
     const count = book.chapters[pos.chapter - 1] ?? 0
-    if (!count) return null
-    const verses = Array.from({ length: count }, (_, i) => {
+    if (!count) return [null, none]
+    const rows = Array.from({ length: count }, (_, i) => {
       const v = i + 1
       const text: Partial<Record<Lang, string>> = {}
       for (const l of needed) {
@@ -392,8 +400,9 @@ export default function App() {
       }
       return { v, text }
     })
-    return { n: pos.chapter, verses }
-  }, [book, pos.chapter, needed, verseText])
+    for (const l of needed) if (verseText[l] && !rows.some((r) => r.text[l])) none.add(l)
+    return [{ n: pos.chapter, verses: rows.filter((r) => showKey.split(',').some((l) => r.text[l as Lang])) }, none]
+  }, [book, pos.chapter, needed, verseText, showKey])
 
   // keep the current language among the enabled columns; a shared link pointing at a
   // hidden edition opens in the first visible one instead, and says so.
@@ -895,7 +904,8 @@ export default function App() {
         const s = verseText[l]?.get(`${ch}.${v}`)
         if (s) text[l] = s
       }
-      setVerseSheet({ label: `${bookName(book, prefs.ui)} ${ch}:${v}`, lang, slug: pos.slug, ch, v, text })
+      const gap = v <= (book?.spine?.[ch - 1] ?? 0) ? 'absent' : 'versification'
+      setVerseSheet({ label: `${bookName(book, prefs.ui)} ${ch}:${v}`, lang, slug: pos.slug, ch, v, text, gap })
     },
     [verseText, prefs.columns, prefs.ui, book, pos.slug],
   )
@@ -1200,6 +1210,9 @@ export default function App() {
     })
   }, [invite, setPref, say, t])
 
+  // The KJV's verse ceiling for the open chapter: above it, a number belongs to
+  // another tradition's counting rather than to a hole in this edition.
+  const spineCount = book?.spine?.[pos.chapter - 1] ?? 0
   const title = bookName(book, prefs.ui)
   const readingTitle = bookName(book, pos.lang)
   const verseCount = chapter?.verses.length ?? 0
@@ -1310,7 +1323,7 @@ export default function App() {
               // The edition carries the book but its source shipped this chapter with
               // no verses. Read off the text rather than a table, so any future hole
               // says so too. The 口語訳's eighteen are the current ones.
-              const absent = covers && !!chapter?.verses.length && !chapter.verses.some((v) => v.text[l])
+              const absent = covers && absentIn.has(l)
               // Nothing to speak in a column with no text for this book.
               const playable = canTTS && !noVoice.has(l) && covers && !absent
               // Greek carries no Old Testament and Hebrew no New Testament. Rendering
@@ -1384,12 +1397,27 @@ export default function App() {
                             </button>
                           )}
                           <span className="vt">
-                            <VerseText
-                              text={text ?? ''}
-                              lang={l}
-                              showFurigana={prefs.furigana}
-                              highlights={ann?.highlights?.filter((h) => h.lang === l)}
-                            />
+                            {text ? (
+                              <VerseText
+                                text={text}
+                                lang={l}
+                                showFurigana={prefs.furigana}
+                                highlights={ann?.highlights?.filter((h) => h.lang === l)}
+                              />
+                            ) : (
+                              // Two different facts, and the placeholder used to be one
+                              // dot for both. Either the KJV carries this verse and this
+                              // edition's export dropped it, or the number is not in the
+                              // KJV's numbering at all and exists here because another
+                              // tradition counts differently.
+                              <span
+                                className={`vgap ${v.v <= spineCount ? 'absent' : 'versification'}`}
+                                dir={BY_ID[prefs.ui].dir}
+                                lang={BY_ID[prefs.ui].htmlLang}
+                              >
+                                {t(v.v <= spineCount ? 'gap_absent' : 'gap_versification')}
+                              </span>
+                            )}
                           </span>
                           {barAt?.lang === l && barAt.ch === pos.chapter && barAt.v === v.v && (
                             <VerseBar

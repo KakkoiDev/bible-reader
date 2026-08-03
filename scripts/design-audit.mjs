@@ -82,6 +82,8 @@ const SCREENS = {
   },
   verse: async (p) => {
     await p.click('.verse') // the row, not the number: the number copies a link
+    // The row opens the action bar; only Study opens the sheet.
+    await p.click('.verse .vbtn.study')
     await p.waitForSelector('.verse-sheet')
   },
 }

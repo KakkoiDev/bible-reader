@@ -5,6 +5,9 @@ export interface IndexItem {
   slug: string
   /** Verse ceiling per chapter — `chapters[0]` is chapter 1. Length = chapter count. */
   chapters: number[]
+  /** The KJV's own ceiling for the same chapters. Where it is lower than `chapters`,
+   *  the extra rows exist because another tradition numbers differently. */
+  spine: number[]
   /** Book name per edition; `en` is always present. */
   names: Partial<Record<Lang, string>> & { en: string }
 }

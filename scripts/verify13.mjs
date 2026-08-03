@@ -150,9 +150,88 @@ console.log('\nThe chapter either side of the hole is normal')
 {
   const { ctx, page } = await open('#/psalms/140/en')
   const [ja] = await columns(page)
-  // 14 rows, not the KJV's 13: the Hebrew counts the superscription, and a row is
-  // rendered for every number any shown edition uses.
-  check('Psalm 140 is present', !ja.absent && ja.verses === 14, JSON.stringify(ja))
+  // 13, the KJV's count. The Hebrew's fourteenth is not rendered because the Hebrew
+  // column is not shown.
+  check('Psalm 140 is present', !ja.absent && ja.verses === 13, JSON.stringify(ja))
+  await ctx.close()
+}
+
+// ---------- a verse that is not there ----------
+// Two facts wearing one placeholder until now. Psalm 3 has eight verses in the KJV and
+// nine in the Hebrew, which counts the superscription as verse 1; 和合本 John 5 omits
+// verse 4, which the KJV carries. The first is a numbering difference, the second is a
+// hole, and a reader who cannot tell them apart reads both as a defect.
+async function rows(hash, columns) {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } })
+  await ctx.addInitScript((p) => localStorage.setItem('prefs', JSON.stringify(p)), { ...PREFS, columns })
+  const page = await ctx.newPage()
+  await page.goto(URL + hash, { waitUntil: 'networkidle' })
+  await page.locator('.verse').first().waitFor({ state: 'visible' })
+  const out = await page.evaluate(() =>
+    [...document.querySelectorAll('.cols > .col')].map((c) => ({
+      lang: c.getAttribute('lang'),
+      rows: [...c.querySelectorAll('.verses > li')].map((li) => ({
+        n: li.querySelector('.vn').textContent,
+        gap: li.querySelector('.vgap')?.className.replace('vgap ', '') || null,
+        label: li.querySelector('.vgap')?.textContent || null,
+      })),
+    })),
+  )
+  await ctx.close()
+  return out
+}
+
+console.log('\nA number no shown edition uses is not a row')
+{
+  const [en] = await rows('#/psalms/3/en', ['en'])
+  check('Psalm 3 is eight rows with the KJV alone', en.rows.length === 8, `${en.rows.length}`)
+  check('and none of them is a gap', en.rows.every((r) => !r.gap), JSON.stringify(en.rows.filter((r) => r.gap)))
+}
+
+console.log('\nShow the Hebrew and the ninth row comes back, tagged')
+{
+  const [he, en] = await rows('#/psalms/3/en', ['he', 'en'])
+  check('nine rows now', en.rows.length === 9, `${en.rows.length}`)
+  check('the Hebrew has text for all nine', he.rows.every((r) => !r.gap))
+  check('the KJV has eight and one tag', en.rows.filter((r) => r.gap).length === 1)
+  const gap = en.rows.find((r) => r.gap)
+  check('on row 9', gap?.n === '9', gap?.n)
+  check('and it says the numbering differs, not that a verse is missing',
+    gap?.gap === 'versification' && gap?.label === 'numbered differently here', `${gap?.gap} / ${gap?.label}`)
+}
+
+console.log('\nA verse the KJV carries and an edition does not is the other tag')
+{
+  const [zh, en] = await rows('#/john/5/en', ['zht', 'en'])
+  check('the KJV column is whole', en.rows.every((r) => !r.gap), JSON.stringify(en.rows.filter((r) => r.gap)))
+  const gap = zh.rows.find((r) => r.gap)
+  check('和合本 has exactly one gap', zh.rows.filter((r) => r.gap).length === 1)
+  check('on John 5:4', gap?.n === '4', gap?.n)
+  check('tagged absent', gap?.gap === 'absent' && gap?.label === 'not in this edition',
+    `${gap?.gap} / ${gap?.label}`)
+}
+
+// Study on a row with nothing behind it used to open a sheet whose body was one dot.
+console.log('\nThe study sheet repeats the tag rather than a bare dot')
+{
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } })
+  await ctx.addInitScript(
+    (p) => localStorage.setItem('prefs', JSON.stringify(p)),
+    { ...PREFS, columns: ['zht', 'en'] },
+  )
+  const page = await ctx.newPage()
+  await page.goto(`${URL}#/john/5/zht`, { waitUntil: 'networkidle' })
+  await page.locator('.verse').first().waitFor({ state: 'visible' })
+  const row = page.locator('.col[lang="zh-Hant"] .verses > li').nth(3)
+  await row.click()
+  await row.locator('.vbtn.study').click()
+  await page.locator('.verse-sheet').waitFor({ state: 'visible' })
+  const body = await page.evaluate(() => {
+    const el = document.querySelector('.verse-sheet .ctext')
+    return { text: el.textContent.trim(), gap: el.querySelector('.vgap')?.className || null }
+  })
+  check('the sheet body is the absent tag', body.gap === 'vgap absent', body.gap)
+  check('and reads as the reader does', body.text === 'not in this edition', body.text)
   await ctx.close()
 }
 

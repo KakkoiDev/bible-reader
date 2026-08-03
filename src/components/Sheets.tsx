@@ -617,6 +617,9 @@ export interface VerseSheetData {
   v: number
   /** Text per edition for this verse — only the editions the reader has visible. */
   text: Partial<Record<Lang, string>>
+  /** Which of the two absences applies if the opened edition has no text here:
+   *  the KJV carries the verse, or the number is another tradition's. */
+  gap: 'absent' | 'versification'
 }
 
 export function VerseSheet({
@@ -767,14 +770,25 @@ export function VerseSheet({
               </span>
             </div>
             <div className="ctext">
-              <VerseText
-                text={text ?? ''}
-                lang={l}
-                showFurigana={showFurigana}
-                highlights={highlights}
-                gloss={l === 'en' ? glossMap : undefined}
-                onGlossClick={l === 'en' ? openGlossEntry : undefined}
-              />
+              {text ? (
+                <VerseText
+                  text={text}
+                  lang={l}
+                  showFurigana={showFurigana}
+                  highlights={highlights}
+                  gloss={l === 'en' ? glossMap : undefined}
+                  onGlossClick={l === 'en' ? openGlossEntry : undefined}
+                />
+              ) : (
+                // The same two tags the reader shows, so the sheet does not answer a
+                // question the row behind it already answered. Suppressed when the
+                // coverage note above says the edition has no such book at all.
+                !note && (
+                  <span className={`vgap ${data.gap}`}>
+                    {t(data.gap === 'absent' ? 'gap_absent' : 'gap_versification')}
+                  </span>
+                )
+              )}
             </div>
         </div>
       </div>
