@@ -19,6 +19,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const SRC = resolve(__dirname, '../data-src')
 const OUT = resolve(__dirname, '../public/data')
 const DEFAULT_ON = new Set(['en', 'ja', 'fr'])
+/** Editions whose book titles cannot legitimately be ASCII. */
+const NON_LATIN = ['ja', 'jako', 'zht', 'zhs', 'ar', 'he', 'el']
 
 /** Parse one edition's Markdown into Map<englishName, { native, chapters }>. */
 function parseMd(file) {
@@ -108,12 +110,23 @@ for (const en of BOOK_ORDER) {
     verseCounts.push(max)
   }
 
+  // The curated table beats the heading the export happened to carry. getbible names
+  // one 口語訳 book differently from our canonical name, so its heading came through
+  // as "Revelation of John (Revelation)" and the reader showed an English title in a
+  // Japanese column. Where a table exists it covers all 66 books and was checked;
+  // a heading is whatever the publisher's converter emitted.
   const names = {}
   for (const e of editions) {
-    const name = e.books.get(en)?.native || NATIVE_NAMES[e.id]?.[en]
+    const name = NATIVE_NAMES[e.id]?.[en] || e.books.get(en)?.native
     if (name) names[e.id] = name
   }
   names.en = en
+
+  // An edition written in another script must not be showing the English name: that
+  // is the shape of the defect above, and it is invisible in a column you cannot read.
+  for (const id of NON_LATIN)
+    if (names[id] && /^[\x20-\x7E]+$/.test(names[id]))
+      throw new Error(`${id} ${en}: book title "${names[id]}" is Latin script. Add it to NATIVE_NAMES in scripts/sources.mjs.`)
 
   for (const e of present) {
     const book = e.books.get(en)

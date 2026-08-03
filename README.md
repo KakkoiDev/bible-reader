@@ -481,17 +481,21 @@ attached to it survives a reload and reaches the Saved drawer's filter.
 
 ```bash
 npx vite preview --port 4182 --strictPort
-node scripts/verify13.mjs   # a chapter an edition does not have
+node scripts/verify13.mjs   # what the corpus says about itself
 ```
 
-`verify13.mjs` gates the absent-chapter pass. It runs `check-data.mjs` as a child
-process and asserts that it names all 18 chapters the 口語訳 source omits, then loads
-the reader and asserts that Psalm 130's 口語訳 column carries the `absent` class and
-the "missing from the source" sentence instead of eight empty rows, that Psalms 129
-and 140 either side of the hole still render, and that a half-canon edition still gets
-its own, different sentence. Reverting either half of the work fails it: without the
-spine pass `check-data` prints nothing about the omissions, and without the reader
-check the column comes back with eight blank verses.
+`verify13.mjs` gates the absent-chapter pass and book titles. It runs `check-data.mjs`
+as a child process and asserts that it names all 18 chapters the 口語訳 source omits,
+then loads the reader and asserts that Psalm 130's 口語訳 column carries the `absent`
+class and the "missing from the source" sentence instead of eight empty rows, that
+Psalms 129 and 140 either side of the hole still render, and that a half-canon edition
+still gets its own, different sentence. For titles it sweeps `index.json` for a
+Latin-script name in any of the seven editions written in another script, and reads
+the reader's heading on a phone, where the heading is the book as the edition being
+read names it. Reverting any of the three changes fails it: without the spine pass
+`check-data` prints nothing about the omissions, without the reader check the column
+comes back with eight blank verses, and without the title precedence `build-data`
+throws before the sweep can run.
 
 `scripts/verify2.mjs`–`verify9.mjs` are one-off diagnostic scripts from earlier
 sessions that target port 4180; some assert against UI that no longer exists.

@@ -1,15 +1,19 @@
-// A chapter an edition does not have: that the pipeline sees it, and that the reader
-// says so.
+// What the corpus says about itself: an absent chapter, and a book's title.
 //
 // check-data's first four passes iterate each edition's own chapter map, so a chapter
 // that is not in the file is never visited and never reported. That is how 18 empty
 // 口語訳 chapters shipped. Pass E iterates the KJV spine instead. These assertions
 // fail if that pass is removed or narrowed.
 //
+// Titles: build-data used to prefer whatever heading the export carried over the
+// curated table, which put an English title in the Japanese column for the one book
+// getbible names differently.
+//
 // Run:  npx vite preview --port 4182 --strictPort
 //       node scripts/verify13.mjs
 import { chromium } from 'playwright'
 import { execFileSync } from 'node:child_process'
+import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -54,6 +58,24 @@ console.log('\nHalf-canon editions are not accused of a gap')
 check('no Greek Old Testament complaint', !/\bel (Genesis|Psalms|Malachi)\b/.test(out))
 check('no Hebrew New Testament complaint', !/\bhe (Matthew|John|Revelation)\b/.test(out))
 check('Hebrew Malachi 4 stays silent', !out.includes('he Malachi'))
+
+// ---------- book titles ----------
+console.log('\nEvery edition names its books in its own script')
+{
+  const index = JSON.parse(readFileSync(resolve(root, 'public/data/index.json'), 'utf8'))
+  const latin = []
+  for (const b of index)
+    for (const id of ['ja', 'jako', 'zht', 'zhs', 'ar', 'he', 'el'])
+      if (b.names[id] && /^[\x20-\x7E]+$/.test(b.names[id])) latin.push(`${id} ${b.slug}: ${b.names[id]}`)
+  check('no Latin-script title in a non-Latin edition', latin.length === 0, latin.join(', '))
+
+  const rev = index.find((b) => b.slug === 'revelation').names
+  check('jako Revelation is ヨハネの黙示録', rev.jako === 'ヨハネの黙示録', rev.jako)
+  check('and the other Japanese edition is unchanged', rev.ja === 'ヨハネの黙示録', rev.ja)
+  const mat = index.find((b) => b.slug === 'matthew').names
+  check('a book the export named correctly still matches the table',
+    mat.jako === 'マタイによる福音書', mat.jako)
+}
 
 // ---------- the reader ----------
 const browser = await chromium.launch()
@@ -109,6 +131,26 @@ console.log('\nThe chapter either side of the hole is normal')
   // 14 rows, not the KJV's 13: the Hebrew counts the superscription, and a row is
   // rendered for every number any shown edition uses.
   check('Psalm 140 is present', !ja.absent && ja.verses === 14, JSON.stringify(ja))
+  await ctx.close()
+}
+
+// A phone: one column, and the heading is the book as the edition being read names
+// it. On a wide screen the heading is in the UI language instead, which is a
+// different string and not what this is about.
+console.log('\nThe reader shows the title the edition uses')
+{
+  const ctx = await browser.newContext({
+    viewport: { width: 390, height: 780 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true,
+  })
+  await ctx.addInitScript(
+    (p) => localStorage.setItem('prefs', JSON.stringify(p)),
+    { ...PREFS, columns: ['jako'] },
+  )
+  const page = await ctx.newPage()
+  await page.goto(`${URL}#/revelation/1/jako`, { waitUntil: 'networkidle' })
+  await page.locator('.verse').first().waitFor({ state: 'visible' })
+  const heading = await page.locator('h1.ref').textContent()
+  check('the heading reads ヨハネの黙示録 1', heading.trim() === 'ヨハネの黙示録 1', heading.trim())
   await ctx.close()
 }
 
