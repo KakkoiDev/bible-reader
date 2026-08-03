@@ -58,7 +58,19 @@ const ICONS = {
   verseRows: { d: <><path d="M6 7h1M10 7h8M6 12h1M10 12h8M6 17h1M10 17h5" /></>, sw: 1.7 },
   day: { d: <><circle cx="12" cy="12" r="4.2" /><path d="M12 3v2.4M12 18.6V21M21 12h-2.4M5.4 12H3M18.4 5.6l-1.7 1.7M7.3 16.7l-1.7 1.7M18.4 18.4l-1.7-1.7M7.3 7.3 5.6 5.6" /></>, sw: 1.7 },
   night: { d: <><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z" /></>, sw: 1.7 },
-  settings: { d: <><circle cx="12" cy="12" r="3.2" /><path d="M12 3.5v2.2M12 18.3v2.2M20.5 12h-2.2M5.7 12H3.5M18 6l-1.6 1.6M7.6 16.4 6 18M18 18l-1.6-1.6M7.6 7.6 6 6" /></>, sw: 1.7 },
+  // Redrawn, not harvested. The document's own `settings` is a dot with eight rays,
+  // which reads as a sun. A tooth has to be a bump on the body outline, not a spoke
+  // sticking out of a circle, or it reads as a ship's wheel instead. Six teeth
+  // rather than eight because this is drawn at 20px, where eight run together.
+  settings: {
+    d: (
+      <>
+        <path d="M9.38 5.51 10.05 2.81h3.9l.67 2.7a7 7 0 0 1 1.69.97l2.68-.77 1.95 3.39-2.01 1.93a7 7 0 0 1 0 1.94l2.01 1.93-1.95 3.39-2.68-.77a7 7 0 0 1-1.69.97l-.67 2.7h-3.9l-.67-2.7a7 7 0 0 1-1.69-.97l-2.68.77-1.95-3.39 2.01-1.93a7 7 0 0 1 0-1.94L3.06 9.1l1.95-3.39 2.68.77a7 7 0 0 1 1.69-.97Z" />
+        <circle cx="12" cy="12" r="3" />
+      </>
+    ),
+    sw: 1.7,
+  },
   sort: { d: <><path d="M4.5 7.5h7M4.5 12h11M4.5 16.5h5" /><path d="M17.5 8v9M15 14.5l2.5 2.5 2.5-2.5" /></>, sw: 1.7 },
   reorder: { d: <><path d="M4 5.5h16M4 12h16M4 18.5h16" /></>, sw: 1.7 },
   tag: { d: <><path d="M12.5 4.5 20 12l-6.5 6.5H7a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z" /><circle cx="15.5" cy="11.5" r="1.1" fill="currentColor" stroke="none" /></>, sw: 1.7 },

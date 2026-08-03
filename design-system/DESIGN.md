@@ -63,6 +63,12 @@ See `tokens.css`. Two notes that are easy to get wrong:
 
 Recorded here so the document and the code do not tell different stories.
 
+- **`settings` is redrawn, not harvested.** The document draws it as a circle of
+  radius 3.2 with eight radial ticks, which is a sun. Spokes projecting from a
+  smooth circle read as a ship's wheel, so the teeth are bumps on the body
+  outline: root 7, tip 9.4, hub 3. **Six teeth, not eight** - it is drawn at
+  20px, and eight run together at that size. Every other icon in the set is the
+  document's own artwork.
 - **A 39th icon, `stop`.** The icon set ships `play` and `pause`, but the
   Listening header above is described as carrying pause, time remaining *and*
   stop. This reader stops rather than pauses (playback resets to the start of
