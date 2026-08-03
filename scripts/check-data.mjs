@@ -12,13 +12,16 @@
 //                             WARN otherwise          other editions legitimately omit
 //                                                     verses per their manuscript tradition)
 //   verse count != en spine   WARN                  (versification differs by tradition)
+//   chapter absent entirely   FAIL unless declared  (the spine's books and chapters are
+//                                                    the list, so a chapter that is not
+//                                                    in the file is still visited)
 //
 // Exit nonzero iff any FAIL fired. Warnings print but never fail the build.
 // Run: node scripts/check-data.mjs   (wired into `npm run build` before the data build)
 import { readFileSync, existsSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { SOURCES } from './sources.mjs'
+import { SOURCES, BOOK_ORDER, OT_COUNT } from './sources.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const SRC = resolve(__dirname, '../data-src')
@@ -90,14 +93,36 @@ const KNOWN_DIVERGE = new Set(['fr/1 Samuel/20', 'fr/1 Kings/22', 'fr/Revelation
 // Psalms 60/69/92) and stays documented.
 const KNOWN_DUPS = new Set(['fr/Psalms/30', 'fr/Psalms/60', 'fr/Psalms/69', 'fr/Psalms/92'])
 
+// Chapters an edition's tradition does not have, beyond what `coverage` accounts for.
+// Not defects, so they are silent.
+const KNOWN_ABSENT = new Set([
+  // The Masoretic Malachi runs to three chapters; the KJV's fourth is Hebrew 3:19-24.
+  'he/Malachi/4',
+])
+
+// Chapters the upstream export drops. These ARE holes in the text, and the reader says
+// so in the column (App.tsx, `coverage_chapter_absent`), so they warn every build
+// rather than passing quietly. getbible's japkougo is the only 口語訳 module in
+// circulation and it returns these chapters with zero verses; eBible carries no 口語訳
+// at all, and the Japanese Wikisource copy is a navigation stub under a copyright
+// deletion request. Nothing to fetch, so the gap is stated instead of filled.
+const SOURCE_OMITS = new Set([
+  ...[130, 131, 132, 133, 134, 135, 136, 137, 138, 139].map((c) => `jako/Psalms/${c}`),
+  'jako/Proverbs/30', 'jako/Proverbs/31',
+  'jako/Matthew/25', 'jako/Matthew/26', 'jako/Matthew/27', 'jako/Matthew/28',
+  'jako/John/19', 'jako/Romans/10',
+])
+
 const fails = []
 const warns = []
+const omits = []
+let omitted = 0
 const editions = []
 
 for (const src of SOURCES) {
   const file = src.file || `${src.id}.md`
   if (!existsSync(resolve(SRC, file))) continue
-  editions.push({ id: src.id, books: parse(file) })
+  editions.push({ id: src.id, books: parse(file), coverage: src.coverage || 'all' })
 }
 
 const spine = editions.find((e) => e.id === 'en')
@@ -155,6 +180,37 @@ for (const ed of editions) {
   }
 }
 
+// E. chapters the spine has and the edition does not.
+//
+// The four passes above iterate the edition's own chapter map, so a chapter that is
+// not in the file is never visited by any of them. That blind spot is how 18 empty
+// 口語訳 chapters shipped unnoticed. This pass iterates the spine instead.
+for (const ed of editions) {
+  if (ed.id === 'en') continue
+  const scope = BOOK_ORDER.filter((_, i) =>
+    ed.coverage === 'all' || (ed.coverage === 'ot' ? i < OT_COUNT : i >= OT_COUNT))
+  for (const book of scope) {
+    const chapters = ed.books.get(book)
+    if (!chapters || chapters.size === 0) {
+      if (!KNOWN_ABSENT.has(`${ed.id}/${book}`)) fails.push(`${ed.id} ${book}: the whole book is absent`)
+      continue
+    }
+    const gone = []
+    const declared = []
+    for (const ch of spine.books.get(book).keys()) {
+      if (chapters.get(ch)?.length > 0) continue
+      const key = `${ed.id}/${book}/${ch}`
+      if (KNOWN_ABSENT.has(key)) continue
+      ;(SOURCE_OMITS.has(key) ? declared : gone).push(ch)
+    }
+    if (declared.length) {
+      omitted += declared.length
+      omits.push(`${ed.id} ${book} ${declared.join(', ')} (of ${spine.books.get(book).size})`)
+    }
+    if (gone.length) fails.push(`${ed.id} ${book}: chapter ${gone.join(', ')} absent (spine has ${spine.books.get(book).size})`)
+  }
+}
+
 // spine total backstop
 if (enTotal !== EN_TOTAL)
   fails.push(`en spine total is ${enTotal} verses, expected ${EN_TOTAL} (KJV reference count)`)
@@ -164,6 +220,13 @@ const tag = (arr) => arr.map((m) => `  ${m}`).join('\n')
 // Warnings are inherent to a mixed-tradition corpus (the Chinese 和合本 alone omits
 // scores of verses on purpose), so a full list drowns the log. Summarize per edition;
 // `--verbose` dumps every line for an actual audit.
+// Declared holes print in full every build. There are 18 of them and they are the
+// difference between an edition being incomplete and nobody knowing it is.
+if (omits.length) {
+  console.log(`\n${omitted} chapter(s) the source omits, declared and shown in the reader:`)
+  console.log(tag(omits))
+}
+
 if (warns.length) {
   const verbose = process.argv.includes('--verbose')
   const byEd = {}

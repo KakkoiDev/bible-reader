@@ -479,6 +479,20 @@ are each 44pt and fit one row at 390px, highlight and share swap the row in plac
 Study is the only control that opens a sheet, and a bookmark with nothing else
 attached to it survives a reload and reaches the Saved drawer's filter.
 
+```bash
+npx vite preview --port 4182 --strictPort
+node scripts/verify13.mjs   # a chapter an edition does not have
+```
+
+`verify13.mjs` gates the absent-chapter pass. It runs `check-data.mjs` as a child
+process and asserts that it names all 18 chapters the 口語訳 source omits, then loads
+the reader and asserts that Psalm 130's 口語訳 column carries the `absent` class and
+the "missing from the source" sentence instead of eight empty rows, that Psalms 129
+and 140 either side of the hole still render, and that a half-canon edition still gets
+its own, different sentence. Reverting either half of the work fails it: without the
+spine pass `check-data` prints nothing about the omissions, and without the reader
+check the column comes back with eight blank verses.
+
 `scripts/verify2.mjs`–`verify9.mjs` are one-off diagnostic scripts from earlier
 sessions that target port 4180; some assert against UI that no longer exists.
 

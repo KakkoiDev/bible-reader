@@ -1307,8 +1307,12 @@ export default function App() {
             {langsToShow.map((l) => {
               const m = BY_ID[l]
               const covers = bookIdx < 0 || coversBook(l, bookIdx)
+              // The edition carries the book but its source shipped this chapter with
+              // no verses. Read off the text rather than a table, so any future hole
+              // says so too. The 口語訳's eighteen are the current ones.
+              const absent = covers && !!chapter?.verses.length && !chapter.verses.some((v) => v.text[l])
               // Nothing to speak in a column with no text for this book.
-              const playable = canTTS && !noVoice.has(l) && covers
+              const playable = canTTS && !noVoice.has(l) && covers && !absent
               // Greek carries no Old Testament and Hebrew no New Testament. Rendering
               // a verse row per number would give a column of bare placeholders that
               // reads as a loading failure — and, with alignment on, would stretch
@@ -1316,7 +1320,7 @@ export default function App() {
               // and quieter.
               const uncovered = !covers
               return (
-                <section key={l} className={`col ${uncovered ? 'uncovered' : ''}`} lang={m.htmlLang} dir={m.dir}>
+                <section key={l} className={`col ${uncovered ? 'uncovered' : ''} ${absent ? 'absent' : ''}`} lang={m.htmlLang} dir={m.dir}>
                   {(wide || playable) && (
                     <div className="colhead">
                       {wide && <span>{m.label} · {m.edition}</span>}
@@ -1331,9 +1335,11 @@ export default function App() {
                       )}
                     </div>
                   )}
-                  {uncovered ? (
+                  {uncovered || absent ? (
                     <p className="coverage" dir={BY_ID[prefs.ui].dir} lang={BY_ID[prefs.ui].htmlLang}>
-                      {t(m.coverage === 'nt' ? 'coverage_nt_only' : 'coverage_ot_only')}
+                      {uncovered
+                        ? t(m.coverage === 'nt' ? 'coverage_nt_only' : 'coverage_ot_only')
+                        : t('coverage_chapter_absent')}
                     </p>
                   ) : (
                   <ol className="verses">

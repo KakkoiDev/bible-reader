@@ -1233,9 +1233,10 @@ html.modal-open { overflow: hidden; }
 .col:lang(zh-Hant) .verse, .col:lang(zh-Hans) .verse { margin-bottom: 10px; }
 .col:lang(zh-Hant) .verse, .col:lang(zh-Hans) .verse { line-height: 2.05; }
 
-/* ---------- an edition that does not cover this book ---------- */
+/* ---------- an edition with nothing to show for this book or chapter ---------- */
 /* Replaces a column of bare placeholders: one statement, set apart from the text
-   so it never reads as scripture. */
+   so it never reads as scripture. Two cases: the edition covers only half the canon,
+   or its source shipped this one chapter empty. */
 .coverage {
   margin: 0;
   align-self: start;
@@ -1250,7 +1251,8 @@ html.modal-open { overflow: hidden; }
 }
 @supports (grid-template-rows: subgrid) {
   /* Span the whole verse region so the other columns still align to each other. */
-  .cols.aligned > .col.uncovered > .coverage { grid-row: 2 / -1; }
+  .cols.aligned > .col.uncovered > .coverage,
+  .cols.aligned > .col.absent > .coverage { grid-row: 2 / -1; }
 }
 
 /* ---------- focus: one visible, on-brand ring everywhere ---------- */

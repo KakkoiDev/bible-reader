@@ -45,6 +45,11 @@ export const bookByNumber = (nr) => BOOK_ORDER[nr - 1]
  * kind 'local'    — already in data-src as hand-curated Markdown; fetch skips it.
  * kind 'ebible'   — https://ebible.org/Scriptures/<ref>_usfm.zip
  * kind 'getbible' — https://api.getbible.net/v2/<ref>.json
+ *
+ * `coverage` is 'all' unless stated: which half of the canon the edition is expected
+ * to carry. check-data compares each edition against the spine over that range, so a
+ * book or chapter the source dropped is a failure rather than something nobody looks
+ * for. It mirrors VersionMeta.coverage in src/lib/versions.ts.
  */
 export const SOURCES = [
   { id: 'en', kind: 'local', file: 'kjv.md', clean: 'kjv' },
@@ -57,9 +62,12 @@ export const SOURCES = [
   { id: 'es', kind: 'ebible', ref: 'spaRV1909' },
   { id: 'ar', kind: 'ebible', ref: 'arb-vd' },
   { id: 'tl', kind: 'getbible', ref: 'tagalog' },
-  { id: 'el', kind: 'ebible', ref: 'grctr' },
-  { id: 'he', kind: 'ebible', ref: 'hebwlc' },
+  { id: 'el', kind: 'ebible', ref: 'grctr', coverage: 'nt' },
+  { id: 'he', kind: 'ebible', ref: 'hebwlc', coverage: 'ot' },
 ]
+
+/** Genesis to Malachi, then Matthew to Revelation. */
+export const OT_COUNT = 39
 
 export const byId = (id) => SOURCES.find((s) => s.id === id)
 
