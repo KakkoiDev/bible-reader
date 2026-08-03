@@ -474,7 +474,7 @@ html.modal-open { overflow: hidden; }
 .sheet {
   margin: auto;
   width: min(440px, 92vw);
-  max-height: 88dvh;
+  max-height: 92dvh;
   overflow: auto;
   /* Keep the sheet's own scroll from chaining out to the page behind it. */
   overscroll-behavior: contain;
@@ -491,8 +491,26 @@ html.modal-open { overflow: hidden; }
    width because of its filter header. */
 .sheet.saved { width: min(560px, 94vw); }
 /* gap matters: the close button's hover background sat flush against the search
-   input's border without it, which read as the two controls bleeding together. */
-.sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; font-family: var(--f-ui); font-size: var(--fs-sheet-title); }
+   input's border without it, which read as the two controls bleeding together.
+   Sticky is not decoration here: a bottom-docked sheet whose whole body scrolls
+   would carry its own close button off the top of the screen. The 16px box-shadow
+   spread is the head's background bleeding out into the sheet's padding, so text
+   scrolling up disappears behind the head instead of into its gutters; the sheet's
+   own overflow clips the halo to the rounded corners. */
+.sheet-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+  font-family: var(--f-ui);
+  font-size: var(--fs-sheet-title);
+  background: var(--card);
+  box-shadow: 0 0 0 16px var(--card);
+}
 .sheet-head .icon { flex: none; }
 /* The whole row is the label, so the row carries the target and the checkbox inside
    it stays the size the platform draws one at. */
@@ -1075,13 +1093,60 @@ html.modal-open { overflow: hidden; }
   text-transform: none;
   letter-spacing: normal;
 }
-.hlctl { display: inline-flex; align-items: center; gap: 4px; }
-.swatch.mini-sw { width: 15px; height: 15px; }
-.abtn.tiny { padding: 0 6px; font-size: 12px; }
 .noteact.wrap { flex-wrap: wrap; }
 
 /* ---------- RTL: the floating toolbar is positioned in raw pixels ---------- */
 [dir='rtl'] .atoolbar.bottom { transform: translateX(50%); }
+
+/* ============================================================================
+   Sheets on a phone: docked to the bottom edge, not floating in the middle
+   ----------------------------------------------------------------------------
+   A centered card on a 390px screen is a modal; a sheet that rises from the edge
+   the thumb is already at is not. It stops at 92% so a strip of the passage stays
+   visible behind it, which is the whole difference between "a layer over the page"
+   and "a different screen".
+
+   This block sits at the end of the sheet rules on purpose: `.sheet-backdrop > .sheet`
+   ties the specificity of `.sheet.saved` and the other width variants, so source
+   order is what decides, and the dock has to win.
+
+   Drag-to-dismiss is not here. The sheets mount and unmount with no transition
+   state, so a drag would have nothing to animate back to; the handle is the
+   affordance for the close button and the backdrop tap, both of which work.
+   ============================================================================ */
+@media (max-width: 640px) {
+  .sheet-backdrop { align-items: flex-end; }
+  .sheet-backdrop > .sheet {
+    width: 100%;
+    margin: 0;
+    max-height: 92dvh;
+    border: 1px solid var(--line);
+    border-bottom: 0;
+    border-radius: var(--r-sheet) var(--r-sheet) 0 0;
+    padding-top: 0;
+    padding-bottom: var(--safe-bottom);
+    box-shadow: var(--e-sheet);
+  }
+  /* The grab handle. A full-width sticky band with the pill painted into it, not a
+     bare 42px pill: a bare pill leaves the strip either side of it transparent and
+     the body scrolls up through the gap. It supplies the sheet's top padding as well,
+     which is why padding-top goes to 0 above. A negative top margin would have done
+     the same thing, but sticky resolves its offset against the margin box, so the
+     band would settle 16px lower than the gap it was covering. */
+  .sheet-backdrop > .sheet::before {
+    content: '';
+    display: block;
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    height: 30px;
+    margin: 0 -16px 8px;
+    background: var(--card) linear-gradient(var(--line-strong), var(--line-strong)) center 20px / 42px 4px no-repeat;
+  }
+  /* 38, not 30: the head's resting position is the band's 30px plus its 8px margin,
+     and pinning it any higher makes it hop up the moment the body starts scrolling. */
+  .sheet-backdrop > .sheet > .sheet-head { top: 38px; }
+}
 
 /* ============================================================================
    Per-script typography
