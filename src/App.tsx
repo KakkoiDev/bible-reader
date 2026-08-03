@@ -34,10 +34,17 @@ import {
 } from './components/Panels'
 import { SearchSheet, Navigator, VerseSheet, InviteBuilder, type VerseSheetData } from './components/Sheets'
 import { VerseBar } from './components/VerseBar'
+import { Planner, formatRefs } from './components/Planner'
+import { usePlans, chapterRead, type Ref as PlanRef } from './lib/plans'
 import { Icon } from './components/Icon'
 
 const BASE = import.meta.env.BASE_URL
 const SWIPE_MIN = 45
+/** A verse row in the patchwork reader, where a chapter number is not unique. */
+const patchVerseId = (slug: string, ch: number, v: number) => `pv-${slug}-${ch}-${v}`
+/** How long a verse has to stay on screen before scrolling past it counts as reading
+ *  it. Without a dwell, flinging to the bottom would tick off the whole day. */
+const DWELL_MS = 1200
 const REPO_URL = 'https://github.com/KakkoiDev/bible-reader'
 
 // The browser's deferred PWA-install prompt (Chromium only; not in the DOM lib types).
@@ -155,7 +162,9 @@ export default function App() {
     (text: string, action?: { label: string; run: () => void }) => setToast({ text, action }),
     [],
   )
-  const [speaking, setSpeaking] = useState<{ ch: number; v: number; lang: Lang } | null>(null)
+  // `slug` is set only while the patchwork reader is speaking, where a run crosses
+  // books and a chapter number no longer identifies a row.
+  const [speaking, setSpeaking] = useState<{ ch: number; v: number; lang: Lang; slug?: string } | null>(null)
   const [playingLang, setPlayingLang] = useState<Lang | null>(null)
   const [autoNext, setAutoNext] = useState<Lang | null>(null)
   const [pending, setPending] = useState<{ slug: string; chapter: number; lang: Lang } | null>(null)
@@ -195,7 +204,11 @@ export default function App() {
   const [noteRef, setNoteRef] = useState<string | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [plannerOpen, setPlannerOpen] = useState(false)
+  /** A day's chapters, opened as one passage. Null when the normal reader is showing. */
+  const [patch, setPatch] = useState<PlanRef[] | null>(null)
   const readerRef = useRef<HTMLElement>(null)
+  const { blocks, progress, addBlock, removeBlock, moveBlock, markVerse, toggleChapter } = usePlans()
 
   // saved-notes drawer controls
   const [sort, setSort] = useState<SortMode>('book')
@@ -442,20 +455,34 @@ export default function App() {
     setPending(null)
   }, [])
   const speakList = useCallback(
-    (lang: Lang, verses: { ch: number; v: number; text: string }[], continuous: boolean) => {
+    (
+      lang: Lang,
+      verses: { ch: number; v: number; text: string; slug?: string }[],
+      continuous: boolean,
+      // Fires as each verse begins, with its index. Reading the same fact off the
+      // `speaking` state instead would lose the last verse of a run: `onDone` clears
+      // that state in the same commit as the final verse's update, so the two coalesce.
+      onSpoke?: (at: number) => void,
+    ) => {
       if (!canTTS || !verses.length) return
       const gen = ++genRef.current
-      const chOf = new Map(verses.map((x) => [x.v, x.ch]))
+      // Resolved from the item, not from the verse number: a patchwork run holds a
+      // verse 1 for every chapter of the day, in more than one book.
+      const idOf = (at: number) => {
+        const it = verses[at]
+        return it.slug ? patchVerseId(it.slug, it.ch, it.v) : verseElId(it.ch, it.v, lang)
+      }
       setPlayingLang(lang)
       setSpeaking(null)
       clearWordHighlight()
       speakVerses(verses, lang, prefs.rate, prefs.voice, {
-        onVerse: (v) => {
+        onVerse: (v, at) => {
           if (gen !== genRef.current) return
-          const ch = chOf.get(v) ?? pos.chapter
-          setSpeaking({ ch, v, lang })
+          const it = verses[at]
+          setSpeaking({ ch: it.ch, v, lang, slug: it.slug })
+          onSpoke?.(at)
           clearWordHighlight()
-          const el = document.getElementById(verseElId(ch, v, lang))
+          const el = document.getElementById(idOf(at))
           if (el) {
             // Only glide when the active verse leaves a comfortable band, so it
             // doesn't re-center (jitter) on every verse.
@@ -464,9 +491,9 @@ export default function App() {
             if (r.top < vh * 0.2 || r.bottom > vh * 0.72) el.scrollIntoView({ behavior: 'smooth', block: 'center' })
           }
         },
-        onWord: (v, s, e) => {
+        onWord: (_v, s, e, at) => {
           if (gen !== genRef.current) return
-          const el = document.getElementById(verseElId(chOf.get(v) ?? pos.chapter, v, lang))?.querySelector('.vt')
+          const el = document.getElementById(idOf(at))?.querySelector('.vt')
           if (el) setWordHighlight(el, s, e)
         },
         onDone: () => {
@@ -486,7 +513,7 @@ export default function App() {
         },
       })
     },
-    [canTTS, prefs.rate, prefs.voice, verseElId, pos.chapter, say, t],
+    [canTTS, prefs.rate, prefs.voice, verseElId, say, t],
   )
   // "Stop at chapter end" turns off the roll-on into the next chapter/book.
   const keepGoing = !prefs.stopAtChapterEnd
@@ -957,6 +984,113 @@ export default function App() {
     return out
   }, [flow, book, paras, pos.slug, pos.lang, verseText, store])
 
+  // ---- the patchwork reader ----
+  //
+  // A day's chapters read as one passage, in the reading language only, with no verse
+  // numbers: the request asked for "a patch-worked temporary book", and for no verse
+  // mode. A day can cross books, so the books it spans are fetched through the same
+  // per-book cache the reader uses and a faint heading marks each seam.
+  const patchKey = useMemo(() => (patch ? [...new Set(patch.map((r) => r.slug))].join(',') : ''), [patch])
+  const [patchTexts, setPatchTexts] = useState<Record<string, EditionBook>>({})
+  useEffect(() => {
+    if (!patchKey) return setPatchTexts({})
+    let alive = true
+    Promise.all(
+      patchKey.split(',').map(async (s) => {
+        const key = `${pos.lang}/${s}`
+        let b = cache.current.get(key)
+        if (!b) {
+          b = await fetch(`${BASE}data/${pos.lang}/${s}.json`)
+            .then((r) => (r.ok ? (r.json() as Promise<EditionBook>) : { chapters: [] }))
+            .catch(() => ({ chapters: [] }) as EditionBook)
+          cache.current.set(key, b)
+        }
+        return [s, b] as const
+      }),
+    ).then((pairs) => {
+      if (alive) setPatchTexts(Object.fromEntries(pairs))
+    })
+    return () => {
+      alive = false
+    }
+  }, [patchKey, pos.lang])
+
+  /** The day's chapters grouped by book, so a heading is drawn only where one ends. */
+  const patchBooks = useMemo(() => {
+    if (!patch) return []
+    type Chap = { slug: string; ch: number; count: number; verses: { v: number; text: string; hl?: HL[] }[] }
+    const out: { name: string; slug: string; chapters: Chap[] }[] = []
+    for (const r of patch) {
+      const verses = (patchTexts[r.slug]?.chapters.find((c) => c.n === r.ch)?.verses ?? []).map((v) => ({
+        v: v.v,
+        text: v.t,
+        hl: store[vref(r.slug, r.ch, v.v)]?.highlights?.filter((h) => h.lang === pos.lang),
+      }))
+      const chap: Chap = { slug: r.slug, ch: r.ch, count: verses.length, verses }
+      const last = out[out.length - 1]
+      if (last && last.slug === r.slug) last.chapters.push(chap)
+      else out.push({ slug: r.slug, name: bookName(index.find((b) => b.slug === r.slug), pos.lang), chapters: [chap] })
+    }
+    return out
+  }, [patch, patchTexts, index, pos.lang, store])
+
+  /** Every verse of the day, in order, ready to speak. `count` is its chapter's length,
+   *  which is what says whether ticking this verse finishes the chapter. */
+  const patchVerses = useMemo(
+    () =>
+      patchBooks.flatMap((g) =>
+        g.chapters.flatMap((c) => c.verses.map((v) => ({ slug: c.slug, ch: c.ch, v: v.v, text: v.text, count: c.count }))),
+      ),
+    [patchBooks],
+  )
+
+  // Play from the planner: the chapters are still being fetched when the button is
+  // pressed, so the request is held until there is something to speak. Not continuous,
+  // because the day's list is the whole run and rolling on would read past it.
+  const [playPatch, setPlayPatch] = useState(false)
+  useEffect(() => {
+    if (!playPatch || !patchVerses.length) return
+    setPlayPatch(false)
+    speakList(pos.lang, patchVerses, false, (at) => {
+      const it = patchVerses[at]
+      markVerse(it.slug, it.ch, it.v, it.count)
+    })
+  }, [playPatch, patchVerses, pos.lang, speakList, markVerse])
+
+  // Tick a verse off once it has been on screen long enough to have been read.
+  useEffect(() => {
+    if (!patch || !patchVerses.length) return
+    const el = readerRef.current
+    if (!el) return
+    const counts = new Map(patchBooks.flatMap((g) => g.chapters).map((c) => [`${c.slug}.${c.ch}`, c.count]))
+    const timers = new Map<string, number>()
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          const m = /^pv-(.+)-(\d+)-(\d+)$/.exec(e.target.id)
+          if (!m) continue
+          if (!e.isIntersecting) {
+            clearTimeout(timers.get(e.target.id))
+            timers.delete(e.target.id)
+            continue
+          }
+          if (timers.has(e.target.id)) continue
+          const [, slug, ch, v] = m
+          timers.set(
+            e.target.id,
+            window.setTimeout(() => markVerse(slug, Number(ch), Number(v), counts.get(`${slug}.${ch}`) ?? 0), DWELL_MS),
+          )
+        }
+      },
+      { rootMargin: '-84px 0px -20% 0px', threshold: 0 },
+    )
+    el.querySelectorAll('.pverse').forEach((x) => io.observe(x))
+    return () => {
+      io.disconnect()
+      for (const id of timers.values()) clearTimeout(id)
+    }
+  }, [patch, patchVerses.length, patchBooks, markVerse])
+
   useEffect(() => {
     if (!toast) return
     const timer = setTimeout(() => setToast(null), toast.action ? 7000 : 2400)
@@ -978,7 +1112,11 @@ export default function App() {
         [searchOpen, () => setSearchOpen(false)],
         [navOpen, () => setNavOpen(false)],
         [drawerOpen, () => setDrawerOpen(false)],
+        [plannerOpen, () => setPlannerOpen(false)],
         [settingsOpen, () => setSettingsOpen(false)],
+        // Last: the patchwork is a page, not an overlay, so it unwinds only once every
+        // sheet above it has gone.
+        [patch !== null, () => setPatch(null)],
         [sel !== null, () => clearSelection()],
         [barAt !== null, () => setBarAt(null)],
       ]
@@ -997,7 +1135,8 @@ export default function App() {
   // scrollbar width is padded back so removing overflow doesn't shift the layout.
   const anySheetOpen =
     navOpen || searchOpen || licencesOpen || verseSheet !== null || inviteFor !== null ||
-    confirmDelete !== null || confirmTag !== null || noteRef !== null || drawerOpen || settingsOpen
+    confirmDelete !== null || confirmTag !== null || noteRef !== null || drawerOpen || settingsOpen ||
+    plannerOpen
   useEffect(() => {
     if (!anySheetOpen) return
     const { body, documentElement: html } = document
@@ -1272,6 +1411,9 @@ export default function App() {
           <button className="icon" title={t('saved_aria')} onClick={() => setDrawerOpen(true)}>
             <Icon name="bookmark" />
           </button>
+          <button className="icon" title={t('planner')} onClick={() => setPlannerOpen(true)}>
+            <Icon name="calendar" />
+          </button>
           <button className="icon" title={t('settings')} onClick={() => setSettingsOpen(true)}>
             <Icon name="settings" />
           </button>
@@ -1307,7 +1449,9 @@ export default function App() {
         }}
       >
         <h1 className="ref">
-          {wide && !flow ? (
+          {patch ? (
+            t('plan_reading')
+          ) : wide && !flow ? (
             <>{title} {pos.chapter}</>
           ) : (
             <span lang={BY_ID[pos.lang].htmlLang} dir={BY_ID[pos.lang].dir}>
@@ -1316,7 +1460,50 @@ export default function App() {
           )}
         </h1>
 
-        {loading && !ready ? (
+        {patch ? (
+          <div className="patch" lang={BY_ID[pos.lang].htmlLang} dir={BY_ID[pos.lang].dir}>
+            <p className="patchsum" lang={BY_ID[prefs.ui].htmlLang} dir={BY_ID[prefs.ui].dir}>
+              {formatRefs(patch, index, prefs.ui)}
+            </p>
+            {patchBooks.map((g, gi) => (
+              <section key={`${g.slug}-${gi}`}>
+                {/* Faint but present: the day runs on as one passage, and the only thing
+                    that has to survive is knowing which book you are in. */}
+                <h2 className="patchbook">{g.name}</h2>
+                {g.chapters.map((c) => {
+                  const read = chapterRead(progress, c.slug, c.ch)
+                  return (
+                    <div className={`patchchap ${read ? 'read' : ''}`} key={`${c.slug}-${c.ch}`}>
+                      <p className="fpar">
+                        <span className="fchap" dir="ltr">{c.ch}</span>
+                        {c.verses.map((v) => (
+                          <span
+                            key={v.v}
+                            id={patchVerseId(c.slug, c.ch, v.v)}
+                            className={`fverse pverse ${
+                              speaking?.slug === c.slug && speaking.ch === c.ch && speaking.v === v.v ? 'speaking' : ''
+                            }`}
+                          >
+                            <VerseText text={v.text} lang={pos.lang} showFurigana={prefs.furigana} highlights={v.hl} />{' '}
+                          </span>
+                        ))}
+                      </p>
+                      <button
+                        className={`ptick ${read ? 'on' : ''}`}
+                        lang={BY_ID[prefs.ui].htmlLang}
+                        dir={BY_ID[prefs.ui].dir}
+                        onClick={() => toggleChapter(c.slug, c.ch, c.count)}
+                      >
+                        <Icon name="done" size={17} /> {t(read ? 'plan_mark_unread' : 'plan_mark_read')}
+                      </button>
+                    </div>
+                  )
+                })}
+              </section>
+            ))}
+            <button className="patchdone" onClick={() => setPatch(null)}>{t('back')}</button>
+          </div>
+        ) : loading && !ready ? (
           <p className="status">…</p>
         ) : flow ? (
           <div className="flow" lang={BY_ID[pos.lang].htmlLang} dir={BY_ID[pos.lang].dir}>
@@ -1549,6 +1736,32 @@ export default function App() {
           onClear={() => {
             if (sel && selRef) clearHighlightsIn(selRef, sel.lang, sel.start, sel.end)
             clearSelection()
+          }}
+        />
+      )}
+
+      {plannerOpen && (
+        <Planner
+          index={index}
+          blocks={blocks}
+          progress={progress}
+          ui={prefs.ui}
+          t={t}
+          today={Date.now()}
+          canTTS={canTTS}
+          onClose={() => setPlannerOpen(false)}
+          onAdd={addBlock}
+          onRemove={removeBlock}
+          onMove={moveBlock}
+          onRead={(refs) => {
+            setPatch(refs)
+            setPlannerOpen(false)
+            stopAudio()
+          }}
+          onPlay={(refs) => {
+            setPatch(refs)
+            setPlannerOpen(false)
+            setPlayPatch(true)
           }}
         />
       )}

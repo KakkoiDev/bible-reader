@@ -125,6 +125,21 @@ Recorded here so the document and the code do not tell different stories.
   the edition's, and consecutive omissions collapse: the 口語訳's Psalms
   130-139 is one line, not ten. Reading a book the edition does not carry at
   all shows the coverage note instead, the same one the column view uses.
+- **The calendar is the 40th icon, and it is not an emoji.** The reading plan was
+  asked for as "a calendar emoji next to bookmarks". This document's first rule
+  about icons is that no emoji enters the page, so it is drawn in the set's
+  idiom: 1.7 stroke, two binding ticks, one filled day. It sits third in the
+  header tools, between Saved and Settings.
+- **The planner and the patchwork reader have no atoms in this document.** Both
+  are new surfaces, so what shipped is an interpretation and the next pass should
+  treat it as a first draft, not as the design. A plan block is a `--sunken` card
+  at `--r-card` carrying a name, what it covers, today's reference, a progress
+  line and two actions; today's reading is at the top of the card because it is
+  the only part most readers ever need. The patchwork reader is flow mode over a
+  synthetic chapter list, with a `--fs-eyebrow` uppercase muted book heading at
+  each seam and a pill tick under each chapter. Everything the request called
+  advanced is inside a closed `<details>`, so the common path is four taps and
+  answers no question it can answer itself.
 
 ## Data this design assumes
 

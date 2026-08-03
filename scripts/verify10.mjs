@@ -55,8 +55,13 @@ console.log('\nHeader overflow (360px, long localized book name)')
   const bar = await page.locator('.bar').evaluate((el) => ({ scroll: el.scrollWidth, client: el.clientWidth }))
   const body = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }))
   check('.bar does not overflow', bar.scroll <= bar.client, `scrollWidth ${bar.scroll} vs clientWidth ${bar.client}`)
-  check('header keeps to three routine actions', (await page.locator('.tools .icon').count()) === 3)
-  // All three header glyphs must render at the same visual weight: a text-presentation
+  // Named rather than counted: the planner made this four, and a bare count would have
+  // let the next addition reindex every positional selector in this file unnoticed.
+  const tools = await page.locator('.tools .icon').evaluateAll((bs) => bs.map((b) => b.title))
+  check('header keeps to four routine actions, in order',
+    tools.map((x) => x.replace(/ \(.*/, '')).join(',') === 'Rechercher,Enregistré,Plan de lecture,Paramètres',
+    tools.join(','))
+  // All four header glyphs must render at the same visual weight: a text-presentation
   // codepoint among emoji ones looks half-size.
   const iconW = await page.evaluate(() =>
     [...document.querySelectorAll('.tools .icon')].map((b) => {
@@ -719,7 +724,7 @@ console.log('\nSettings: stop at chapter end + licences sheet')
 {
   const { ctx, page } = await open({ ...BASE, ui: 'en', columns: ['en'] })
   await page.waitForSelector('.verse')
-  await page.locator('.tools .icon').nth(2).click()
+  await page.locator('.tools .icon:last-child').click()
   await page.waitForSelector('.sheet')
   const groups = await page.locator('.sgroup').allInnerTexts()
   check('settings are grouped', groups.length >= 3, groups.join(' | '))
@@ -842,7 +847,7 @@ console.log('\nCopy convention: no em-dash on the frontend')
     const { ctx, page } = await open({ ...BASE, ui, columns: ['en', 'el', 'he'] }, { hash: '#/genesis/1/en' })
     await page.waitForSelector('.verse')
     // Open each panel so its copy is in the DOM, closing with Escape between.
-    for (const i of [2, 1, 0]) {
+    for (const i of [3, 2, 1, 0]) {
       await page.locator('.tools .icon').nth(i).click()
       await page.waitForTimeout(250)
       const seen = await page.evaluate(() => {
@@ -884,7 +889,7 @@ console.log('\nPanel consistency')
   const opens = [
     ['search', async () => page.locator('.tools .icon').nth(0).click()],
     ['saved', async () => page.locator('.tools .icon').nth(1).click()],
-    ['settings', async () => page.locator('.tools .icon').nth(2).click()],
+    ['settings', async () => page.locator('.tools .icon:last-child').click()],
     ['navigator', async () => page.locator('.navbtn').click()],
     ['verse', async () => openStudy(page)],
     ['licences', async () => page.locator('.attrib .liclink').click()],
@@ -978,7 +983,7 @@ console.log('\nTouch targets and control spacing')
     ['reader', null],
     ['search', async (p) => p.locator('.tools .icon').nth(0).click()],
     ['saved', async (p) => p.locator('.tools .icon').nth(1).click()],
-    ['settings', async (p) => p.locator('.tools .icon').nth(2).click()],
+    ['settings', async (p) => p.locator('.tools .icon:last-child').click()],
     ['navigator', async (p) => p.locator('.navbtn').click()],
     ['verse', async (p) => openStudy(p, '#v-en-16', { x: 200, y: 8 })],
   ]

@@ -174,7 +174,44 @@ const en = {
   glossary_archaic: 'archaic',
   glossary_grammar: 'grammar',
   glossary_name: 'name',
-  glossary_spiritual: 'Spiritual terms'
+  glossary_spiritual: 'Spiritual terms',
+
+  planner: 'Reading plan',
+  /** Nothing has been set up yet. Says what a plan does, not that one is missing. */
+  planner_empty: 'A plan gives you a few chapters a day and keeps its own place, so a day you miss costs you nothing.',
+  plan_today: 'Today',
+  plan_read_now: 'Read now',
+  plan_nothing_today: 'Nothing today.',
+  plan_all_read: 'Read.',
+  plan_progress: '{done} of {total} read',
+  /** Never a countdown to a failure: a plan that runs out simply ends. */
+  plan_days_left: '{n} days to go',
+  plan_last_day: 'Last day',
+  plan_not_started: 'Starts {date}',
+  plan_finished: 'Finished',
+  plan_repeats: 'repeats',
+  plan_new: 'New plan',
+  plan_name: 'Name',
+  plan_covers: 'What to read',
+  plan_length: 'How long',
+  plan_scope_bible: 'The whole Bible',
+  plan_scope_gospels: 'The Gospels',
+  plan_scope_book: 'One book',
+  plan_len_week: 'A week',
+  plan_len_month: 'A month',
+  plan_len_quarter: '90 days',
+  plan_len_year: 'A year',
+  plan_advanced: 'More settings',
+  plan_repeat: 'Start again when it finishes',
+  plan_days_field: 'Days',
+  plan_start_field: 'Starts on',
+  plan_add: 'Add this plan',
+  plan_delete: 'Delete this plan',
+  plan_mark_read: 'Mark as read',
+  plan_mark_unread: 'Mark as unread',
+  plan_chapters_n: '{n} chapters',
+  /** Header of the patchwork reader, where a day's chapters run on as one passage. */
+  plan_reading: "Today's reading",
 }
 
 export type StringKey = keyof typeof en
@@ -222,6 +259,18 @@ const ja: Dict = {
   glossary: '古い語', glossary_sub: 'KJVでの意味', glossary_archaic: '古語', glossary_grammar: '文法', glossary_name: '固有名', glossary_spiritual: '信仰用語',
   share: '共有', study: '詳細', bookmark: 'しおり', remove_bookmark: 'しおりを外す',
   bookmarks: 'しおり', listen_from_here: 'ここから再生', back: '戻る',
+  planner: '通読計画',
+  planner_empty: '計画を立てると毎日数章ずつ読めます。読み進めた場所は自動で覚えるので、休んだ日があっても大丈夫です。',
+  plan_today: '今日', plan_read_now: '今すぐ読む', plan_nothing_today: '今日はありません。',
+  plan_all_read: '読了。', plan_progress: '{total}章中{done}章', plan_days_left: '残り{n}日',
+  plan_last_day: '最終日', plan_not_started: '{date}開始', plan_finished: '完了', plan_repeats: '繰り返し',
+  plan_new: '新しい計画', plan_name: '名前', plan_covers: '読む範囲', plan_length: '期間',
+  plan_scope_bible: '聖書全体', plan_scope_gospels: '福音書', plan_scope_book: '一冊',
+  plan_len_week: '1週間', plan_len_month: '1か月', plan_len_quarter: '90日', plan_len_year: '1年',
+  plan_advanced: '詳細設定', plan_repeat: '終わったら最初から', plan_days_field: '日数',
+  plan_start_field: '開始日', plan_add: 'この計画を追加', plan_delete: 'この計画を削除',
+  plan_mark_read: '読了にする', plan_mark_unread: '未読に戻す', plan_chapters_n: '{n}章',
+  plan_reading: '今日の通読',
 }
 
 const fr: Dict = {
@@ -270,6 +319,19 @@ const fr: Dict = {
   glossary: 'Mots anciens', glossary_sub: 'sens dans la KJV', glossary_archaic: 'archaïque', glossary_grammar: 'grammaire', glossary_name: 'nom propre', glossary_spiritual: 'Termes spirituels',
   share: 'Partager', study: 'Étudier', bookmark: 'Marque-page', remove_bookmark: 'Retirer le marque-page',
   bookmarks: 'Marque-pages', listen_from_here: 'Écouter à partir d’ici', back: 'Retour',
+  planner: 'Plan de lecture',
+  planner_empty: 'Un plan vous donne quelques chapitres par jour et garde votre place tout seul : un jour manqué ne coûte rien.',
+  plan_today: 'Aujourd’hui', plan_read_now: 'Lire maintenant', plan_nothing_today: 'Rien aujourd’hui.',
+  plan_all_read: 'Lu.', plan_progress: '{done} sur {total}', plan_days_left: 'Encore {n} jours',
+  plan_last_day: 'Dernier jour', plan_not_started: 'Débute le {date}', plan_finished: 'Terminé',
+  plan_repeats: 'en boucle', plan_new: 'Nouveau plan', plan_name: 'Nom',
+  plan_covers: 'Que lire', plan_length: 'Sur combien de temps', plan_scope_bible: 'Toute la Bible',
+  plan_scope_gospels: 'Les Évangiles', plan_scope_book: 'Un livre', plan_len_week: 'Une semaine',
+  plan_len_month: 'Un mois', plan_len_quarter: '90 jours', plan_len_year: 'Un an',
+  plan_advanced: 'Plus de réglages', plan_repeat: 'Recommencer à la fin', plan_days_field: 'Jours',
+  plan_start_field: 'Débute le', plan_add: 'Ajouter ce plan', plan_delete: 'Supprimer ce plan',
+  plan_mark_read: 'Marquer comme lu', plan_mark_unread: 'Marquer comme non lu',
+  plan_chapters_n: '{n} chapitres', plan_reading: 'Lecture du jour',
 }
 
 const zht: Dict = {
@@ -306,6 +368,18 @@ const zht: Dict = {
   justify: '左右對齊',
   share: '分享', study: '詳解', bookmark: '書籤', remove_bookmark: '移除書籤',
   bookmarks: '書籤', listen_from_here: '從這裡朗讀', back: '返回',
+  planner: '讀經計劃',
+  planner_empty: '計劃每天給你幾章，並自動記住進度；漏讀一天也沒有關係。',
+  plan_today: '今天', plan_read_now: '現在讀', plan_nothing_today: '今天沒有安排。',
+  plan_all_read: '已讀完。', plan_progress: '已讀 {done}／{total}', plan_days_left: '還有 {n} 天',
+  plan_last_day: '最後一天', plan_not_started: '{date} 開始', plan_finished: '已完成', plan_repeats: '循環',
+  plan_new: '新計劃', plan_name: '名稱', plan_covers: '讀甚麼', plan_length: '多久讀完',
+  plan_scope_bible: '整本聖經', plan_scope_gospels: '四福音', plan_scope_book: '單卷',
+  plan_len_week: '一週', plan_len_month: '一個月', plan_len_quarter: '90 天', plan_len_year: '一年',
+  plan_advanced: '更多設定', plan_repeat: '讀完後從頭開始', plan_days_field: '天數',
+  plan_start_field: '開始日期', plan_add: '加入這個計劃', plan_delete: '刪除這個計劃',
+  plan_mark_read: '標為已讀', plan_mark_unread: '標為未讀', plan_chapters_n: '{n} 章',
+  plan_reading: '今天的讀經',
 }
 
 const zhs: Dict = {
@@ -342,6 +416,18 @@ const zhs: Dict = {
   justify: '左右对齐',
   share: '分享', study: '详解', bookmark: '书签', remove_bookmark: '移除书签',
   bookmarks: '书签', listen_from_here: '从这里朗读', back: '返回',
+  planner: '读经计划',
+  planner_empty: '计划每天给你几章，并自动记住进度；漏读一天也没有关系。',
+  plan_today: '今天', plan_read_now: '现在读', plan_nothing_today: '今天没有安排。',
+  plan_all_read: '已读完。', plan_progress: '已读 {done}／{total}', plan_days_left: '还有 {n} 天',
+  plan_last_day: '最后一天', plan_not_started: '{date} 开始', plan_finished: '已完成', plan_repeats: '循环',
+  plan_new: '新计划', plan_name: '名称', plan_covers: '读什么', plan_length: '多久读完',
+  plan_scope_bible: '整本圣经', plan_scope_gospels: '四福音', plan_scope_book: '单卷',
+  plan_len_week: '一周', plan_len_month: '一个月', plan_len_quarter: '90 天', plan_len_year: '一年',
+  plan_advanced: '更多设置', plan_repeat: '读完后从头开始', plan_days_field: '天数',
+  plan_start_field: '开始日期', plan_add: '加入这个计划', plan_delete: '删除这个计划',
+  plan_mark_read: '标为已读', plan_mark_unread: '标为未读', plan_chapters_n: '{n} 章',
+  plan_reading: '今天的读经',
 }
 
 const pt: Dict = {
@@ -384,6 +470,19 @@ const pt: Dict = {
   justify: 'Texto justificado',
   share: 'Compartilhar', study: 'Estudo', bookmark: 'Marcador', remove_bookmark: 'Remover marcador',
   bookmarks: 'Marcadores', listen_from_here: 'Ouvir a partir daqui', back: 'Voltar',
+  planner: 'Plano de leitura',
+  planner_empty: 'Um plano dá alguns capítulos por dia e guarda sozinho o seu lugar: um dia perdido não custa nada.',
+  plan_today: 'Hoje', plan_read_now: 'Ler agora', plan_nothing_today: 'Nada hoje.',
+  plan_all_read: 'Lido.', plan_progress: '{done} de {total}', plan_days_left: 'Faltam {n} dias',
+  plan_last_day: 'Último dia', plan_not_started: 'Começa em {date}', plan_finished: 'Concluído',
+  plan_repeats: 'em ciclo', plan_new: 'Novo plano', plan_name: 'Nome', plan_covers: 'O que ler',
+  plan_length: 'Em quanto tempo', plan_scope_bible: 'A Bíblia inteira',
+  plan_scope_gospels: 'Os Evangelhos', plan_scope_book: 'Um livro', plan_len_week: 'Uma semana',
+  plan_len_month: 'Um mês', plan_len_quarter: '90 dias', plan_len_year: 'Um ano',
+  plan_advanced: 'Mais opções', plan_repeat: 'Recomeçar quando terminar', plan_days_field: 'Dias',
+  plan_start_field: 'Começa em', plan_add: 'Adicionar este plano', plan_delete: 'Apagar este plano',
+  plan_mark_read: 'Marcar como lido', plan_mark_unread: 'Marcar como não lido',
+  plan_chapters_n: '{n} capítulos', plan_reading: 'Leitura de hoje',
 }
 
 const es: Dict = {
@@ -427,6 +526,19 @@ const es: Dict = {
   justify: 'Texto justificado',
   share: 'Compartir', study: 'Estudio', bookmark: 'Marcador', remove_bookmark: 'Quitar marcador',
   bookmarks: 'Marcadores', listen_from_here: 'Escuchar desde aquí', back: 'Atrás',
+  planner: 'Plan de lectura',
+  planner_empty: 'Un plan te da unos capítulos al día y guarda solo tu lugar: un día perdido no cuesta nada.',
+  plan_today: 'Hoy', plan_read_now: 'Leer ahora', plan_nothing_today: 'Nada hoy.',
+  plan_all_read: 'Leído.', plan_progress: '{done} de {total}', plan_days_left: 'Quedan {n} días',
+  plan_last_day: 'Último día', plan_not_started: 'Empieza el {date}', plan_finished: 'Terminado',
+  plan_repeats: 'en ciclo', plan_new: 'Nuevo plan', plan_name: 'Nombre', plan_covers: 'Qué leer',
+  plan_length: 'En cuánto tiempo', plan_scope_bible: 'Toda la Biblia',
+  plan_scope_gospels: 'Los Evangelios', plan_scope_book: 'Un libro', plan_len_week: 'Una semana',
+  plan_len_month: 'Un mes', plan_len_quarter: '90 días', plan_len_year: 'Un año',
+  plan_advanced: 'Más ajustes', plan_repeat: 'Volver a empezar al terminar', plan_days_field: 'Días',
+  plan_start_field: 'Empieza el', plan_add: 'Añadir este plan', plan_delete: 'Borrar este plan',
+  plan_mark_read: 'Marcar como leído', plan_mark_unread: 'Marcar como no leído',
+  plan_chapters_n: '{n} capítulos', plan_reading: 'Lectura de hoy',
 }
 
 const ar: Dict = {
@@ -468,6 +580,19 @@ const ar: Dict = {
   justify: 'ضبط النص',
   share: 'مشاركة', study: 'دراسة', bookmark: 'علامة مرجعية', remove_bookmark: 'إزالة العلامة',
   bookmarks: 'العلامات المرجعية', listen_from_here: 'الاستماع من هنا', back: 'رجوع',
+  planner: 'خطة القراءة',
+  planner_empty: 'الخطة تعطيك بضعة إصحاحات كل يوم وتحفظ موضعك بنفسها، فاليوم الفائت لا يكلفك شيئًا.',
+  plan_today: 'اليوم', plan_read_now: 'اقرأ الآن', plan_nothing_today: 'لا شيء اليوم.',
+  plan_all_read: 'تمت القراءة.', plan_progress: '{done} من {total}', plan_days_left: 'بقي {n} يومًا',
+  plan_last_day: 'اليوم الأخير', plan_not_started: 'تبدأ في {date}', plan_finished: 'انتهت',
+  plan_repeats: 'متكررة', plan_new: 'خطة جديدة', plan_name: 'الاسم', plan_covers: 'ماذا تقرأ',
+  plan_length: 'في كم من الوقت', plan_scope_bible: 'الكتاب المقدس كله',
+  plan_scope_gospels: 'الأناجيل', plan_scope_book: 'سفر واحد', plan_len_week: 'أسبوع',
+  plan_len_month: 'شهر', plan_len_quarter: '٩٠ يومًا', plan_len_year: 'سنة',
+  plan_advanced: 'إعدادات أخرى', plan_repeat: 'ابدأ من جديد عند الانتهاء', plan_days_field: 'الأيام',
+  plan_start_field: 'تبدأ في', plan_add: 'أضف هذه الخطة', plan_delete: 'احذف هذه الخطة',
+  plan_mark_read: 'علّم كمقروء', plan_mark_unread: 'علّم كغير مقروء',
+  plan_chapters_n: '{n} إصحاحات', plan_reading: 'قراءة اليوم',
 }
 
 const tl: Dict = {
@@ -511,6 +636,20 @@ const tl: Dict = {
   justify: 'Justified na teksto',
   share: 'Ibahagi', study: 'Pag-aaral', bookmark: 'Bookmark', remove_bookmark: 'Alisin ang bookmark',
   bookmarks: 'Mga bookmark', listen_from_here: 'Makinig mula rito', back: 'Bumalik',
+  planner: 'Plano sa pagbabasa',
+  planner_empty: 'Ang plano ay nagbibigay ng ilang kabanata bawat araw at kusang tinatandaan ang iyong puwesto, kaya walang mawawala sa araw na malaktawan mo.',
+  plan_today: 'Ngayon', plan_read_now: 'Basahin na', plan_nothing_today: 'Wala ngayong araw.',
+  plan_all_read: 'Nabasa na.', plan_progress: '{done} sa {total}', plan_days_left: '{n} araw pa',
+  plan_last_day: 'Huling araw', plan_not_started: 'Magsisimula sa {date}', plan_finished: 'Tapos na',
+  plan_repeats: 'paulit-ulit', plan_new: 'Bagong plano', plan_name: 'Pangalan',
+  plan_covers: 'Ano ang babasahin', plan_length: 'Gaano katagal',
+  plan_scope_bible: 'Buong Bibliya', plan_scope_gospels: 'Mga Ebanghelyo',
+  plan_scope_book: 'Isang aklat', plan_len_week: 'Isang linggo', plan_len_month: 'Isang buwan',
+  plan_len_quarter: '90 araw', plan_len_year: 'Isang taon', plan_advanced: 'Iba pang setting',
+  plan_repeat: 'Ulitin kapag natapos', plan_days_field: 'Mga araw', plan_start_field: 'Magsisimula sa',
+  plan_add: 'Idagdag ang planong ito', plan_delete: 'Burahin ang planong ito',
+  plan_mark_read: 'Markahan bilang nabasa', plan_mark_unread: 'Markahan bilang hindi pa nabasa',
+  plan_chapters_n: '{n} kabanata', plan_reading: 'Babasahin ngayon',
 }
 
 // Modern Greek chrome; the text itself stays Koine.
@@ -557,6 +696,21 @@ const el: Dict = {
   justify: 'Πλήρης στοίχιση',
   share: 'Κοινοποίηση', study: 'Μελέτη', bookmark: 'Σελιδοδείκτης', remove_bookmark: 'Αφαίρεση σελιδοδείκτη',
   bookmarks: 'Σελιδοδείκτες', listen_from_here: 'Ακρόαση από εδώ', back: 'Πίσω',
+  planner: 'Πρόγραμμα ανάγνωσης',
+  planner_empty: 'Ένα πρόγραμμα σού δίνει λίγα κεφάλαια τη μέρα και κρατά μόνο του τη θέση σου: μια μέρα που θα χάσεις δεν κοστίζει τίποτα.',
+  plan_today: 'Σήμερα', plan_read_now: 'Διάβασε τώρα', plan_nothing_today: 'Τίποτα σήμερα.',
+  plan_all_read: 'Διαβάστηκε.', plan_progress: '{done} από {total}', plan_days_left: 'Απομένουν {n} μέρες',
+  plan_last_day: 'Τελευταία μέρα', plan_not_started: 'Ξεκινά στις {date}', plan_finished: 'Ολοκληρώθηκε',
+  plan_repeats: 'επαναλαμβάνεται', plan_new: 'Νέο πρόγραμμα', plan_name: 'Όνομα',
+  plan_covers: 'Τι θα διαβάσεις', plan_length: 'Σε πόσο καιρό',
+  plan_scope_bible: 'Όλη η Βίβλος', plan_scope_gospels: 'Τα Ευαγγέλια',
+  plan_scope_book: 'Ένα βιβλίο', plan_len_week: 'Μία εβδομάδα', plan_len_month: 'Ένας μήνας',
+  plan_len_quarter: '90 μέρες', plan_len_year: 'Ένας χρόνος', plan_advanced: 'Περισσότερες ρυθμίσεις',
+  plan_repeat: 'Ξανά από την αρχή όταν τελειώσει', plan_days_field: 'Μέρες',
+  plan_start_field: 'Ξεκινά στις', plan_add: 'Πρόσθεσε αυτό το πρόγραμμα',
+  plan_delete: 'Διάγραψε αυτό το πρόγραμμα', plan_mark_read: 'Σήμανση ως διαβασμένο',
+  plan_mark_unread: 'Σήμανση ως αδιάβαστο', plan_chapters_n: '{n} κεφάλαια',
+  plan_reading: 'Η σημερινή ανάγνωση',
 }
 
 // Modern Hebrew chrome; the text itself stays the Masoretic consonantal tradition.
@@ -599,6 +753,19 @@ const he: Dict = {
   justify: 'יישור לשני הצדדים',
   share: 'שיתוף', study: 'עיון', bookmark: 'סימנייה', remove_bookmark: 'הסרת הסימנייה',
   bookmarks: 'סימניות', listen_from_here: 'האזנה מכאן', back: 'חזרה',
+  planner: 'תוכנית קריאה',
+  planner_empty: 'תוכנית נותנת לך כמה פרקים ביום ושומרת את מקומך בעצמה, כך שיום שהחמצת אינו עולה דבר.',
+  plan_today: 'היום', plan_read_now: 'קרא עכשיו', plan_nothing_today: 'אין כלום היום.',
+  plan_all_read: 'נקרא.', plan_progress: '{done} מתוך {total}', plan_days_left: 'נותרו {n} ימים',
+  plan_last_day: 'היום האחרון', plan_not_started: 'מתחילה ב־{date}', plan_finished: 'הסתיימה',
+  plan_repeats: 'חוזרת', plan_new: 'תוכנית חדשה', plan_name: 'שם', plan_covers: 'מה לקרוא',
+  plan_length: 'בכמה זמן', plan_scope_bible: 'כל התנ״ך והברית החדשה',
+  plan_scope_gospels: 'הבשורות', plan_scope_book: 'ספר אחד', plan_len_week: 'שבוע',
+  plan_len_month: 'חודש', plan_len_quarter: '90 יום', plan_len_year: 'שנה',
+  plan_advanced: 'הגדרות נוספות', plan_repeat: 'להתחיל מחדש בסיום', plan_days_field: 'ימים',
+  plan_start_field: 'מתחילה ב־', plan_add: 'הוסף תוכנית זו', plan_delete: 'מחק תוכנית זו',
+  plan_mark_read: 'סמן כנקרא', plan_mark_unread: 'סמן כלא נקרא',
+  plan_chapters_n: '{n} פרקים', plan_reading: 'הקריאה של היום',
 }
 
 // jako is a Japanese edition, so its UI strings are the Japanese ones.

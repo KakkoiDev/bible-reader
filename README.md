@@ -552,8 +552,29 @@ it sounds is not covered and cannot be**: the API reports no phonemes, so the au
 result is the user's to confirm.
 
 ```bash
+npx vite preview --port 4184 --strictPort
+node scripts/verify16.mjs   # the reading planner, in the browser
 node scripts/verify15.mjs   # the reading planner's arithmetic (no server)
 ```
+
+`verify16.mjs` is the other half of the planner. Plans are seeded through
+`localStorage` rather than by driving the form, except in the one section that is about
+the form: a plan's whole contract is that it is a pure function of its start date, so a
+block dated ten days ago is exactly what a reader who started ten days ago has. It
+asserts that the header's calendar is a 44pt target drawn from the icon set rather than
+an emoji, that the advanced block is closed on open, that a plan seeded ten days back
+opens on day eleven with nothing in the sheet reading as an accusation, that a finished
+plan says so and a repeating one wraps, and that "Read now" renders the day as one
+passage with a faint book heading at each seam, no verse numbers, and real text from
+every book of the day.
+
+All three tick-off routes are covered, because all three were asked for. The manual
+tick writes one chapter key and survives a reload. Audio speaks the whole day across
+books and collapses each finished chapter, which is the check that caught a real
+defect: the tick used to be derived from the `speaking` state, and `onDone` clears that
+state in the same commit as the final verse, so the last verse of every run was lost
+and a chapter read entirely by audio never collapsed. Scrolling ticks a verse only
+after it has dwelled on screen, and a fling to the bottom and back marks nothing.
 
 `verify15.mjs` needs no browser. A day's reading is a pure function of the start date,
 the length and the scope, so the suite bundles `src/lib/plans.ts` with esbuild and calls

@@ -1384,3 +1384,124 @@ html.modal-open { overflow: hidden; }
   -webkit-hyphens: auto;
 }
 :root[data-justify='on'] .verse .vt { display: inline; }
+
+/* ---------- reading planner ---------- */
+/* A block is a card, not a settings row: it carries a heading, a state and two
+   actions, and a hairline-separated row cannot hold that without reading as a list
+   of unrelated controls. */
+.pblock {
+  padding: 14px;
+  margin: 0 0 14px;
+  background: var(--sunken);
+  border-radius: var(--r-card);
+  font-family: var(--f-ui);
+}
+.pblock-head { display: flex; align-items: flex-start; gap: 10px; }
+.pblock-id { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.pblock-id b { font-size: 15px; }
+.pblock-id small { font-size: 12px; color: var(--muted); line-height: 1.45; }
+.pblock .dmove { flex-direction: column; gap: 4px; }
+.pday { display: flex; flex-direction: column; gap: 4px; margin: 12px 0 0; }
+.peyebrow {
+  font-size: var(--fs-eyebrow);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.pref { font-size: 16px; font-weight: 600; }
+.pstate { font-size: 15px; color: var(--muted); }
+.pmeta { margin: 6px 0 0; font-family: var(--f-ui); font-size: 12.5px; color: var(--muted); }
+.pactions { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.pactions .primary { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 7px; }
+.pactions .mini { min-width: var(--touch); min-height: var(--touch); justify-content: center; }
+.pnew {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: var(--touch);
+  margin-top: 4px;
+  font-family: var(--f-ui);
+  font-size: 14px;
+  color: var(--accent);
+  background: none;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--r-card);
+  cursor: pointer;
+}
+.pnew:hover { border-style: solid; }
+.pform { font-family: var(--f-ui); }
+.pselect,
+.ptext,
+.pnum {
+  min-height: var(--touch);
+  padding: 0 10px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--line-strong);
+  border-radius: 9px;
+}
+.pselect { width: 100%; margin-top: 10px; }
+.ptext { flex: 1; min-width: 0; }
+.pnum { width: 150px; }
+/* Closed by default: the four taps above it are the whole common path, and a reader
+   who never opens this gets a working plan. */
+.padv { margin-top: 18px; }
+.padv > summary {
+  min-height: var(--touch);
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+/* ---------- the patchwork reader ---------- */
+.patch { max-width: 720px; margin: 0 auto; }
+.patchsum { margin: 0 0 22px; font-family: var(--f-ui); font-size: 13px; color: var(--muted); }
+/* Faint but present. The day reads as one passage, so this must not cut it in two the
+   way a book title page would; it only has to answer "which book is this". */
+.patchbook {
+  margin: 26px 0 10px;
+  font-family: var(--f-ui);
+  font-size: var(--fs-eyebrow);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.patch section:first-child .patchbook { margin-top: 0; }
+.patchchap { margin-bottom: 26px; }
+.patchchap.read .fpar { opacity: 0.55; }
+.ptick {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: var(--touch);
+  padding: 0 14px;
+  font-family: var(--f-ui);
+  font-size: 13px;
+  color: var(--muted);
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.ptick.on { color: var(--accent); border-color: var(--accent); background: var(--accent-bg); }
+.patchdone {
+  display: block;
+  width: 100%;
+  min-height: var(--touch);
+  margin: 8px 0 calc(24px + var(--safe-bottom));
+  font-family: var(--f-ui);
+  font-size: 14px;
+  color: var(--fg);
+  background: var(--sunken);
+  border: 0;
+  border-radius: var(--r-card);
+  cursor: pointer;
+}

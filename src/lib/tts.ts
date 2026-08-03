@@ -138,9 +138,11 @@ export function speakVerses(
   rate: number,
   gender: Gender,
   hooks: {
-    onVerse: (v: number) => void
+    // `at` is the item's position in `items`. A run can cross books, where a verse
+    // number no longer identifies a row on its own, so the caller needs the item.
+    onVerse: (v: number, at: number) => void
     onDone: () => void
-    onWord?: (v: number, start: number, end: number) => void
+    onWord?: (v: number, start: number, end: number, at: number) => void
     onNoVoice?: () => void
   },
 ) {
@@ -168,6 +170,7 @@ export function speakVerses(
       return
     }
     const it = items[i]
+    const at = i
     const spoken = speechText(it.text, lang)
     const u = new SpeechSynthesisUtterance(spoken)
     u.lang = langTag(lang)
@@ -182,14 +185,14 @@ export function speakVerses(
         speechSynthesis.cancel()
         return
       }
-      hooks.onVerse(it.v)
+      hooks.onVerse(it.v, at)
     }
     if (hooks.onWord && lang !== 'ja') {
       u.onboundary = (e) => {
         if (myGen !== genToken || (e.name && e.name !== 'word')) return
         const ci = e.charIndex
         const len = e.charLength || spoken.slice(ci).match(/^\S+/)?.[0].length || 0
-        if (len) hooks.onWord!(it.v, ci, ci + len)
+        if (len) hooks.onWord!(it.v, ci, ci + len, at)
       }
     }
     u.onend = () => {

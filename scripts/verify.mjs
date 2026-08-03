@@ -55,7 +55,7 @@ const browser = await chromium.launch()
   // toggle furigana OFF -> rt should disappear, base kanji remain.
   // The toggle lives in the Settings sheet (there is no longer a header control).
   const furigana = async (on) => {
-    await page.locator('.tools .icon').nth(2).click()
+    await page.locator('.tools .icon:last-child').click()
     await page.waitForSelector('.sheet .sgroup')
     const row = page.locator('.srow', { hasText: /Furigana|ふりがな/ }).first()
     await (on ? row.locator('input').check() : row.locator('input').uncheck())

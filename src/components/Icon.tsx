@@ -71,6 +71,20 @@ const ICONS = {
     ),
     sw: 1.7,
   },
+  // The 40th, and the second redrawn rather than harvested. The reading plan was asked
+  // for with a calendar emoji beside the bookmark; the set's first rule is that no emoji
+  // enters the page, so it is an icon. Two ticks for the binding rings and one filled
+  // day, because a plan is about one day of the month rather than the month.
+  calendar: {
+    d: (
+      <>
+        <rect x="3.5" y="5.5" width="17" height="15" rx="2.5" />
+        <path d="M3.5 10h17M8 3.5v4M16 3.5v4" />
+        <rect x="7" y="13" width="3.4" height="3.4" rx="0.9" fill="currentColor" stroke="none" />
+      </>
+    ),
+    sw: 1.7,
+  },
   sort: { d: <><path d="M4.5 7.5h7M4.5 12h11M4.5 16.5h5" /><path d="M17.5 8v9M15 14.5l2.5 2.5 2.5-2.5" /></>, sw: 1.7 },
   reorder: { d: <><path d="M4 5.5h16M4 12h16M4 18.5h16" /></>, sw: 1.7 },
   tag: { d: <><path d="M12.5 4.5 20 12l-6.5 6.5H7a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z" /><circle cx="15.5" cy="11.5" r="1.1" fill="currentColor" stroke="none" /></>, sw: 1.7 },
