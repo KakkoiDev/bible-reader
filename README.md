@@ -551,7 +551,22 @@ really are letters, and that the run is the chapter's own verses in order. **How
 it sounds is not covered and cannot be**: the API reports no phonemes, so the audible
 result is the user's to confirm.
 
-`scripts/verify2.mjs`–`verify9.mjs` are one-off diagnostic scripts from earlier
+```bash
+node scripts/verify15.mjs   # the reading planner's arithmetic (no server)
+```
+
+`verify15.mjs` needs no browser. A day's reading is a pure function of the start date,
+the length and the scope, so the suite bundles `src/lib/plans.ts` with esbuild and calls
+it directly against the real `public/data/index.json`. It asserts scope expansion,
+the even division and where a leftover chapter lands, which day of a pass today is
+(including that a clock change does not lose one), that a missed day leaves today's
+reading untouched, that a finished chapter collapses from one key per verse to one key,
+and that block reordering stays a contiguous `0..n-1`. The last section is the corpus
+backstop: 1,189 chapters in the KJV spine, 1,190 in the index because the Masoretic
+Joel is four chapters, and Ecclesiastes twelve. Reverting the Song of Solomon fix fails
+the last of those.
+
+`scripts/verify2.mjs`-`verify9.mjs` are one-off diagnostic scripts from earlier
 sessions that target port 4180; some assert against UI that no longer exists.
 
 **Six checks in `verify10.mjs` fail, and all six predate this work.** Four are the
