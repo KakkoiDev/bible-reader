@@ -156,6 +156,58 @@ console.log('\nThe chapter either side of the hole is normal')
   await ctx.close()
 }
 
+// Flow mode drops the chapter grid, so the hole used to be silent there: the 口語訳's
+// Psalms ran 129, 140 with no seam at all. A run of omitted chapters is one marker.
+console.log('\nFlow mode marks the run instead of skipping it')
+{
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } })
+  await ctx.addInitScript(
+    (p) => localStorage.setItem('prefs', JSON.stringify(p)),
+    { ...PREFS, flow: true, columns: ['jako'] },
+  )
+  const page = await ctx.newPage()
+  await page.goto(`${URL}#/psalms/1/jako`, { waitUntil: 'networkidle' })
+  await page.locator('.fverse').first().waitFor({ state: 'visible' })
+  const gaps = await page.locator('.fgap').allInnerTexts()
+  check('Psalms has one marker, not ten', gaps.length === 1, JSON.stringify(gaps))
+  check('and it names the whole run',
+    gaps[0] === 'The source this edition was published from does not carry Psalms 130-139.', gaps[0])
+  // The verse either side of the run is still there, so the marker replaced nothing.
+  check('Psalm 129 is still rendered', (await page.locator('#fv-129-1').count()) === 1)
+  check('Psalm 140 is still rendered', (await page.locator('#fv-140-1').count()) === 1)
+  check('and 130 is not', (await page.locator('#fv-130-1').count()) === 0)
+
+  // Two chapters at the very end of a book, so the run is flushed after the loop.
+  await page.goto(`${URL}#/proverbs/1/jako`, { waitUntil: 'networkidle' })
+  await page.locator('.fverse').first().waitFor({ state: 'visible' })
+  const pr = await page.locator('.fgap').allInnerTexts()
+  check('Proverbs closes on its own marker',
+    pr.length === 1 && pr[0] === 'The source this edition was published from does not carry Proverbs 30-31.',
+    JSON.stringify(pr))
+
+  // Half a canon is a different fact and gets the coverage note, not a 1-50 run.
+  await page.goto(`${URL}#/genesis/1/jako`, { waitUntil: 'networkidle' })
+  await page.locator('.fverse').first().waitFor({ state: 'visible' })
+  check('a book the edition does carry has no marker', (await page.locator('.fgap').count()) === 0)
+  await ctx.close()
+}
+{
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } })
+  await ctx.addInitScript(
+    (p) => localStorage.setItem('prefs', JSON.stringify(p)),
+    { ...PREFS, flow: true, columns: ['el'] },
+  )
+  const page = await ctx.newPage()
+  await page.goto(`${URL}#/genesis/1/el`, { waitUntil: 'networkidle' })
+  await page.locator('.flow').waitFor({ state: 'visible' })
+  const note = await page.locator('.flow .coverage').innerText()
+  check('a New Testament edition at Genesis says so, once',
+    note === 'This edition covers the New Testament only.', note)
+  check('and does not accuse its source of dropping fifty chapters',
+    (await page.locator('.fgap').count()) === 0)
+  await ctx.close()
+}
+
 // ---------- a verse that is not there ----------
 // Two facts wearing one placeholder until now. Psalm 3 has eight verses in the KJV and
 // nine in the Hebrew, which counts the superscription as verse 1; 和合本 John 5 omits

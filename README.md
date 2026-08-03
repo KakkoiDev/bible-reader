@@ -44,6 +44,11 @@ Every attribution is reproduced verbatim in the app under **Texts & licences**.
   columns don't open rivers of whitespace. Toggleable in Settings.
 - **Flowing mode** drops verse numbers and renders a whole book as continuous
   paragraphs, with inline chapter markers so chapter navigation still lands visibly.
+  A run of chapters the edition's source omits gets one seam saying so, rather than
+  running 129 straight into 140.
+- **The passage closes on a chapter-end row**: a rule naming what you just finished,
+  then a full-width row naming what comes next. At the end of a book that is the next
+  book, which is the only place the reader names it.
 - **UI language** switches the chrome and displayed book names across all eleven
   languages, including right-to-left layout for Arabic and Hebrew.
 - **Search** matches text in the enabled editions, and resolves references in *any*

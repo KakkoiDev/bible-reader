@@ -93,9 +93,10 @@ const browser = await chromium.launch()
   const afterRight = await page.locator('.ringtab.active span').innerText()
   log(`SWIPE →  activeLang="${afterRight}"  (expected 日本語)`)
 
-  // chapter navigation
+  // chapter navigation. The row at the foot of the passage names its destination
+  // instead of saying "Next", so it is reached by class.
   const refBefore = await page.locator('.ref').innerText()
-  await page.getByRole('button', { name: /Next/ }).click()
+  await page.locator('.chapend-go').click()
   await page.waitForTimeout(120)
   const refAfter = await page.locator('.ref').innerText()
   log(`NEXT CH  "${refBefore.trim()}" -> "${refAfter.trim()}"`)

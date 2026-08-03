@@ -92,20 +92,47 @@ console.log('\nFlow mode chapter nav')
 {
   const { ctx, page } = await open({ ...BASE, ui: 'en', flow: true, columns: ['en'] }, { hash: '#/mark/1/en' })
   await page.waitForSelector('.fverse')
-  check('chapter nav is rendered in flow mode', (await page.locator('.chapnav').count()) === 1)
+  check('the chapter-end row is rendered in flow mode', (await page.locator('.chapend').count()) === 1)
   check('chapter markers rendered', (await page.locator('.fchap').count()) > 1)
 
-  const before = await page.evaluate(() => window.scrollY)
-  await page.locator('.chapnav button').last().click()
-  await page.waitForTimeout(700)
-  const after = await page.evaluate(() => window.scrollY)
-  check('Next scrolls down the book', after > before, `scrollY ${before} → ${after}`)
+  // The row names the chapter it goes to, and in flow mode both the name and the
+  // destination follow the scroll position, because that is what the reader is
+  // looking at. Click through evaluate(): locator.click() scrolls the button into
+  // view first, which moves the reader to the end of the book and changes the
+  // answer under the test.
+  // innerText applies text-transform, and the rule is uppercased in CSS.
+  const rule = async () => (await page.locator('.chaplabel').innerText()).toLowerCase()
+  const settle = async (want) => {
+    for (let i = 0; i < 40; i++) {
+      if ((await rule()).includes(want.toLowerCase())) return true
+      await page.waitForTimeout(100)
+    }
+    return false
+  }
+  const goText = () => page.locator('.chapend-ref').innerText()
+  const click = () => page.evaluate(() => document.querySelector('.chapend-go').click())
 
-  // Chapter 2's first verse should now be near the middle of the viewport.
-  const box = await page.locator('#fv-2-1').boundingBox()
+  check('at the top of the book the rule closes chapter 1', await settle('Mark 1'))
+  check('and the row goes to the next chapter', (await goText()).trim() === 'Mark 2', await goText())
+  await click()
+  await page.waitForTimeout(700)
   const vh = await page.evaluate(() => window.innerHeight)
+  const box = await page.locator('#fv-2-1').boundingBox()
   check('chapter 2 verse 1 is in view', !!box && box.y > 0 && box.y < vh, box ? `y=${Math.round(box.y)} vh=${vh}` : 'not found')
-  check('label followed the jump', (await page.locator('.chaplabel').innerText()).includes('2'))
+  check('the closing rule followed the jump', (await page.locator('.chaplabel').innerText()).includes('2'))
+
+  // The book boundary: read to the end and the row names the next book, which is the
+  // only place the reader is told what follows Mark.
+  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
+  check('at the foot of the book the rule closes chapter 16', await settle('Mark 16'))
+  check('and the row names the next book', (await goText()).trim() === 'Luke 1', await goText())
+  await click()
+  await page.waitForTimeout(500)
+  check('which opens it', (await page.evaluate(() => location.hash)) === '#/luke/1/en',
+    await page.evaluate(() => location.hash))
+
+  await page.goto(`${URL}#/mark/1/en`, { waitUntil: 'networkidle' })
+  await page.waitForSelector('.fverse')
 
   // Navigator sheet jump, further into the book
   await page.locator('.navbtn').click()
@@ -1000,7 +1027,7 @@ console.log('\nJustified text')
     await page.waitForSelector('.verse')
     const r = await page.evaluate(() => ({
       verse: getComputedStyle(document.querySelector('.verse .vt')).textAlign,
-      chrome: getComputedStyle(document.querySelector('.chapnav button')).textAlign,
+      chrome: getComputedStyle(document.querySelector('.chapend-row .mini')).textAlign,
     }))
     check(`justify=${justify}: verse text is ${justify ? 'justified' : 'not justified'}`,
       justify ? r.verse === 'justify' : r.verse !== 'justify', r.verse)

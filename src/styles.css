@@ -223,40 +223,73 @@ body {
 .vgap.versification { font-style: italic; }
 ruby rt { font-size: 0.55em; color: var(--muted); font-family: var(--f-ui); }
 
-/* chapter nav */
-.chapnav {
+/* chapter end */
+.chapend {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 34px;
+  font-family: var(--f-ui);
+}
+/* The rule is the closing element, so it carries no border-top of its own: the two
+   hairlines either side of the label are the border. */
+.chapend-rule {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
-  margin-top: 34px;
-  padding-top: 16px;
-  border-top: 1px solid var(--line);
+  margin: 0 0 6px;
 }
-.chapnav button {
-  display: inline-flex;
+.chapend-rule::before,
+.chapend-rule::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line-strong);
+}
+.chaplabel {
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chapend-go {
+  display: flex;
   align-items: center;
-  gap: 6px;
-  font: inherit;
-  font-family: var(--f-ui);
-  font-size: 15px;
-  font-weight: 600;
-  min-height: var(--touch);
+  gap: 14px;
+  width: 100%;
+  min-height: 74px;
   padding: 0 18px;
-  color: var(--fg);
-  background: var(--card);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--r-button);
+  border: 0;
+  border-radius: var(--r-card);
+  background: var(--accent);
+  color: #fff;
+  text-align: start;
   cursor: pointer;
 }
-.chapnav button:disabled { opacity: 0.4; cursor: default; }
-/* The label yields first, the buttons never do: "1 Thessaloniciens 5" at 360px left
-   the two 44px buttons 28px short of the viewport and the page scrolled sideways.
-   The label repeats what the header already says, so truncating it costs nothing;
-   wrap is the backstop below that. */
-.chapnav { flex-wrap: wrap; }
-.chapnav button { flex: none; }
-.chaplabel { color: var(--muted); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chapend-go:active { background: var(--accent-press); }
+.chapend-labels { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.chapend-eyebrow {
+  font-size: var(--fs-eyebrow);
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  opacity: 0.72;
+}
+.chapend-ref {
+  font-family: var(--f-scripture);
+  font-size: 21px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chapend-row { display: flex; gap: 10px; }
+/* The two below the accent row split the width evenly and truncate rather than wrap:
+   "1 Thessaloniciens 4" beside "Tous les livres" overflowed a 360px viewport. */
+.chapend-row .mini { flex: 1; min-width: 0; min-height: 52px; justify-content: center; }
+.chapend-row .mini .ell { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .attrib {
   margin-top: 28px;
@@ -695,6 +728,19 @@ html.modal-open { overflow: hidden; }
 .flow { max-width: 720px; margin: 0 auto; }
 .fpar { font-size: var(--verse-size); line-height: 1.95; margin: 0 0 1.05em; }
 :lang(ja) .fpar { line-height: 2.15; }
+/* A seam in the flow, not a paragraph: hairlines above and below so the eye reads it
+   as the text stopping rather than as scripture set small. */
+.fgap {
+  margin: 1.6em 0;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  font-family: var(--f-ui);
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--muted);
+  text-align: center;
+}
 .fverse { cursor: pointer; }
 .fverse.flash { background: var(--accent-bg); border-radius: 6px; box-shadow: 0 0 0 4px var(--accent-bg); transition: background 0.8s ease, box-shadow 0.8s ease; }
 .fverse.speaking { background: var(--accent-bg); border-radius: 6px; box-shadow: 0 0 0 4px var(--accent-bg); }

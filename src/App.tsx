@@ -911,23 +911,37 @@ export default function App() {
   )
 
   // paragraphs for flow/reading mode (whole book, single language, logical breaks)
+  //
+  // A chapter the edition's source omits used to leave nothing at all here, so the
+  // 口語訳's Psalms ran 129, 140 with no seam. Consecutive omissions collapse into one
+  // marker: ten of them in a row is one fact about the source, not ten.
   const flowParas = useMemo(() => {
     if (!flow || !book) return []
     const breaks = paras[pos.slug] || {}
     const m = verseText[pos.lang]
     type Item = { ch: number; v: number; text: string; first: boolean; hl?: HL[] }
-    const out: Item[][] = []
+    type Block = { kind: 'para'; items: Item[] } | { kind: 'gap'; from: number; to: number }
+    const out: Block[] = []
     let cur: Item[] = []
+    let gapFrom = 0
+    const endPara = () => {
+      if (cur.length) out.push({ kind: 'para', items: cur })
+      cur = []
+    }
     for (let c = 1; c <= book.chapters.length; c++) {
       const chBreaks = breaks[String(c)] || []
       const count = book.chapters[c - 1] ?? 0
+      let any = false
       for (let v = 1; v <= count; v++) {
         const text = m?.get(`${c}.${v}`)
         if (!text) continue
-        if ((v === 1 || chBreaks.includes(v)) && cur.length) {
-          out.push(cur)
-          cur = []
+        if (!any && gapFrom) {
+          endPara()
+          out.push({ kind: 'gap', from: gapFrom, to: c - 1 })
+          gapFrom = 0
         }
+        any = true
+        if (v === 1 || chBreaks.includes(v)) endPara()
         cur.push({
           ch: c,
           v,
@@ -936,8 +950,10 @@ export default function App() {
           hl: store[vref(pos.slug, c, v)]?.highlights?.filter((h) => h.lang === pos.lang),
         })
       }
+      if (!any && count && !gapFrom) gapFrom = c
     }
-    if (cur.length) out.push(cur)
+    endPara()
+    if (gapFrom) out.push({ kind: 'gap', from: gapFrom, to: book.chapters.length })
     return out
   }, [flow, book, paras, pos.slug, pos.lang, verseText, store])
 
@@ -1215,6 +1231,18 @@ export default function App() {
   const spineCount = book?.spine?.[pos.chapter - 1] ?? 0
   const title = bookName(book, prefs.ui)
   const readingTitle = bookName(book, pos.lang)
+  // The chapter either side of this one, named, so the row at the foot of the passage
+  // says where it goes instead of "Next". Both cross a book boundary, which is where
+  // the next book's name first appears in the reader.
+  const refAt = (bi: number, ch: number) => `${bookName(index[bi], prefs.ui)} ${ch}`
+  const nextRef =
+    pos.chapter < chapterCount ? refAt(bookIdx, pos.chapter + 1)
+    : bookIdx >= 0 && bookIdx < index.length - 1 ? refAt(bookIdx + 1, 1)
+    : null
+  const prevRef =
+    pos.chapter > 1 && bookIdx >= 0 ? refAt(bookIdx, pos.chapter - 1)
+    : bookIdx > 0 ? refAt(bookIdx - 1, index[bookIdx - 1].chapters.length)
+    : null
   const verseCount = chapter?.verses.length ?? 0
   // Subgrid needs a literal row count, so it's computed here rather than in CSS.
   const aligned = prefs.align && !flow && wide && langsToShow.length > 1
@@ -1292,9 +1320,21 @@ export default function App() {
           <p className="status">…</p>
         ) : flow ? (
           <div className="flow" lang={BY_ID[pos.lang].htmlLang} dir={BY_ID[pos.lang].dir}>
-            {flowParas.map((para, pi) => (
+            {/* Half a canon is not a run of omitted chapters, and saying so would blame
+                the Greek New Testament's source for not carrying Genesis. */}
+            {bookIdx >= 0 && !coversBook(pos.lang, bookIdx) ? (
+              <p className="coverage" lang={BY_ID[prefs.ui].htmlLang} dir={BY_ID[prefs.ui].dir}>
+                {t(BY_ID[pos.lang].coverage === 'nt' ? 'coverage_nt_only' : 'coverage_ot_only')}
+              </p>
+            ) : flowParas.map((b, pi) => b.kind === 'gap' ? (
+              // The note is interface copy, so it takes the interface language and
+              // direction rather than the edition's.
+              <p className="fgap" key={pi} lang={BY_ID[prefs.ui].htmlLang} dir={BY_ID[prefs.ui].dir}>
+                {t('flow_absent_run', { ref: `${title} ${b.from}${b.to > b.from ? `-${b.to}` : ''}` })}
+              </p>
+            ) : (
               <p className="fpar" key={pi}>
-                {para.map((it) => (
+                {b.items.map((it) => (
                   <span
                     key={`${it.ch}-${it.v}`}
                     id={`fv-${it.ch}-${it.v}`}
@@ -1456,14 +1496,30 @@ export default function App() {
           </div>
         )}
 
-        <nav className="chapnav">
-          <button onClick={() => goChapter(-1)} disabled={bookIdx <= 0 && pos.chapter <= 1}>
-            <Icon name="prev" size={16} flip /> {t('prev')}
-          </button>
-          <span className="chaplabel">{title} {pos.chapter}</span>
-          <button onClick={() => goChapter(1)} disabled={bookIdx === index.length - 1 && pos.chapter >= chapterCount}>
-            {t('next')} <Icon name="next" size={16} flip />
-          </button>
+        {/* You fall into the next chapter rather than aiming at it: the rule closes the
+            passage, and the full-width row under it is the only large target on the
+            page. The floating pill is for turning mid-chapter; this is for finishing. */}
+        <nav className="chapend">
+          <p className="chapend-rule"><span className="chaplabel">{t('end_of', { ref: `${title} ${pos.chapter}` })}</span></p>
+          {nextRef && (
+            <button className="chapend-go" onClick={() => goChapter(1)}>
+              <span className="chapend-labels">
+                <span className="chapend-eyebrow">{t('continue_reading')}</span>
+                <span className="chapend-ref">{nextRef}</span>
+              </span>
+              <Icon name="next" size={22} flip />
+            </button>
+          )}
+          <div className="chapend-row">
+            {prevRef && (
+              <button className="mini" onClick={() => goChapter(-1)}>
+                <Icon name="prev" size={17} flip /> <span className="ell">{prevRef}</span>
+              </button>
+            )}
+            <button className="mini" onClick={() => setNavOpen(true)}>
+              <Icon name="study" size={17} /> <span className="ell">{t('all_books')}</span>
+            </button>
+          </div>
         </nav>
 
         <footer className="attrib">

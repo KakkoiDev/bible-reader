@@ -110,6 +110,21 @@ Recorded here so the document and the code do not tell different stories.
   across every edition. A row no displayed edition has text for is dropped
   before render, so the Hebrew's extra Psalms rows only appear while the Hebrew
   column is on screen.
+- **The chapter-end row also closes a flow-mode book, and All books borrows
+  `study`.** The document draws the row under a chapter of John, so the rule
+  reads "End of John 3" and Continue reads "John 4". Flow mode renders a whole
+  book, so the same row sits under all sixteen chapters of Mark and both labels
+  follow the scroll position: at the foot of the page the rule reads "End of
+  Mark 16" and Continue reads "Luke 1". That is the only place in the reader
+  where the next book is named. The document's All books glyph is the two-page
+  spread already in the icon set as `study`, so it is reused rather than drawn
+  a second time.
+- **A run of omitted chapters is one marker in the flow.** The document has no
+  atom for it, because it does not know the corpus has holes. `.fgap` is
+  interface type between two hairlines, in the interface language rather than
+  the edition's, and consecutive omissions collapse: the 口語訳's Psalms
+  130-139 is one line, not ten. Reading a book the edition does not carry at
+  all shows the coverage note instead, the same one the column view uses.
 
 ## Data this design assumes
 
