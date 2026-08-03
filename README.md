@@ -435,6 +435,30 @@ forces them onto Node 24. Deploys still succeed. Clearing it means bumping those
 actions to `@v5` and `node-version` to `22`, which is worth doing before GitHub drops
 the compatibility shim.
 
+### The 口語訳's furigana
+
+`scripts/furigana-jako.mjs` generates the readings with kuroshiro over kuromoji's
+IPADIC, which is a general-purpose tokenizer with no idea it is reading scripture: it
+gave 主 as おも, the ordinary word for a chief thing, 8,345 times where the text means
+the Lord. `data-src/furigana-overrides.json` corrects that and 48 others, keyed on the
+kanji **and** the reading produced, so a reading kuromoji gets right elsewhere is left
+alone: 主 as ぬし stays, because 救主 is すくいぬし. 13,565 readings are rewritten.
+
+Candidates come from `node scripts/furigana-audit.mjs`, which reports three lists:
+
+- readings the hand-set 文語訳 does not corroborate over the same verses, after folding
+  historical kana (わう for おう, まへ for まえ, じふ for じゅう) and dropping differences that
+  are only where the okurigana was cut;
+- ruby whose reading is the kanji again, which is kuroshiro finding no reading at all
+  (燔 above 燔, 299 times);
+- readings used for 5% or less of a kanji's own occurrences.
+
+**Every entry is hand-checked against the text before it goes in the table**, because
+roughly four rows in five of the first list are not errors. 頭 is the example: とう looks
+wrong beside the 文語訳's かしら until you see that every occurrence is 一頭, the counter
+for livestock. Rerunning the generator is idempotent, so `node scripts/furigana-jako.mjs`
+after editing the table reproduces the file.
+
 ### Adding an edition later
 
 1. Add an entry to `SOURCES` in `scripts/sources.mjs`.

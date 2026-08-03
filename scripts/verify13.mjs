@@ -77,6 +77,28 @@ console.log('\nEvery edition names its books in its own script')
     mat.jako === 'マタイによる福音書', mat.jako)
 }
 
+// ---------- furigana overrides ----------
+// kuromoji reads 主 as おも, the ordinary word for a chief thing. In this text it is
+// the Lord and it is しゅ, 8,345 times. data-src/furigana-overrides.json carries that
+// and 48 other corrections, keyed on the reading so the ones kuromoji gets right are
+// left where they are.
+console.log('\nThe furigana overrides are in the source')
+{
+  const jako = readFileSync(resolve(root, 'data-src/jako.md'), 'utf8')
+  const n = (re) => (jako.match(re) || []).length
+  check('主 is しゅ', n(/\{\{主\|しゅ\}\}/g) > 8000, `${n(/\{\{主\|しゅ\}\}/g)} occurrence(s)`)
+  check('and never おも or あるじ', n(/\{\{主\|(おも|あるじ)\}\}/g) === 0, `${n(/\{\{主\|(おも|あるじ)\}\}/g)} left`)
+  // 救主 is すくいぬし, so ぬし is not an error and is deliberately not overridden.
+  check('but ぬし survives, because 救主 needs it', n(/\{\{主\|ぬし\}\}/g) > 100, `${n(/\{\{主\|ぬし\}\}/g)}`)
+  check('民 is たみ', n(/\{\{民\|みん\}\}/g) === 0 && n(/\{\{民\|たみ\}\}/g) > 2000)
+  check('燔祭 is はんさい, not 燔 read as 燔', n(/\{\{燔\|燔\}\}/g) === 0 && n(/\{\{燔\|はん\}\}/g) > 250)
+  check('the nine 道 read どう are みち', n(/\{\{道\|どう\}\}/g) === 0 && n(/\{\{道\|みち\}\}/g) > 700)
+  // 一頭 is the livestock counter and とう is right, which is why review is a step and
+  // the 文語訳's かしら was not applied wholesale.
+  check('頭 keeps とう, which the audit only flagged by comparison', n(/\{\{頭\|とう\}\}/g) > 300,
+    `${n(/\{\{頭\|とう\}\}/g)}`)
+}
+
 // ---------- the reader ----------
 const browser = await chromium.launch()
 const PREFS = {
@@ -131,6 +153,17 @@ console.log('\nThe chapter either side of the hole is normal')
   // 14 rows, not the KJV's 13: the Hebrew counts the superscription, and a row is
   // rendered for every number any shown edition uses.
   check('Psalm 140 is present', !ja.absent && ja.verses === 14, JSON.stringify(ja))
+  await ctx.close()
+}
+
+console.log('\nAnd the reader draws them')
+{
+  const { ctx, page } = await open('#/psalms/1/jako')
+  const ruby = await page.evaluate(() => {
+    const li = document.querySelector('.col[lang="ja"] .verses li:nth-child(2)')
+    return [...li.querySelectorAll('ruby')].map((r) => `${r.firstChild.textContent}|${r.querySelector('rt').textContent}`)
+  })
+  check('Psalm 1:2 reads 主 as しゅ', ruby.includes('主|しゅ'), ruby.join(' '))
   await ctx.close()
 }
 
