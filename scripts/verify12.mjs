@@ -121,6 +121,7 @@ console.log('\nSheet anatomy')
       // The sheet reserves the home-indicator strip below the footer.
       safe: parseFloat(getComputedStyle(sheet).paddingBottom),
       vh: window.innerHeight,
+      playLabel: foot.querySelector('.mini').textContent.trim(),
     }
   })
 
@@ -136,6 +137,9 @@ console.log('\nSheet anatomy')
     Math.abs(geo.foot.bottom - (geo.sheet.bottom - geo.safe)) <= 1,
     `foot ${Math.round(geo.foot.bottom)} vs sheet ${Math.round(geo.sheet.bottom)} less ${geo.safe}`)
   check('body sits between them', geo.body.top >= geo.head.bottom - 1 && geo.body.bottom <= geo.foot.top + 1)
+  // The footer play reads on into the following verses, so a bare "Play" would say
+  // the same thing as the per-edition play in the body, which reads one verse.
+  check('the footer play says it continues', geo.playLabel === 'Listen from here', geo.playLabel)
 
   // Scroll the body to the bottom. Head and footer must not have moved a pixel.
   const after = await page.evaluate(() => {

@@ -716,7 +716,12 @@ export function VerseSheet({
       title={<b>{data.label}</b>}
       footer={
         <>
-          <button className="mini" onClick={onPlay}><Icon name="play" size={15} /> {t('play')}</button>
+          {/* Not "Play": this one reads on into the verses that follow and closes the
+              sheet, which is a different thing from the per-edition play in the title
+              row above. The bar in the reader calls the same action the same name. */}
+          <button className="mini" onClick={onPlay}>
+            <Icon name="play" size={15} /> {t('listen_from_here')}
+          </button>
           <button className="mini" onClick={onCopyText}>{t('copy_text')}</button>
           <button className="mini" onClick={onCopyLink}>{t('copy_link')}</button>
           <button className="mini" onClick={onCopyInvite}>{t('copy_invite')}</button>
