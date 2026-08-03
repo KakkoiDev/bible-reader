@@ -1,26 +1,80 @@
+/* Every colour, size, radius, shadow and type step comes from the design system.
+   The import makes design-system/tokens.css a build input rather than a document,
+   so a value cannot be changed in the app without being changed in the spec. */
+@import '../design-system/tokens.css';
+
+/* ============================================================================
+   Addendum: four things tokens.css does not ship, without which the app breaks.
+   Everything here fills a hole; nothing here overrides a value the spec states.
+   ========================================================================== */
+
+/* 1. Highlights, both themes. --h-* stay the opaque pastel everywhere because the
+      swatches are colour chips and have to read as the colour itself. What gets
+      painted behind a run of text is --hl-*, which has to thin out in the dark:
+      opaque #f6e7a3 under #e9e6df measures 2.9:1. Light keeps the flat pastel the
+      document specifies, 12.5:1 under #1f2430.
+   2. Sheet title 19 is listed in the document's Type section but not exported. */
 :root {
-  --bg: #faf8f4;
-  --fg: #1f2430;
-  /* #8a8f9c measured 3.05:1 on this background — below AA for the note previews,
-     captions and attributions it was used for. #666c7d is 4.6:1 and still recedes. */
-  --muted: #666c7d;
-  --line: #e7e2d8;
-  --accent: #4338ca;
-  --accent-bg: #eceafe;
-  --card: #ffffff;
-  --supplied: #8a7f68;
-  font-family: ui-serif, Georgia, 'Times New Roman', 'Yu Mincho', 'Hiragino Mincho ProN', serif;
+  --hl-yellow: var(--h-yellow);
+  --hl-green: var(--h-green);
+  --hl-blue: var(--h-blue);
+  --hl-pink: var(--h-pink);
+  --hl-purple: var(--h-purple);
+  --fs-sheet-title: 19px;
+}
+
+/* 3. System dark mode. tokens.css defines dark only under [data-theme='dark'],
+      but theme 'system' leaves data-theme empty (App.tsx applies it), so without
+      this a reader on system dark gets the light palette.
+   4. Dark values for tokens the spec's dark block omits: --danger-bg #faf3f2 is a
+      near-white slab on #14131a, --accent-press darkens where dark has to lighten,
+      and a light-mode shadow is invisible on a dark surface, so a sheet stops
+      detaching from the page. Derived, not specified. --danger-fg on --danger-bg
+      measures 8.1:1; each --hl-* at 32% keeps --fg above 4.9:1.
+
+   The two blocks are identical on purpose and have to stay in step: CSS cannot
+   share one declaration list between an at-rule and a bare selector. :not() is
+   what keeps an explicit "Day" choice winning over the OS, and equal specificity
+   plus later source order is what lets the media query win over the spec's base. */
+:root[data-theme='dark'] {
+  --accent-press: #bdb7ff;
+  --danger-bg: #241a1a;
+  --danger-line: #3d2b2b;
+  --danger-fg: #e0a5a0;
+  --e-raised: 0 1px 3px rgba(0, 0, 0, 0.5);
+  --e-float: 0 8px 24px rgba(0, 0, 0, 0.55);
+  --e-sheet: 0 -12px 44px rgba(0, 0, 0, 0.6);
+  --hl-yellow: color-mix(in srgb, var(--h-yellow) 32%, transparent);
+  --hl-green: color-mix(in srgb, var(--h-green) 32%, transparent);
+  --hl-blue: color-mix(in srgb, var(--h-blue) 32%, transparent);
+  --hl-pink: color-mix(in srgb, var(--h-pink) 32%, transparent);
+  --hl-purple: color-mix(in srgb, var(--h-purple) 32%, transparent);
 }
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --bg: #14131a;
+    --card: #1b1a23;
     --fg: #e9e6df;
     --muted: #8c8a95;
     --line: #2a2833;
+    --line-strong: #2a2833;
     --accent: #a9a2ff;
     --accent-bg: #211f3a;
-    --card: #1b1a23;
     --supplied: #9a93a8;
+    --sunken: #221f2b;
+    --selected: #221f2b;
+    --accent-press: #bdb7ff;
+    --danger-bg: #241a1a;
+    --danger-line: #3d2b2b;
+    --danger-fg: #e0a5a0;
+    --e-raised: 0 1px 3px rgba(0, 0, 0, 0.5);
+    --e-float: 0 8px 24px rgba(0, 0, 0, 0.55);
+    --e-sheet: 0 -12px 44px rgba(0, 0, 0, 0.6);
+    --hl-yellow: color-mix(in srgb, var(--h-yellow) 32%, transparent);
+    --hl-green: color-mix(in srgb, var(--h-green) 32%, transparent);
+    --hl-blue: color-mix(in srgb, var(--h-blue) 32%, transparent);
+    --hl-pink: color-mix(in srgb, var(--h-pink) 32%, transparent);
+    --hl-purple: color-mix(in srgb, var(--h-purple) 32%, transparent);
   }
 }
 
@@ -29,6 +83,7 @@ html, body { margin: 0; }
 body {
   background: var(--bg);
   color: var(--fg);
+  font-family: var(--f-scripture);
   -webkit-text-size-adjust: 100%;
 }
 
@@ -57,7 +112,7 @@ body {
   color: var(--fg);
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: var(--r-control);
   max-width: 52vw;
 }
 .sel.chap { width: 4.6em; }
@@ -65,7 +120,7 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-family: system-ui, sans-serif;
+  font-family: var(--f-ui);
   font-size: 13px;
   color: var(--muted);
   white-space: nowrap;
@@ -90,11 +145,11 @@ body {
   align-items: center;
   gap: 1px;
   padding: 6px 4px;
-  font-family: system-ui, sans-serif;
+  font-family: var(--f-ui);
   color: var(--muted);
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 10px;
+  border-radius: var(--r-button);
   cursor: pointer;
 }
 .ringtab span { font-size: 15px; }
@@ -113,7 +168,8 @@ body {
   touch-action: pan-y;
 }
 .ref {
-  font-size: 22px;
+  font-size: var(--fs-chapter);
+  line-height: 1.15;
   font-weight: 600;
   margin: 14px 2px 10px;
 }
@@ -124,9 +180,9 @@ body {
    used to be rules only for 1-3, and a fourth column made the set stack. */
 .cols.many { overflow-x: auto; padding-bottom: 6px; }
 .colhead {
-  font-family: system-ui, sans-serif;
-  font-size: 12px;
-  letter-spacing: 0.04em;
+  font-family: var(--f-ui);
+  font-size: var(--fs-eyebrow);
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--muted);
   padding-bottom: 8px;
@@ -136,24 +192,15 @@ body {
 
 .verses { list-style: none; margin: 0; padding: 0; }
 .verse {
-  line-height: 1.9;
-  font-size: 19px;
+  line-height: var(--lh-scripture);
+  font-size: var(--fs-scripture);
   margin: 0 0 2px;
   text-indent: 0;
-}
-.vn {
-  color: var(--accent);
-  font-family: system-ui, sans-serif;
-  font-size: 11px;
-  font-weight: 600;
-  vertical-align: super;
-  margin-inline-end: 5px;
-  user-select: none;
 }
 .col:lang(ja) .verse { line-height: 2.1; }
 .supplied { font-style: italic; }
 .missing { color: var(--muted); }
-ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-serif; }
+ruby rt { font-size: 0.55em; color: var(--muted); font-family: var(--f-ui); }
 
 /* chapter nav */
 .chapnav {
@@ -167,13 +214,13 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
 }
 .chapnav button {
   font: inherit;
-  font-family: system-ui, sans-serif;
+  font-family: var(--f-ui);
   font-size: 15px;
   padding: 9px 16px;
   color: var(--fg);
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: var(--r-button);
   cursor: pointer;
 }
 .chapnav button:disabled { opacity: 0.4; cursor: default; }
@@ -183,24 +230,16 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
   margin-top: 28px;
   padding-top: 14px;
   border-top: 1px solid var(--line);
-  font-family: system-ui, sans-serif;
+  font-family: var(--f-ui);
   font-size: 11px;
   line-height: 1.6;
   color: var(--muted);
 }
 
-/* ---------- theme override (system default via prefers-color-scheme) ---------- */
-:root[data-theme='light'] {
-  --bg: #faf8f4; --fg: #1f2430; --muted: #666c7d; --line: #e7e2d8;
-  --accent: #4338ca; --accent-bg: #eceafe; --card: #ffffff; --supplied: #8a7f68;
-}
-:root[data-theme='dark'] {
-  --bg: #14131a; --fg: #e9e6df; --muted: #8c8a95; --line: #2a2833;
-  --accent: #a9a2ff; --accent-bg: #211f3a; --card: #1b1a23; --supplied: #9a93a8;
-}
-
 /* ---------- font size ---------- */
-:root { --verse-size: 19px; }
+/* "Day" and "Night" need no override of their own: tokens.css `:root` is the day
+   palette, and the system-dark block above excludes [data-theme='light'] outright. */
+:root { --verse-size: var(--fs-scripture); }
 :root[data-size='sm'] { --verse-size: 16.5px; }
 :root[data-size='lg'] { --verse-size: 22px; }
 .verse { font-size: var(--verse-size); }
@@ -208,11 +247,12 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
 /* ---------- verse number as a link button + markers + flash ---------- */
 .vn {
   color: var(--accent);
-  font-family: system-ui, sans-serif;
-  font-size: 11px;
-  font-weight: 600;
+  font-family: var(--f-ui);
+  font-size: var(--fs-verse-no);
+  font-weight: 700;
   vertical-align: super;
   margin-inline-end: 4px;
+  user-select: none;
   background: none;
   border: 0;
   padding: 0;
@@ -256,7 +296,7 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
 /* ---------- per-language chapter play button (column header) ---------- */
 .colhead { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .colplay {
-  font-family: system-ui, sans-serif;
+  font-family: var(--f-ui);
   font-size: 12px;
   letter-spacing: normal;
   text-transform: none;
@@ -312,15 +352,15 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
   border-radius: 8px;
   box-shadow: 0 0 0 6px var(--accent-bg);
 }
-::highlight(hl-speaking) { background: rgba(99, 102, 241, 0.5); color: inherit; }
+::highlight(hl-speaking) { background: color-mix(in srgb, var(--accent) 45%, transparent); color: inherit; }
 
 /* ---------- persistent highlights: DOM spans (paint over <ruby> everywhere) ---------- */
 .hl { border-radius: 3px; }
-.hl-yellow { background: rgba(250, 204, 21, 0.45); }
-.hl-green { background: rgba(52, 211, 153, 0.42); }
-.hl-blue { background: rgba(96, 165, 250, 0.42); }
-.hl-pink { background: rgba(244, 114, 182, 0.42); }
-.hl-purple { background: rgba(167, 139, 250, 0.48); }
+.hl-yellow { background: var(--hl-yellow); }
+.hl-green { background: var(--hl-green); }
+.hl-blue { background: var(--hl-blue); }
+.hl-pink { background: var(--hl-pink); }
+.hl-purple { background: var(--hl-purple); }
 
 /* ---------- header tool buttons ---------- */
 .tools { display: flex; gap: 6px; flex: 0 0 auto; }
@@ -330,7 +370,7 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
   border: 0;
   cursor: pointer;
   padding: 6px 8px;
-  border-radius: 8px;
+  border-radius: var(--r-button);
   color: var(--fg);
   line-height: 1;
 }
@@ -348,24 +388,24 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: system-ui, sans-s
   padding: 6px 8px;
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 12px;
-  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.3);
+  border-radius: var(--r-card);
+  box-shadow: var(--e-float);
 }
 .swatch { width: 20px; height: 20px; border-radius: 50%; border: 1px solid rgba(0, 0, 0, 0.15); cursor: pointer; padding: 0; }
-.sw-yellow { background: #facc15; }
-.sw-green { background: #34d399; }
-.sw-blue { background: #60a5fa; }
-.sw-pink { background: #f472b6; }
-.sw-purple { background: #a78bfa; }
+.sw-yellow { background: var(--h-yellow); }
+.sw-green { background: var(--h-green); }
+.sw-blue { background: var(--h-blue); }
+.sw-pink { background: var(--h-pink); }
+.sw-purple { background: var(--h-purple); }
 .asep { width: 1px; height: 20px; background: var(--line); }
 .abtn {
-  font-family: system-ui, sans-serif;
+  font-family: var(--f-ui);
   font-size: 14px;
   padding: 4px 9px;
   background: none;
   color: var(--fg);
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--r-button);
   cursor: pointer;
 }
 .abtn.on { background: var(--accent-bg); border-color: var(--accent); }
@@ -386,9 +426,9 @@ html.modal-open { overflow: hidden; }
   overscroll-behavior: contain;
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: var(--r-sheet);
   padding: 16px;
-  box-shadow: 0 14px 44px rgba(0, 0, 0, 0.32);
+  box-shadow: var(--e-float);
 }
 .sheet.note { width: min(520px, 94vw); }
 /* The saved panel used to be a right-edge drawer, the only panel that wasn't a
@@ -398,35 +438,35 @@ html.modal-open { overflow: hidden; }
 .sheet.saved { width: min(560px, 94vw); }
 /* gap matters: the close button's hover background sat flush against the search
    input's border without it, which read as the two controls bleeding together. */
-.sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; font-family: system-ui, sans-serif; font-size: 16px; }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; font-family: var(--f-ui); font-size: var(--fs-sheet-title); }
 .sheet-head .icon { flex: none; }
-.srow { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; font-family: system-ui, sans-serif; font-size: 14px; border-top: 1px solid var(--line); }
+.srow { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; font-family: var(--f-ui); font-size: var(--fs-row); border-top: 1px solid var(--line); }
 .srow input[type='checkbox'] { accent-color: var(--accent); width: 18px; height: 18px; }
-.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
-.seg button { font-family: system-ui, sans-serif; font-size: 13px; padding: 6px 13px; background: var(--card); color: var(--fg); border: 0; border-inline-start: 1px solid var(--line); cursor: pointer; text-transform: capitalize; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--r-button); overflow: hidden; }
+.seg button { font-family: var(--f-ui); font-size: 13px; padding: 6px 13px; background: var(--card); color: var(--fg); border: 0; border-inline-start: 1px solid var(--line); cursor: pointer; text-transform: capitalize; }
 .seg button:first-child { border-inline-start: 0; }
 .seg button.on { background: var(--accent); color: #fff; }
-.notearea { width: 100%; min-height: 150px; box-sizing: border-box; font-family: system-ui, sans-serif; font-size: 15px; padding: 11px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--fg); resize: vertical; }
+.notearea { width: 100%; min-height: 150px; box-sizing: border-box; font-family: var(--f-ui); font-size: 15px; padding: 11px; border: 1px solid var(--line); border-radius: var(--r-control); background: var(--bg); color: var(--fg); resize: vertical; }
 .noteact { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
 .spacer { flex: 1; }
-.primary { font-family: system-ui, sans-serif; font-size: 14px; padding: 8px 16px; background: var(--accent); color: #fff; border: 0; border-radius: 10px; cursor: pointer; }
-.ghost { font-family: system-ui, sans-serif; font-size: 14px; padding: 8px 14px; background: none; color: var(--muted); border: 1px solid var(--line); border-radius: 10px; cursor: pointer; }
+.primary { font-family: var(--f-ui); font-size: 14px; padding: 8px 16px; background: var(--accent); color: #fff; border: 0; border-radius: var(--r-button); cursor: pointer; }
+.ghost { font-family: var(--f-ui); font-size: 14px; padding: 8px 14px; background: none; color: var(--muted); border: 1px solid var(--line); border-radius: var(--r-button); cursor: pointer; }
 .dlist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .dlist li { display: flex; align-items: center; gap: 8px; }
-.dref { flex: 1; text-align: start; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; cursor: pointer; display: flex; flex-direction: column; gap: 3px; font-family: system-ui, sans-serif; }
-.dlabel { font-size: 14px; color: var(--fg); }
-.dnote { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.empty { color: var(--muted); font-family: system-ui, sans-serif; font-size: 14px; line-height: 1.6; }
+.dref { flex: 1; text-align: start; background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-card); padding: 10px 12px; cursor: pointer; display: flex; flex-direction: column; gap: 3px; font-family: var(--f-ui); }
+.dlabel { font-size: var(--fs-row); font-weight: 600; color: var(--fg); }
+.dnote { font-size: var(--fs-row-sub); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.empty { color: var(--muted); font-family: var(--f-ui); font-size: 14px; line-height: 1.6; }
 
 /* ---------- header nav button ---------- */
 .navbtn {
-  font-family: ui-serif, Georgia, serif;
+  font-family: var(--f-scripture);
   font-size: 17px;
   font-weight: 600;
   color: var(--fg);
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: var(--r-button);
   padding: 7px 12px;
   cursor: pointer;
   /* Shrinkable, with min-width:0 so the ellipsis actually engages. A fixed
@@ -445,13 +485,13 @@ html.modal-open { overflow: hidden; }
 .sheet.nav { width: min(560px, 94vw); }
 .searchin {
   flex: 1;
-  font-family: system-ui, sans-serif;
+  font-family: var(--f-ui);
   font-size: 16px;
   padding: 9px 11px;
   color: var(--fg);
   background: var(--bg);
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: var(--r-control);
 }
 /* The search field is the whole head, so the gap below it belongs to the results
    block and disappears with it. */
@@ -463,20 +503,22 @@ html.modal-open { overflow: hidden; }
   margin-bottom: 8px;
 }
 .results .dnote { white-space: normal; }
-.badge { font-family: system-ui, sans-serif; font-size: 10px; color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 0 4px; }
-.results mark { background: rgba(250, 204, 21, 0.5); color: inherit; border-radius: 2px; }
+.badge { font-family: var(--f-ui); font-size: 10px; color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 0 4px; }
+/* The document is explicit that a search match is tinted in the same highlight
+   yellow a reader paints with, so the meaning of the colour stays one thing. */
+.results mark { background: var(--hl-yellow); color: inherit; border-radius: 2px; }
 
-.bgtitle { font-family: system-ui, sans-serif; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin: 12px 0 6px; }
+.bgtitle { font-family: var(--f-ui); font-size: var(--fs-eyebrow); text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin: 12px 0 6px; }
 .bookgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 6px; }
 .bkbtn {
-  font-family: system-ui, sans-serif;
+  font-family: var(--f-ui);
   font-size: 13px;
   text-align: start;
   padding: 8px 10px;
   background: var(--bg);
   color: var(--fg);
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--r-button);
   cursor: pointer;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -484,7 +526,7 @@ html.modal-open { overflow: hidden; }
 }
 .bkbtn.on { border-color: var(--accent); color: var(--accent); }
 .chgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)); gap: 6px; margin-top: 8px; }
-.chbtn { font-family: system-ui, sans-serif; font-size: 15px; padding: 10px 0; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 8px; cursor: pointer; }
+.chbtn { font-family: var(--f-ui); font-size: 15px; padding: 10px 0; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: var(--r-button); cursor: pointer; }
 .mini.back { margin-bottom: 8px; }
 
 /* ---------- flow / reading mode ---------- */
@@ -515,12 +557,12 @@ html.modal-open { overflow: hidden; }
   color: #fff;
   background: var(--accent);
   cursor: pointer;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--e-float);
 }
 .collist { display: flex; flex-direction: column; gap: 6px; padding: 4px 0 8px; }
-.colrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; }
+.colrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 10px; border: 1px solid var(--line); border-radius: var(--r-button); }
 .colrow.off { opacity: 0.55; }
-.collabel { font-family: system-ui, sans-serif; font-size: 14px; }
+.collabel { font-family: var(--f-ui); font-size: var(--fs-row); font-weight: 600; }
 .collabel small { color: var(--muted); font-size: 11px; margin-inline-start: 4px; }
 .colctl { display: inline-flex; gap: 6px; }
 .colrow .mini { padding: 4px 9px; font-size: 12px; }
@@ -528,7 +570,7 @@ html.modal-open { overflow: hidden; }
 
 /* ---------- verse compare sheet ---------- */
 .compare { display: flex; flex-direction: column; gap: 14px; margin-bottom: 14px; }
-.clang { font-family: system-ui, sans-serif; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin-bottom: 3px; }
+.clang { font-family: var(--f-ui); font-size: var(--fs-eyebrow); text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 3px; }
 .ctext { font-size: 18px; line-height: 1.75; }
 :lang(ja) .ctext { line-height: 2.05; }
 /* The per-verse pronounce button under the verse text (reuses the concordance's 44px
@@ -552,13 +594,13 @@ html.modal-open { overflow: hidden; }
 
 .databtns { display: inline-flex; gap: 8px; }
 .mini {
-  font-family: system-ui, sans-serif;
+  font-family: var(--f-ui);
   font-size: 13px;
   padding: 6px 12px;
   background: var(--card);
   color: var(--fg);
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: var(--r-button);
   cursor: pointer;
 }
 .mini.asbtn { display: inline-flex; align-items: center; }
@@ -572,12 +614,12 @@ html.modal-open { overflow: hidden; }
   transform: translateX(-50%);
   background: var(--fg);
   color: var(--bg);
-  font-family: system-ui, sans-serif;
+  font-family: var(--f-ui);
   font-size: 13px;
   padding: 9px 15px;
-  border-radius: 20px;
+  border-radius: var(--r-pill);
   z-index: 80;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  box-shadow: var(--e-float);
 }
 
 /* ---------- aligned verses across editions (subgrid) ---------- */
@@ -604,7 +646,7 @@ html.modal-open { overflow: hidden; }
 
 /* ---------- flow mode: inline chapter marker ---------- */
 .fchap {
-  font-family: system-ui, sans-serif;
+  font-family: var(--f-ui);
   font-size: 0.62em;
   font-weight: 700;
   color: var(--accent);
@@ -617,10 +659,10 @@ html.modal-open { overflow: hidden; }
 
 /* ---------- settings: grouped sections ---------- */
 .sgroup {
-  font-family: system-ui, sans-serif;
-  font-size: 11px;
+  font-family: var(--f-ui);
+  font-size: var(--fs-eyebrow);
   font-weight: 600;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--muted);
   margin: 26px 0 0;
@@ -685,7 +727,7 @@ html.modal-open { overflow: hidden; }
   align-items: baseline;
   gap: 6px;
   margin-bottom: 4px;
-  font-family: system-ui, sans-serif;
+  font-family: var(--f-ui);
   font-size: 13px;
 }
 .conchead small { color: var(--muted); font-size: 11px; }
@@ -698,9 +740,9 @@ html.modal-open { overflow: hidden; }
   gap: 6px;
   padding: 6px 0;
   cursor: pointer;
-  font-family: system-ui, sans-serif;
-  font-size: 13px;
-  font-weight: 700;
+  font-family: var(--f-ui);
+  font-size: var(--fs-row);
+  font-weight: 600;
   list-style: none;
 }
 .worddrop > summary::-webkit-details-marker { display: none; }
@@ -712,7 +754,7 @@ html.modal-open { overflow: hidden; }
 .cverse { margin: 2px 0 10px; }
 .cvtext { min-width: 0; margin: 0; font-size: 18px; line-height: 1.6; }
 .cvspeak { font-size: 13px; color: var(--accent); }
-.conclist { list-style: none; margin: 0; padding: 0; font-family: system-ui, sans-serif; }
+.conclist { list-style: none; margin: 0; padding: 0; font-family: var(--f-ui); }
 .conclist li + li { border-top: 1px solid var(--line); }
 .crowline { display: flex; align-items: stretch; gap: 2px; }
 .crowline .crowbtn { flex: 1; min-width: 0; }
@@ -730,7 +772,7 @@ html.modal-open { overflow: hidden; }
   min-height: 44px;
   background: none;
   border: 0;
-  border-radius: 8px;
+  border-radius: var(--r-button);
   color: var(--muted);
   font-size: 10px;
   line-height: 1;
@@ -782,7 +824,7 @@ html.modal-open { overflow: hidden; }
   gap: 4px;
   padding: 0 4px 10px;
   color: var(--muted);
-  font-family: system-ui, sans-serif;
+  font-family: var(--f-ui);
   font-size: 12px;
   line-height: 1.55;
 }
@@ -809,16 +851,16 @@ html.modal-open { overflow: hidden; }
   padding: 10px 12px;
   background: var(--bg);
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: var(--r-card);
 }
 .licname { font-size: 16px; }
-.licname small { font-family: system-ui, sans-serif; font-size: 11px; color: var(--muted); margin-inline-start: 6px; }
-.lictext { font-family: system-ui, sans-serif; font-size: 12px; line-height: 1.6; color: var(--muted); }
-.licrepo { font-family: system-ui, sans-serif; font-size: 13px; margin: 14px 0 0; }
+.licname small { font-family: var(--f-ui); font-size: 11px; color: var(--muted); margin-inline-start: 6px; }
+.lictext { font-family: var(--f-ui); font-size: var(--fs-row-sub); line-height: 1.6; color: var(--muted); }
+.licrepo { font-family: var(--f-ui); font-size: 13px; margin: 14px 0 0; }
 .licrepo a, .attrib a { color: var(--accent); }
 .liclink {
   font: inherit;
-  font-family: system-ui, sans-serif;
+  font-family: var(--f-ui);
   font-size: 11px;
   color: var(--accent);
   background: none;
@@ -833,13 +875,13 @@ html.modal-open { overflow: hidden; }
 .confirm-back { z-index: 90; }
 .sheet.confirm { width: min(400px, 92vw); }
 .danger {
-  font-family: system-ui, sans-serif;
+  font-family: var(--f-ui);
   font-size: 14px;
   padding: 8px 16px;
   background: #c0392b;
   color: #fff;
   border: 0;
-  border-radius: 10px;
+  border-radius: var(--r-button);
   cursor: pointer;
 }
 
@@ -850,10 +892,10 @@ html.modal-open { overflow: hidden; }
   padding: 8px 11px;
   background: var(--bg);
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--r-card);
   font-size: 15px;
 }
-.invlist small { font-family: system-ui, sans-serif; font-size: 11px; color: var(--muted); margin-inline-start: 6px; }
+.invlist small { font-family: var(--f-ui); font-size: 11px; color: var(--muted); margin-inline-start: 6px; }
 
 /* ---------- saved panel: filters, tags, reorder ---------- */
 .dfilters {
@@ -866,13 +908,13 @@ html.modal-open { overflow: hidden; }
 }
 .dfrow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .dfrow.tagrow { align-items: flex-start; }
-.dflabel { font-family: system-ui, sans-serif; font-size: 12px; color: var(--muted); min-width: 44px; }
+.dflabel { font-family: var(--f-ui); font-size: 12px; color: var(--muted); min-width: 44px; }
 .dfilters .seg button { padding: 5px 9px; font-size: 12px; }
 .dcheck {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-family: system-ui, sans-serif;
+  font-family: var(--f-ui);
   font-size: 13px;
   cursor: pointer;
 }
@@ -882,7 +924,7 @@ html.modal-open { overflow: hidden; }
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-family: system-ui, sans-serif;
+  font-family: var(--f-ui);
   font-size: 11px;
   min-height: 24px;
   padding: 4px 10px;
@@ -899,18 +941,18 @@ html.modal-open { overflow: hidden; }
 .dmove { display: flex; flex-direction: column; gap: 2px; }
 .dmove .mini { padding: 2px 6px; font-size: 11px; line-height: 1.2; }
 .dmove .mini:disabled { opacity: 0.35; cursor: default; }
-.dmeta { font-family: system-ui, sans-serif; font-size: 10.5px; color: var(--muted); margin: 2px 0 0; }
+.dmeta { font-family: var(--f-ui); font-size: 10.5px; color: var(--muted); margin: 2px 0 0; }
 
 /* ---------- note editor: tag entry ---------- */
 .tagedit { display: flex; flex-direction: column; gap: 7px; margin-top: 10px; }
 .taginput {
-  font-family: system-ui, sans-serif;
+  font-family: var(--f-ui);
   font-size: 13px;
   padding: 7px 10px;
   color: var(--fg);
   background: var(--bg);
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: var(--r-control);
 }
 
 /* ---------- verse sheet: per-edition highlight controls ---------- */
@@ -978,13 +1020,13 @@ html.modal-open { overflow: hidden; }
   margin: 0;
   align-self: start;
   padding: 14px 16px;
-  font-family: system-ui, sans-serif;
+  font-family: var(--f-ui);
   font-size: 13px;
   line-height: 1.6;
   color: var(--muted);
   background: color-mix(in srgb, var(--line) 30%, transparent);
   border: 1px dashed var(--line);
-  border-radius: 10px;
+  border-radius: var(--r-card);
 }
 @supports (grid-template-rows: subgrid) {
   /* Span the whole verse region so the other columns still align to each other. */
@@ -1015,7 +1057,7 @@ html.modal-open { overflow: hidden; }
 /* ---------- toast with an undo action ---------- */
 .toast { display: inline-flex; align-items: center; gap: 12px; max-width: min(520px, calc(100vw - 32px)); }
 .toastact {
-  font-family: system-ui, sans-serif;
+  font-family: var(--f-ui);
   font-size: 13px;
   font-weight: 600;
   color: var(--bg);
@@ -1034,7 +1076,7 @@ html.modal-open { overflow: hidden; }
 .opens {
   order: -1;
   flex-basis: 100%;
-  font-family: system-ui, sans-serif;
+  font-family: var(--f-ui);
   font-size: 10px;
   letter-spacing: 0.05em;
   text-transform: uppercase;
