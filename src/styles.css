@@ -240,7 +240,13 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: var(--f-ui); }
   cursor: pointer;
 }
 .chapnav button:disabled { opacity: 0.4; cursor: default; }
-.chaplabel { color: var(--muted); font-size: 14px; }
+/* The label yields first, the buttons never do: "1 Thessaloniciens 5" at 360px left
+   the two 44px buttons 28px short of the viewport and the page scrolled sideways.
+   The label repeats what the header already says, so truncating it costs nothing;
+   wrap is the backstop below that. */
+.chapnav { flex-wrap: wrap; }
+.chapnav button { flex: none; }
+.chaplabel { color: var(--muted); font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .attrib {
   margin-top: 28px;
