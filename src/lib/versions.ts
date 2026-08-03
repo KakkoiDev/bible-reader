@@ -95,10 +95,11 @@ export const VERSIONS: VersionMeta[] = [
     defaultOn: true,
     // The 2022 OSIS export this is built from has real gaps: 41 verses the KJV
     // carries are absent (15 in Revelation, 13 in Psalms, John 18:24, and a
-    // scattering elsewhere), and the Song of Solomon is missing entirely. Those
-    // rows render the missing-verse placeholder. Stated rather than hidden.
+    // scattering elsewhere). Those rows render the missing-verse placeholder,
+    // stated rather than hidden. The Song of Solomon is no longer among them: the
+    // export files it as Ecclesiastes 13-20, and repair-kjf.mjs moves it back.
     attribution:
-      'Français: Bible King James Française © Nadine L. Stratford, reproduite sans modification. L\u2019export source omet 41 versets (dont Jean 18:24) et le Cantique des Cantiques.',
+      'Français: Bible King James Française © Nadine L. Stratford, reproduite sans modification. L\u2019export source omet 41 versets (dont Jean 18:24).',
   },
   {
     id: 'zht',

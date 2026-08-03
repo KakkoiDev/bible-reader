@@ -17,8 +17,8 @@ because resolving them means choosing a verse division and that is the publisher
 |---|---|
 | Verses with no counterpart in the export | **41** (of 31,102) |
 | Of those, an entire chapter | Revelation 5, 14 verses |
-| Books absent from the export entirely | Song of Solomon (in the gratis-bible copy) |
-| Distinct defect classes | 3 |
+| Books filed under the wrong name | Song of Solomon, as Ecclesiastes 13-20 |
+| Distinct defect classes | 4 |
 
 ## 1. Revelation 4 and 5 mangled at the chapter boundary - 14 verses
 
@@ -130,12 +130,49 @@ and Psalms 60, 69 and 92 carry a multi-verse numbering shift (several verses eac
 number too high after a dropped number) rather than a single displaceable verse. These
 stay allowlisted in `check-data.mjs`; the check still hard-fails on any *new* duplicate.
 
+## 7. The Song of Solomon is filed as Ecclesiastes 13-20 - 8 chapters
+
+The export has no `Song` book. Ecclesiastes runs to a chapter 20, and chapters 13-20 are
+the Song of Solomon. The export knows it: each of the eight carries its own
+`<title>Song of Solomon n#</title>`, and the verse counts are the KJV's
+17, 17, 11, 16, 16, 13, 13, 14 exactly.
+
+```
+<chapter osisID='Eccl.13'><title>Song of Solomon 1#</title>
+  <verse osisID='Eccl.13.1'>Le Cantique des Cantiques, qui est de Salomon.</verse>
+```
+
+`grep -c "osisID='Song\."` on `gratis-bible/bible/fr/kjf.xml` returns 0, so the
+mis-filing is upstream rather than a distribution artifact.
+
+The consequence reached every reader, not only French ones. A chapter's length is taken
+as the maximum across editions, so eight phantom Ecclesiastes chapters appeared in the
+navigator's chapter grid for all twelve editions, empty in eleven of them.
+
+*Fixed in this repository (`scripts/repair-kjf.mjs` step 5). The move renames headings
+and drops the eight now-redundant chapter titles. No wording is touched.*
+
+### And the text that was standing in for it was not the KJF
+
+Until this fix, `data-src/kjf.md` carried a `## Song of Solomon` section credited by a
+header note to a "KJF 2006 edition". No such artifact exists (README, "The KJF:
+provenance"). The text is **Ostervald 1996**, verbatim:
+
+| | |
+|---|---|
+| What was published as KJF 1:2 | Qu'il me baise des baisers de sa bouche! Car tes amours sont plus agréables que le vin. |
+| Ostervald 1996, `Song.1.2` | Qu'il me baise des baisers de sa bouche! Car tes amours sont plus agréables que le vin. |
+| The KJF's actual text, `Eccl.13.2` | Qu'il m'embrasse de baisers de sa bouche car ton amour est meilleur que le vin. |
+
+So one translation was being served under another's name and copyright line. Replacing
+it with the export's own eight chapters corrects both.
+
 ## How this was determined
 
 - Export in use: `data-src/kjf.md`, built from the KJF OSIS 2022 export.
 - Cross-checked against `https://github.com/gratis-bible/bible/raw/master/fr/kjf.xml`
   (via the Internet Archive item `KJF_Bible_King_James_fr`), which has **the same
-  defects** plus no Song of Solomon — so this is upstream of any one distribution.
+  defects**, the Song of Solomon included, so these are upstream of any one distribution.
 - Ground truth: `KJF_WHOLE_BIBLE_2022.pdf` from
   `http://www.kingjamesfrancaise.net/remository.html`, text layer read with `pypdf`.
 - Full provenance trail: `vendor/kjf/SOURCES.md` (not committed; the PDF is

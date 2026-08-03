@@ -2,8 +2,9 @@
 //
 // check-data's first four passes iterate each edition's own chapter map, so a chapter
 // that is not in the file is never visited and never reported. That is how 18 empty
-// 口語訳 chapters shipped. Pass E iterates the KJV spine instead. These assertions
-// fail if that pass is removed or narrowed.
+// 口語訳 chapters shipped. Pass E iterates the KJV spine instead, and pass F covers the
+// other direction, a chapter past the canon's last, which is how the KJF's Song of
+// Solomon sat under Ecclesiastes 13-20. These assertions fail if either is removed.
 //
 // Titles: build-data used to prefer whatever heading the export carried over the
 // curated table, which put an English title in the Japanese column for the one book
@@ -58,6 +59,34 @@ console.log('\nHalf-canon editions are not accused of a gap')
 check('no Greek Old Testament complaint', !/\bel (Genesis|Psalms|Malachi)\b/.test(out))
 check('no Hebrew New Testament complaint', !/\bhe (Matthew|John|Revelation)\b/.test(out))
 check('Hebrew Malachi 4 stays silent', !out.includes('he Malachi'))
+
+// Pass E walks the spine, so it can only see a chapter an edition lacks. Pass F is the
+// other direction: eight phantom Ecclesiastes chapters, which were the KJF's Song of
+// Solomon under the wrong name, put an empty row in the chapter grid of every edition.
+console.log('\ncheck-data also sees a chapter past the end of the canon')
+{
+  const index = JSON.parse(readFileSync(resolve(root, 'public/data/index.json'), 'utf8'))
+  const byslug = (s) => index.find((b) => b.slug === s)
+  check('Ecclesiastes is twelve chapters', byslug('ecclesiastes').chapters.length === 12,
+    `${byslug('ecclesiastes').chapters.length}`)
+  check('and the Song of Solomon is eight', byslug('song-of-solomon').chapters.length === 8,
+    `${byslug('song-of-solomon').chapters.length}`)
+  check('no edition reaches past the KJV canon uninvited', !/beyond the KJV/.test(out))
+
+  // Joel is four chapters in the Masoretic division, so pass F must not be a blanket
+  // ban on going past the spine.
+  check('the Hebrew Joel keeps its fourth chapter', byslug('joel').chapters.length === 4,
+    `${byslug('joel').chapters.length}`)
+
+  const song = JSON.parse(readFileSync(resolve(root, 'public/data/fr/song-of-solomon.json'), 'utf8'))
+  const v2 = song.chapters[0].verses[1].t
+  check('and the French text is the KJF, not the Ostervald that stood in for it',
+    v2.startsWith('Qu’il m’embrasse de baisers de sa bouche'), v2.slice(0, 46))
+  check('all eight chapters came across', song.chapters.length === 8, `${song.chapters.length}`)
+  check('with the KJV verse counts',
+    song.chapters.map((c) => c.verses.length).join(',') === '17,17,11,16,16,13,13,14',
+    song.chapters.map((c) => c.verses.length).join(','))
+}
 
 // ---------- book titles ----------
 console.log('\nEvery edition names its books in its own script')

@@ -18,6 +18,9 @@
 //      true Revelation 4 verses; needs no outside text, since all eleven are already
 //      present in the block and are only selected and renumbered.
 //
+//   5. The Song of Solomon is filed as Ecclesiastes 13-20. The export's own chapter
+//      titles say where it belongs, so the move renames headings and touches no wording.
+//
 // Everything else the export gets wrong is a numbering slip that would need the PDF's
 // wording to resolve, and the PDF's text layer is too noisy to substitute wholesale.
 // Those are documented rather than guessed at.
@@ -194,6 +197,73 @@ for (const fix of DISPLACED) {
   const block = verses.map((v) => `**${v.n}** ${v.t}  `)
   lines = [...lines.slice(0, idx[0]), ...block, ...lines.slice(idx[idx.length - 1] + 1)]
   changes.push(`de-duplicated ${fix.book} ${fix.chapter} (recovered verse ${fix.to})`)
+}
+
+// ---- 5. file the Song of Solomon under its own name ----
+// The export continues Ecclesiastes to a chapter 20. Chapters 13-20 are the Song of
+// Solomon: each carries the export's own `<title>Song of Solomon n#</title>`, which
+// arrives here as a "> *Song of Solomon n*" line, and their verse counts are the KJV's
+// 17,17,11,16,16,13,13,14 exactly. Upstream agrees - gratis-bible's fr/kjf.xml has
+// `<chapter osisID='Eccl.13'>` and no Song.* osisID anywhere in the file.
+//
+// What currently sits under "## Song of Solomon" is not the KJF at all. It is Ostervald
+// 1996, verbatim ("Qu'il me baise des baisers de sa bouche!" against the KJF's "Qu'il
+// m'embrasse de baisers de sa bouche"), so the edition has been publishing another
+// translation's text under the KJF's name. Replacing it with the KJF's own eight
+// chapters is a correction in both directions and alters no wording.
+//
+// The file's own header credited that text to a "KJF 2006 edition", an artifact the
+// provenance trail could never find (README, "The KJF: provenance"). It goes with the
+// text it describes.
+const SONG_VERSES = [17, 17, 11, 16, 16, 13, 13, 14]
+{
+  const at = lines.findIndex((l) => l.startsWith('> Note : Le Cantique des Cantiques est absent'))
+  if (at >= 0) {
+    if (!lines[at + 1].startsWith('> il est repris de l’édition KJF 2006') &&
+        !lines[at + 1].startsWith("> il est repris de l'édition KJF 2006"))
+      throw new Error('the header note does not continue as expected')
+    lines.splice(at, 2)
+    changes.push('removed the header note crediting the Song of Solomon to a 2006 edition')
+  }
+}
+if (lines.some((l) => l.trim() === '### Ecclesiastes 13')) {
+  const first = lines.findIndex((l) => l.trim() === '### Ecclesiastes 13')
+  const songHead = lines.findIndex((l) => l.trim() === '## Song of Solomon')
+  if (songHead < first) throw new Error('"## Song of Solomon" does not follow Ecclesiastes')
+  const songEnd = lines.findIndex((l, i) => i > songHead && l.startsWith('## ') && !l.startsWith('###'))
+  if (songEnd < 0) throw new Error('cannot find the book after Song of Solomon')
+  if (lines.slice(first, songHead).some((l) => l.startsWith('## ') && !l.startsWith('###')))
+    throw new Error('another book heading sits between Ecclesiastes 13 and Song of Solomon')
+  if (!lines.slice(songHead, songEnd).some((l) => l.includes('Qu’il me baise des baisers')))
+    throw new Error('the text under "## Song of Solomon" is not the Ostervald filler this replaces')
+
+  // Rename the headings, drop the now-redundant "Song of Solomon n" chapter titles, and
+  // keep every verse line as it stands.
+  const block = []
+  for (let i = first; i < songHead; i++) {
+    const l = lines[i]
+    const h = l.trim().match(/^### Ecclesiastes (\d+)$/)
+    if (h) {
+      const n = Number(h[1]) - 12
+      if (n !== block.filter((x) => x.startsWith('### ')).length + 1)
+        throw new Error(`Ecclesiastes ${h[1]} is out of order in the Song of Solomon run`)
+      block.push(`### Song of Solomon ${n}`)
+      if (lines[i + 1]?.trim() === `> *Song of Solomon ${n}*`) i++
+      else throw new Error(`### Ecclesiastes ${h[1]} is not titled "Song of Solomon ${n}"`)
+      continue
+    }
+    block.push(l)
+  }
+  const counts = []
+  for (const l of block) {
+    if (l.startsWith('### ')) counts.push(0)
+    else if (/^\*\*\d+\*\*/.test(l)) counts[counts.length - 1]++
+  }
+  if (counts.join(',') !== SONG_VERSES.join(','))
+    throw new Error(`Song of Solomon is ${counts.join(',')} verses, expected ${SONG_VERSES.join(',')}`)
+
+  lines = [...lines.slice(0, first), '## Song of Solomon', '', ...block, ...lines.slice(songEnd)]
+  changes.push(`moved Ecclesiastes 13-20 to Song of Solomon 1-8, replacing the Ostervald text`)
 }
 
 if (!changes.length) {

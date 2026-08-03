@@ -10,6 +10,7 @@
     "glossary": "node scripts/fetch-glossary.mjs",
     "names": "node scripts/fetch-names.mjs",
     "furigana": "node scripts/furigana-jako.mjs",
+    "repair": "node scripts/repair-kjf.mjs",
     "data": "node scripts/build-data.mjs",
     "check:data": "node scripts/check-data.mjs",
     "dev": "vite",

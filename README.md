@@ -240,14 +240,17 @@ for.
 ### The KJF: provenance, and defects in the export
 
 **Resolved: there is no separate "KJF 2006" file.** 2006 is the year the translation
-was completed and forms part of the copyrighted work's name, not an edition label. The
-note in `data-src/kjf.md` about the Song of Solomon being "repris de l'édition KJF
-2006" does not point at a retrievable artifact.
+was completed and forms part of the copyrighted work's name, not an edition label. A
+note in `data-src/kjf.md` used to credit the Song of Solomon to an "édition KJF 2006",
+which pointed at no retrievable artifact. It has since been removed, along with the
+text it described: that text was **Ostervald 1996**, and the KJF's own Song of Solomon
+was in the export all along, mis-filed as Ecclesiastes 13-20
+(`docs/KJF-DEFECTS.md` section 7).
 
 - The Internet Archive item `KJF_Bible_King_James_fr` is labelled `date: 2006`, but its
   own SWORD config declares its upstream as
   `https://github.com/gratis-bible/bible/raw/master/fr/kjf.xml`, and it carries **the
-  same defects** as the 2022 export plus no Song of Solomon at all.
+  same defects** as the 2022 export.
 - `http://www.kingjamesfrancaise.net/remository.html` is live and is the current
   official download index. (An earlier note here claimed the domain did not resolve;
   that was wrong, it had been probed over `https://` when it is served over `http://www.`.)

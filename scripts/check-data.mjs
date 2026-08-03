@@ -100,6 +100,13 @@ const KNOWN_ABSENT = new Set([
   'he/Malachi/4',
 ])
 
+// Chapters an edition has past the KJV's last, because its tradition divides the book
+// differently. Not defects either, so also silent.
+const KNOWN_EXTRA = new Set([
+  // The Masoretic Joel runs to four chapters; the KJV's 2:28-32 is Hebrew 3.
+  'he/Joel/4',
+])
+
 // Chapters the upstream export drops. These ARE holes in the text, and the reader says
 // so in the column (App.tsx, `coverage_chapter_absent`), so they warn every build
 // rather than passing quietly. getbible's japkougo is the only 口語訳 module in
@@ -208,6 +215,27 @@ for (const ed of editions) {
       omits.push(`${ed.id} ${book} ${declared.join(', ')} (of ${spine.books.get(book).size})`)
     }
     if (gone.length) fails.push(`${ed.id} ${book}: chapter ${gone.join(', ')} absent (spine has ${spine.books.get(book).size})`)
+  }
+}
+
+// F. chapters the edition has and the spine does not.
+//
+// Pass E walks the spine, so it can only ever see a chapter an edition is missing. A
+// chapter *past* the KJV's last is invisible to every pass above, and because the
+// navigator's chapter grid is sized by the maximum across editions, one edition's
+// phantom chapter puts an empty row in front of every reader. That is how the KJF's
+// Song of Solomon, which its export files as Ecclesiastes 13-20, went unnoticed.
+for (const ed of editions) {
+  if (ed.id === 'en') continue
+  for (const [book, chapters] of ed.books) {
+    const sp = spine.books.get(book)
+    if (!sp) {
+      fails.push(`${ed.id} ${book}: not a book the KJV spine has`)
+      continue
+    }
+    const last = Math.max(...sp.keys())
+    const extra = [...chapters.keys()].filter((ch) => ch > last && !KNOWN_EXTRA.has(`${ed.id}/${book}/${ch}`))
+    if (extra.length) fails.push(`${ed.id} ${book}: chapter ${extra.join(', ')} beyond the KJV's ${last}`)
   }
 }
 
