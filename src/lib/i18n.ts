@@ -88,6 +88,14 @@ const en = {
   play_verse: 'Play verse',
   play_chapter: 'Play chapter',
   stop: 'Stop',
+  share: 'Share',
+  /** Opens the reference sheet: comparison, concordance, glossary. */
+  study: 'Study',
+  bookmark: 'Bookmark',
+  remove_bookmark: 'Remove bookmark',
+  bookmarks: 'Bookmarks',
+  listen_from_here: 'Listen from here',
+  back: 'Back',
 
   link_copied: 'Verse link copied',
   invite_copied: 'Invite link copied',
@@ -200,6 +208,8 @@ const ja: Dict = {
   pronounce: '発音を聞く',
   concordance_failed: '原語辞書を読み込めませんでした。', retry: '再試行', loading: '読み込み中…',
   glossary: '古い語', glossary_sub: 'KJVでの意味', glossary_archaic: '古語', glossary_grammar: '文法', glossary_name: '固有名', glossary_spiritual: '信仰用語',
+  share: '共有', study: '詳細', bookmark: 'しおり', remove_bookmark: 'しおりを外す',
+  bookmarks: 'しおり', listen_from_here: 'ここから再生', back: '戻る',
 }
 
 const fr: Dict = {
@@ -247,6 +257,8 @@ const fr: Dict = {
   pronounce: 'Prononcer',
   concordance_failed: 'Impossible de charger la concordance.', retry: 'Réessayer', loading: 'Chargement…',
   glossary: 'Mots anciens', glossary_sub: 'sens dans la KJV', glossary_archaic: 'archaïque', glossary_grammar: 'grammaire', glossary_name: 'nom propre', glossary_spiritual: 'Termes spirituels',
+  share: 'Partager', study: 'Étudier', bookmark: 'Marque-page', remove_bookmark: 'Retirer le marque-page',
+  bookmarks: 'Marque-pages', listen_from_here: 'Écouter à partir d’ici', back: 'Retour',
 }
 
 const zht: Dict = {
@@ -282,6 +294,8 @@ const zht: Dict = {
   invite_build_title: '分享的譯本', invite_build_body: '選擇要分享的譯本與排列順序。經文會以第一個譯本開啟。', invite_applied: '正在顯示 {versions}', undo: '復原',
   add_tag: '新增標籤，以逗號分隔…', manage_tags: '編輯標籤', delete_tag_title: '要刪除這個標籤嗎？', delete_tag_body: '將「{tag}」從 {n} 則筆記中移除。筆記本身會保留。',
   justify: '左右對齊',
+  share: '分享', study: '詳解', bookmark: '書籤', remove_bookmark: '移除書籤',
+  bookmarks: '書籤', listen_from_here: '從這裡朗讀', back: '返回',
 }
 
 const zhs: Dict = {
@@ -317,6 +331,8 @@ const zhs: Dict = {
   invite_build_title: '分享的译本', invite_build_body: '选择要分享的译本与排列顺序。经文会以第一个译本打开。', invite_applied: '正在显示 {versions}', undo: '撤销',
   add_tag: '添加标签，以逗号分隔…', manage_tags: '编辑标签', delete_tag_title: '要删除这个标签吗？', delete_tag_body: '将“{tag}”从 {n} 条笔记中移除。笔记本身会保留。',
   justify: '左右对齐',
+  share: '分享', study: '详解', bookmark: '书签', remove_bookmark: '移除书签',
+  bookmarks: '书签', listen_from_here: '从这里朗读', back: '返回',
 }
 
 const pt: Dict = {
@@ -358,6 +374,8 @@ const pt: Dict = {
   invite_build_title: 'Versões a compartilhar', invite_build_body: 'Escolha as versões a compartilhar e a ordem delas. A passagem abre na primeira.', invite_applied: 'Mostrando {versions}', undo: 'Desfazer',
   add_tag: 'Adicionar etiquetas, separadas por vírgulas…', manage_tags: 'Editar etiquetas', delete_tag_title: 'Excluir esta etiqueta?', delete_tag_body: 'Remove "{tag}" de {n} nota(s). As notas permanecem.',
   justify: 'Texto justificado',
+  share: 'Compartilhar', study: 'Estudo', bookmark: 'Marcador', remove_bookmark: 'Remover marcador',
+  bookmarks: 'Marcadores', listen_from_here: 'Ouvir a partir daqui', back: 'Voltar',
 }
 
 const es: Dict = {
@@ -400,6 +418,8 @@ const es: Dict = {
   invite_build_title: 'Versiones para compartir', invite_build_body: 'Elige las versiones que quieres compartir y su orden. El pasaje se abre en la primera.', invite_applied: 'Mostrando {versions}', undo: 'Deshacer',
   add_tag: 'Añadir etiquetas, separadas por comas…', manage_tags: 'Editar etiquetas', delete_tag_title: '¿Eliminar esta etiqueta?', delete_tag_body: 'Quita «{tag}» de {n} nota(s). Las notas se conservan.',
   justify: 'Texto justificado',
+  share: 'Compartir', study: 'Estudio', bookmark: 'Marcador', remove_bookmark: 'Quitar marcador',
+  bookmarks: 'Marcadores', listen_from_here: 'Escuchar desde aquí', back: 'Atrás',
 }
 
 const ar: Dict = {
@@ -440,6 +460,8 @@ const ar: Dict = {
   invite_build_title: 'الترجمات المشتركة', invite_build_body: 'اختر الترجمات التي تريد مشاركتها وترتيبها. يُفتح المقطع بالترجمة الأولى.', invite_applied: 'يتم عرض {versions}', undo: 'تراجع',
   add_tag: 'أضف وسومًا مفصولة بفواصل…', manage_tags: 'تحرير الوسوم', delete_tag_title: 'حذف هذا الوسم؟', delete_tag_body: 'يُزال «{tag}» من {n} ملاحظة. تبقى الملاحظات نفسها.',
   justify: 'ضبط النص',
+  share: 'مشاركة', study: 'دراسة', bookmark: 'علامة مرجعية', remove_bookmark: 'إزالة العلامة',
+  bookmarks: 'العلامات المرجعية', listen_from_here: 'الاستماع من هنا', back: 'رجوع',
 }
 
 const tl: Dict = {
@@ -482,6 +504,8 @@ const tl: Dict = {
   invite_build_title: 'Mga bersyong ibabahagi', invite_build_body: 'Piliin ang mga bersyong ibabahagi at ang pagkakasunod-sunod nila. Bubukas ang bahagi sa una.', invite_applied: 'Ipinapakita ang {versions}', undo: 'I-undo',
   add_tag: 'Magdagdag ng mga tag, hiwalayin ng kuwit…', manage_tags: 'I-edit ang mga tag', delete_tag_title: 'Tanggalin ang tag na ito?', delete_tag_body: 'Aalisin ang "{tag}" sa {n} tala. Mananatili ang mga tala.',
   justify: 'Justified na teksto',
+  share: 'Ibahagi', study: 'Pag-aaral', bookmark: 'Bookmark', remove_bookmark: 'Alisin ang bookmark',
+  bookmarks: 'Mga bookmark', listen_from_here: 'Makinig mula rito', back: 'Bumalik',
 }
 
 // Modern Greek chrome; the text itself stays Koine.
@@ -527,6 +551,8 @@ const el: Dict = {
   invite_build_title: 'Εκδόσεις για κοινοποίηση', invite_build_body: 'Επιλέξτε τις εκδόσεις που θα κοινοποιηθούν και τη σειρά τους. Το χωρίο ανοίγει στην πρώτη.', invite_applied: 'Εμφανίζονται {versions}', undo: 'Αναίρεση',
   add_tag: 'Προσθήκη ετικετών, χωρισμένων με κόμμα…', manage_tags: 'Επεξεργασία ετικετών', delete_tag_title: 'Διαγραφή αυτής της ετικέτας;', delete_tag_body: 'Αφαιρεί «{tag}» από {n} σημείωση/σημειώσεις. Οι σημειώσεις παραμένουν.',
   justify: 'Πλήρης στοίχιση',
+  share: 'Κοινοποίηση', study: 'Μελέτη', bookmark: 'Σελιδοδείκτης', remove_bookmark: 'Αφαίρεση σελιδοδείκτη',
+  bookmarks: 'Σελιδοδείκτες', listen_from_here: 'Ακρόαση από εδώ', back: 'Πίσω',
 }
 
 // Modern Hebrew chrome; the text itself stays the Masoretic consonantal tradition.
@@ -568,6 +594,8 @@ const he: Dict = {
   invite_build_title: 'גרסאות לשיתוף', invite_build_body: 'בחר את הגרסאות לשיתוף ואת סדרן. הקטע ייפתח בגרסה הראשונה.', invite_applied: 'מוצג {versions}', undo: 'בטל',
   add_tag: 'הוסף תגיות, מופרדות בפסיקים…', manage_tags: 'עריכת תגיות', delete_tag_title: 'למחוק את התגית?', delete_tag_body: 'מסיר «{tag}» מ־{n} הערות. ההערות עצמן נשמרות.',
   justify: 'יישור לשני הצדדים',
+  share: 'שיתוף', study: 'עיון', bookmark: 'סימנייה', remove_bookmark: 'הסרת הסימנייה',
+  bookmarks: 'סימניות', listen_from_here: 'האזנה מכאן', back: 'חזרה',
 }
 
 // jako is a Japanese edition, so its UI strings are the Japanese ones.

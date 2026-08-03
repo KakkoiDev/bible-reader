@@ -286,34 +286,77 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: var(--f-ui); }
   text-align: center;
 }
 .vn:hover { text-decoration: underline; }
-/* The verse number and the per-verse play button rendered at 13x13 and 18x13, four
-   pixels apart: too small to hit confidently on a phone and easy to confuse with
-   each other. The glyphs stay the same size; an absolutely positioned overlay grows
-   the touch target instead, so nothing in the text reflows. The spacing between
-   them is opened up first, so the two targets meet without overlapping. */
-.vn, .vplay, .mk { position: relative; }
-/* Grow the targets away from each other, into the space the line already has, so
-   the visible gaps stay tight: widening the margins instead made the row look
-   spaced-out and drew the eye to the controls rather than the text. */
-.vn::after, .vplay::after, .mk::after {
+/* The verse number renders at 13x13. The glyph stays that size; an absolutely
+   positioned overlay grows the touch target instead, so nothing in the text
+   reflows. */
+.vn, .mk { position: relative; }
+/* Grow the target into the space the line already has, so the visible gaps stay
+   tight: widening the margin instead made the row look spaced-out and drew the eye
+   to the control rather than the text. */
+.vn::after, .mk::after {
   content: '';
   position: absolute;
   inset-block: -9px;
 }
 .vn::after { inset-inline: -9px -2px; }
-.vplay::after { inset-inline: -2px -7px; }
 .mk::after { inset-inline: -2px -7px; }
 /* Latin digits inside Arabic/Hebrew verses would otherwise be reordered by the
    bidi algorithm and drift away from the verse they label. */
-.vn, .vplay, .fchap { unicode-bidi: isolate; }
+.vn, .fchap { unicode-bidi: isolate; }
 .mk { font-size: 12px; margin-inline-end: 4px; background: none; border: 0; padding: 0; cursor: default; vertical-align: super; }
 .mk.note { cursor: pointer; }
+.mk.bm { color: var(--accent); }
 .verse.flash {
   background: var(--accent-bg);
   border-radius: 8px;
   box-shadow: 0 0 0 6px var(--accent-bg);
   transition: background 0.8s ease, box-shadow 0.8s ease;
 }
+
+/* ---------- verse action bar ---------- */
+/* Sits in the flow under the verse it acts on, which is where the design system
+   draws it: five icon actions and one labelled, full at 390pt. It wraps rather than
+   squeezes, because a column narrower than a phone is the multi-edition case and a
+   34px control there would be worse than a second row. */
+.vbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+  font-family: var(--f-ui);
+}
+.vbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 46px;
+  height: var(--touch);
+  padding: 0;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--fg);
+  background: var(--card);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-button);
+  cursor: pointer;
+}
+.vbtn.wide { padding: 0 12px; }
+.vbtn.on { color: var(--accent); background: var(--accent-bg); border-color: var(--accent); }
+/* Study is the only action here that leaves the page, so it is the only filled one.
+   14px of padding rather than the document's 16: five 46px cells, five 6px gaps and
+   a 16-padded Study measure 355, and the reader's 18px margins leave 354 of a 390pt
+   screen. One pixel is the whole difference between one row and two. */
+.vbtn.study {
+  margin-inline-start: auto;
+  padding: 0 14px;
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.vbtn.study:hover { background: var(--accent-press); }
 
 /* ---------- per-language chapter play button (column header) ---------- */
 .colhead { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
@@ -367,19 +410,7 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: var(--f-ui); }
 }
 .dtag { margin-inline-start: 6px; font-size: 11px; color: var(--muted); }
 
-/* ---------- audio: play buttons + spoken highlighting ---------- */
-.vplay {
-  font-size: 9px;
-  color: var(--muted);
-  background: none;
-  border: 0;
-  padding-inline-end: 2px;
-  margin-inline-end: 4px;
-  cursor: pointer;
-  vertical-align: super;
-}
-.vplay:hover,
-.vplay.on { color: var(--accent); }
+/* ---------- audio: spoken highlighting ---------- */
 .icon.playing { color: var(--accent); }
 .verse.speaking {
   background: var(--accent-bg);
@@ -1230,7 +1261,7 @@ html.modal-open { overflow: hidden; }
   outline-offset: 3px;
   border-radius: 6px;
 }
-.verses :where(.vn, .vplay):focus-visible { outline-offset: 1px; }
+.verses .vn:focus-visible { outline-offset: 1px; }
 .swatch:focus-visible { outline-offset: 3px; }
 
 /* ---------- reduced motion ---------- */

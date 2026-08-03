@@ -15,6 +15,10 @@ export interface Ann {
   note?: string
   highlights?: HRange[]
   tags?: string[]
+  /** Set by the verse bar's bookmark. It is the one saved thing a verse can carry
+   *  with no other content, so `isEmpty` has to count it or the entry is dropped on
+   *  the next write and the bookmark is gone after a reload. */
+  bookmarked?: boolean
   /** Epoch ms. Absent on entries saved before timestamps existed — shown as "—"
    *  rather than backfilled, so the drawer never claims a date it doesn't know. */
   createdAt?: number
@@ -51,7 +55,8 @@ const load = (): Store => {
     return {}
   }
 }
-const isEmpty = (a: Ann) => !a.note && !(a.highlights && a.highlights.length) && !(a.tags && a.tags.length)
+const isEmpty = (a: Ann) =>
+  !a.note && !(a.highlights && a.highlights.length) && !(a.tags && a.tags.length) && !a.bookmarked
 
 export function useAnnotations() {
   const [store, setStore] = useState<Store>(load)
@@ -95,6 +100,11 @@ export function useAnnotations() {
           (h) => !(h.lang === lang && h.start < end && h.end > start),
         ),
       })),
+    [update],
+  )
+
+  const toggleBookmark = useCallback(
+    (ref: string) => update(ref, (a) => ({ ...a, bookmarked: a.bookmarked ? undefined : true })),
     [update],
   )
 
@@ -174,6 +184,7 @@ export function useAnnotations() {
     vocab,
     addHighlight,
     clearHighlightsIn,
+    toggleBookmark,
     setNote,
     setTags,
     createTags,

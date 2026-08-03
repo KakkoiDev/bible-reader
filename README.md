@@ -465,24 +465,41 @@ npx vite preview --port 4181 --strictPort
 node scripts/verify12.mjs   # the shared sheet shell
 ```
 
-`verify12.mjs` is the gate on `src/components/Sheet.tsx`: one scroller, head and
-footer pinned while the body scrolls, the 92% cap, the grab handle appearing only
-where the sheet is a drawer, drag past a quarter of the height dismissing, a short
-drag springing back, and a scrolled body keeping its scroll instead of dragging. It
-does not cover the flick threshold: velocity is measured between the last
-`pointermove` and the `pointerup`, and Playwright's `mouse.up()` carries no
-coordinate, so a synthetic release always reads as zero. That one is by hand.
+`verify12.mjs` is the gate on `src/components/Sheet.tsx` and
+`src/components/VerseBar.tsx`. For the sheet: one scroller, head and footer pinned
+while the body scrolls, the 92% cap, the grab handle appearing only where the sheet
+is a drawer, drag past a quarter of the height dismissing, a short drag springing
+back, and a scrolled body keeping its scroll instead of dragging. It does not cover
+the flick threshold: velocity is measured between the last `pointermove` and the
+`pointerup`, and Playwright's `mouse.up()` carries no coordinate, so a synthetic
+release always reads as zero. That one is by hand.
+
+For the bar: a verse tap opens it and does **not** open the sheet, its six controls
+are each 44pt and fit one row at 390px, highlight and share swap the row in place,
+Study is the only control that opens a sheet, and a bookmark with nothing else
+attached to it survives a reload and reaches the Saved drawer's filter.
 
 `scripts/verify2.mjs`–`verify9.mjs` are one-off diagnostic scripts from earlier
 sessions that target port 4180; some assert against UI that no longer exists.
 
-**Two checks in `verify10.mjs` and one in `verify11.mjs` were already failing before
-the design-system work**, and are left failing rather than papered over: `builder
-offers the other nine`, `only visible editions are compared`, and `verify10.mjs:374`
-waits on `.verse-sheet .abtn.tiny`, a selector no component has rendered for some
-time, which aborts the rest of that run. `verify11.mjs:54` aborts the same way on
-`.strongs .conclist li`. Verified by building `fc823f9` in a worktree and running
-both suites against it: identical failures, same lines.
+**Six checks in `verify10.mjs` fail, and all six predate this work.** Four are the
+same defect: a twelfth edition was added and four assertions still count eleven
+(`builder offers the other nine`, `only visible editions are compared`, `licences
+sheet lists all 11 editions`, `splash markup lists 11 editions`). The other two are
+2px gaps between sibling controls, `.tools` (added in `391c082`) and `.crowline`
+(added in `05d1a81`). Four of the six only became visible once the run stopped
+aborting: `verify10.mjs` used to die on `.verse-sheet .abtn.tiny`, a selector no
+component had rendered for some time, which skipped everything after it. The clear
+control now carries `.clearhl` and the suite runs to the end.
+
+**`verify11.mjs` still aborts at its first wait**, on `.strongs .conclist li`, and
+the cause is now known: the design pass put the concordance and glossary inside a
+`<details>` that ships collapsed, so the rows exist but are hidden. Expanding them
+in the suite lets it run and surfaces eight further failures, all from that same
+change (`no toggle to press` is contradicted, the definitions warm-up no longer
+fires, `.strongs .cspeak` now matches the original-verse play button before the word
+rows). Repairing that is its own piece of work, so the abort is left in place rather
+than half-fixed.
 
 ```bash
 node scripts/design-audit.mjs http://localhost:4178 /tmp/shots after

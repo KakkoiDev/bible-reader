@@ -81,10 +81,23 @@ Recorded here so the document and the code do not tell different stories.
   the buttons, fields, icon buttons, swatches, grid cells and list rows.
 - **A segmented cell is 38.** That is the 44 track minus its own 3px padding,
   which is the geometry drawn above. The track is the target.
-- **The verse number and the inline play button stay at ~30.** They sit four
-  pixels apart in the text flow, so growing both to 44 makes them collide. The
-  answer this document gives is that per-verse play does not exist inline at
-  all; that is a later pass.
+- **The verse number stays at ~30.** Per-verse play is gone, as this document
+  asks, so the collision that used to cap the number is gone with it. It still
+  does not grow to 44: verse rows sit about 34px apart, so a 44-tall hit area
+  would overlap the numbers of the verses above and below, which is a worse
+  defect than a small target.
+- **The verse action bar sits in the flow and may wrap.** The document draws it
+  as a flex row with `margin-top: 8px` under the tapped verse, and says the row
+  is full at six controls on a 390pt screen. Two departures follow from putting
+  it in a real reader: Study takes 14px of padding rather than 16, because five
+  46px cells, five 6px gaps and a 16-padded Study measure 355 while the reader's
+  own 18px margins leave 354 of a 390pt screen; and the row is `flex-wrap: wrap`,
+  because the multi-edition layout gives a column narrower than a phone and a
+  second row there is better than a 34px control.
+- **Highlight and share swap the row in place.** The document says share holds
+  three things and highlight applies a colour, but draws neither sub-row. Both
+  replace the row's contents with a back control and their own actions, so
+  neither opens a sheet: only Study does.
 - **`.gloss-mark` is left as text.** A glossed word is a word in the measure;
   the atom sheet lists it under text atoms, not controls.
 
@@ -92,7 +105,7 @@ Recorded here so the document and the code do not tell different stories.
 
 | Field | Status |
 |---|---|
-| `Ann.bookmarked?: boolean` | **New.** `isEmpty()` must count it or bookmarks vanish on reload |
+| `Ann.bookmarked?: boolean` | **Implemented.** `isEmpty()` counts it, and the Saved drawer has a Bookmarks filter |
 | `HRange` | Unchanged — highlights stay ranges, hence the *These words / Whole verse* toggle |
 | Edition order | Must be persisted; it drives reading order, stacking and sharing |
 | Share payload | Defaults to the primary edition only; the invite link carries the full list |

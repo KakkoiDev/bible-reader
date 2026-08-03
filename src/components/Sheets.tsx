@@ -739,7 +739,7 @@ export function VerseSheet({
               <span className="clangbtns">
                 {highlights.length > 0 && (
                   <button
-                    className="cspeak"
+                    className="cspeak clearhl"
                     title={t('remove_highlight')}
                     aria-label={t('remove_highlight')}
                     onClick={onClearHighlight}

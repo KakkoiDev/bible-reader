@@ -33,6 +33,7 @@ import {
   type SortMode,
 } from './components/Panels'
 import { SearchSheet, Navigator, VerseSheet, InviteBuilder, type VerseSheetData } from './components/Sheets'
+import { VerseBar } from './components/VerseBar'
 import { Icon } from './components/Icon'
 
 const BASE = import.meta.env.BASE_URL
@@ -163,6 +164,8 @@ export default function App() {
   const [licencesOpen, setLicencesOpen] = useState(false)
   const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null)
   const [verseSheet, setVerseSheet] = useState<VerseSheetData | null>(null)
+  // The verse whose action bar is open. One at a time: tapping another verse moves it.
+  const [barAt, setBarAt] = useState<{ lang: Lang; ch: number; v: number } | null>(null)
   const [paras, setParas] = useState<Paragraphs>({})
   const [invite, setInvite] = useState<Invite | null>(initHash.invite ?? null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
@@ -178,6 +181,7 @@ export default function App() {
     vocab,
     addHighlight,
     clearHighlightsIn,
+    toggleBookmark,
     setNote,
     setTags,
     createTags,
@@ -197,6 +201,7 @@ export default function App() {
   const [sort, setSort] = useState<SortMode>('book')
   const [asc, setAsc] = useState(true)
   const [thisBook, setThisBook] = useState(false)
+  const [bookmarksOnly, setBookmarksOnly] = useState(false)
   const [tagFilter, setTagFilter] = useState<string[]>([])
 
   const t = useMemo(() => translator(prefs.ui), [prefs.ui])
@@ -500,10 +505,6 @@ export default function App() {
     },
     [chapter, speakList, flow, keepGoing],
   )
-  const playVerse = useCallback(
-    (lang: Lang, ch: number, v: number, text: string) => speakList(lang, [{ ch, v, text }], false),
-    [speakList],
-  )
   // Play continuously from a given verse onward (through the chapter, then the book).
   const playFrom = useCallback(
     (lang: Lang, ch: number, v: number) => {
@@ -538,7 +539,7 @@ export default function App() {
 
   // Full-verse playback from the verse sheet: pausable, tracked by edition so the button
   // toggles play/stop. Unlike speakWord (a one-shot word) this can be stopped, and unlike the
-  // reader's playVerse it doesn't autoscroll or raise the audio FAB over the sheet.
+  // reader's playFrom it doesn't autoscroll or raise the audio FAB over the sheet.
   const [sheetPlay, setSheetPlay] = useState<Lang | null>(null)
   const speakSheetVerse = useCallback(
     (text: string, lang: Lang) => {
@@ -953,6 +954,7 @@ export default function App() {
         [drawerOpen, () => setDrawerOpen(false)],
         [settingsOpen, () => setSettingsOpen(false)],
         [sel !== null, () => clearSelection()],
+        [barAt !== null, () => setBarAt(null)],
       ]
       const top = layers.find(([open]) => open)
       if (top) {
@@ -1129,7 +1131,7 @@ export default function App() {
   const drawerItems: DrawerItem[] = useMemo(() => {
     const rank = new Map(index.map((b, i) => [b.slug, i]))
     let items = Object.entries(store)
-      .filter(([, a]) => a.note || a.highlights?.length || a.tags?.length)
+      .filter(([, a]) => a.note || a.highlights?.length || a.tags?.length || a.bookmarked)
       .map(([ref, a]) => {
         const p = parseRef(ref)
         return {
@@ -1139,12 +1141,14 @@ export default function App() {
           note: a.note,
           tags: a.tags ?? [],
           colors: [...new Set((a.highlights || []).map((h) => h.color))],
+          bookmarked: !!a.bookmarked,
           createdAt: a.createdAt,
           updatedAt: a.updatedAt,
           order: a.order ?? Number.MAX_SAFE_INTEGER,
         }
       })
     if (thisBook) items = items.filter((it) => it.slug === pos.slug)
+    if (bookmarksOnly) items = items.filter((it) => it.bookmarked)
     if (tagFilter.length) items = items.filter((it) => tagFilter.every((tag) => it.tags.includes(tag)))
 
     const byBook = (x: typeof items[number], y: typeof items[number]) => {
@@ -1160,7 +1164,7 @@ export default function App() {
       return dir * byBook(x, y)
     })
     return items
-  }, [store, index, labelFor, sort, asc, thisBook, tagFilter, pos.slug])
+  }, [store, index, labelFor, sort, asc, thisBook, bookmarksOnly, tagFilter, pos.slug])
 
   /** Move one note within the hand-arranged order, persisting the whole list. */
   const moveNote = useCallback(
@@ -1250,7 +1254,17 @@ export default function App() {
         </div>
       )}
 
-      <main className="reader" ref={readerRef} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+      <main
+        className="reader"
+        ref={readerRef}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+        // Tapping the page away from a verse puts the action bar away. The verse rows
+        // and the bar itself both stop this from reaching here.
+        onClick={(e) => {
+          if (!(e.target as HTMLElement).closest('.verse')) setBarAt(null)
+        }}
+      >
         <h1 className="ref">
           {wide && !flow ? (
             <>{title} {pos.chapter}</>
@@ -1333,14 +1347,19 @@ export default function App() {
                           key={v.v}
                           id={`v-${l}-${v.v}`}
                           className={`verse ${flashVerse === v.v && pos.lang === l ? 'flash' : ''} ${spk ? 'speaking' : ''}`}
-                          // The whole row opens the verse, not just the glyphs: beside a
-                          // short verse there is a lot of empty column, and tapping it and
-                          // getting nothing reads as a broken control on a phone.
+                          // The whole row opens the action bar, not just the glyphs: beside
+                          // a short verse there is a lot of empty column, and tapping it and
+                          // getting nothing reads as a broken control on a phone. Tapping
+                          // the same verse again puts the bar away.
                           onClick={(e) => {
                             // The controls inside keep their own behaviour.
                             if ((e.target as HTMLElement).closest('button')) return
                             if (!window.getSelection()?.isCollapsed) return
-                            openVerseAt(l, pos.chapter, v.v)
+                            setBarAt((prev) =>
+                              prev && prev.lang === l && prev.ch === pos.chapter && prev.v === v.v
+                                ? null
+                                : { lang: l, ch: pos.chapter, v: v.v },
+                            )
                           }}
                         >
                           {/* The number is the verse's identity, so tapping it copies a
@@ -1348,14 +1367,10 @@ export default function App() {
                           <button className="vn" title={t('copy_link')} onClick={() => copyVerseLink(l, v.v)}>
                             {v.v}
                           </button>
-                          {playable && text && (
-                            <button
-                              className={`vplay ${spk ? 'on' : ''}`}
-                              title={spk ? t('stop') : t('play_verse')}
-                              onClick={() => (spk ? stopAudio() : playVerse(l, pos.chapter, v.v, text))}
-                            >
-                              <Icon name={spk ? 'stop' : 'play'} size={11} />
-                            </button>
+                          {ann?.bookmarked && (
+                            <span className="mk bm" title={t('bookmark')}>
+                              <Icon name="bookmarked" size={12} />
+                            </span>
                           )}
                           {ann?.note && (
                             <button className="mk note" title={t('note')} onClick={() => setNoteRef(ref)}>
@@ -1370,6 +1385,32 @@ export default function App() {
                               highlights={ann?.highlights?.filter((h) => h.lang === l)}
                             />
                           </span>
+                          {barAt?.lang === l && barAt.ch === pos.chapter && barAt.v === v.v && (
+                            <VerseBar
+                              t={t}
+                              hasHL={!!ann?.highlights?.some((h) => h.lang === l)}
+                              bookmarked={!!ann?.bookmarked}
+                              canListen={playable && !!text}
+                              onColour={(c) => {
+                                // One colour per verse: without the clear, every tap of a
+                                // different colour would leave the previous range stored
+                                // under the new one.
+                                clearHighlightsIn(ref, l, 0, Number.MAX_SAFE_INTEGER)
+                                addHighlight(ref, { lang: l, start: 0, end: Number.MAX_SAFE_INTEGER, color: c })
+                              }}
+                              onClearHL={() => clearHighlightsIn(ref, l, 0, Number.MAX_SAFE_INTEGER)}
+                              onBookmark={() => toggleBookmark(ref)}
+                              onNote={() => { setNoteRef(ref); setBarAt(null) }}
+                              onListen={() => { playFrom(l, pos.chapter, v.v); setBarAt(null) }}
+                              onStudy={() => { openVerseAt(l, pos.chapter, v.v); setBarAt(null) }}
+                              onCopyText={() => {
+                                if (text) copyVerseText(l, pos.chapter, v.v, text)
+                                setBarAt(null)
+                              }}
+                              onCopyLink={() => { copyVerseLink(l, v.v); setBarAt(null) }}
+                              onInvite={() => { setInviteFor(v.v); setBarAt(null) }}
+                            />
+                          )}
                         </li>
                       )
                     })}
@@ -1468,11 +1509,13 @@ export default function App() {
         sort={sort}
         asc={asc}
         thisBook={thisBook}
+        bookmarksOnly={bookmarksOnly}
         tagFilter={tagFilter}
         tags={tags}
         onSort={setSort}
         onAsc={setAsc}
         onThisBook={setThisBook}
+        onBookmarksOnly={setBookmarksOnly}
         onToggleTag={(tag) =>
           setTagFilter((prev) => (prev.includes(tag) ? prev.filter((x) => x !== tag) : [...prev, tag]))
         }

@@ -20,6 +20,13 @@ const BASE = {
   voice: 'male', swipe: false, flow: false, stopAtChapterEnd: false, ui: 'en',
 }
 
+// A verse tap opens the action bar; Study is what opens the sheet.
+async function openStudy(page, sel) {
+  await page.locator(sel).click()
+  await page.locator(`${sel} .vbtn.study`).click()
+  await page.locator('.verse-sheet').waitFor({ state: 'visible' })
+}
+
 async function open(prefs = BASE, { mobile = false, hash = '' } = {}) {
   const ctx = await browser.newContext(
     mobile
@@ -50,7 +57,7 @@ console.log('\nConcordance opens instantly')
   // so count only the card request here and assert the warm-up separately below.
   const isCard = (u) => u.includes('/data/concordance/') && !u.includes('-def.json')
   const cardsBefore = requests.filter(isCard).length
-  await page.locator('#v-en-13').click()
+  await openStudy(page, '#v-en-13')
   await page.locator('.strongs .conclist li').first().waitFor({ state: 'visible', timeout: 2000 })
   const cardsAfter = requests.filter(isCard).length
   check('renders with no further card fetch', cardsAfter === cardsBefore, `${cardsAfter - cardsBefore} extra`)
@@ -79,7 +86,7 @@ console.log('\nPronounce buttons')
 {
   const { ctx, page } = await open(BASE, { hash: '#/1-corinthians/13/en' })
   await page.waitForTimeout(1800)
-  await page.locator('#v-en-13').click()
+  await openStudy(page, '#v-en-13')
   await page.locator('.strongs .conclist li').first().waitFor({ state: 'visible', timeout: 3000 })
   const rows = await page.locator('.strongs .conclist li').count()
   const speak = await page.locator('.strongs .cspeak').count()
@@ -106,7 +113,7 @@ console.log('\nPronounce buttons')
   await ctx.close()
   const ot = await open(BASE, { hash: '#/genesis/1/en' })
   await ot.page.waitForTimeout(1800)
-  await ot.page.locator('#v-en-1').click()
+  await openStudy(ot.page, '#v-en-1')
   await ot.page.locator('.strongs .conclist li').first().waitFor({ state: 'visible', timeout: 3000 })
   const hl = await ot.page.locator('.strongs .cspeak').first().getAttribute('aria-label')
   check('Hebrew lemma gets a button too', /[֑-ׇא-ת]/.test(hl || ''), hl || '')
@@ -149,7 +156,7 @@ console.log('\nStale cache cannot blank the panel')
   })
   await page.reload({ waitUntil: 'networkidle' })
   await page.waitForTimeout(2000)
-  await page.locator('#v-en-13').click()
+  await openStudy(page, '#v-en-13')
   await page.locator('.verse-sheet').waitFor({ state: 'visible' })
   await page.waitForTimeout(800)
   const panels = await page.locator('.strongs').count()
@@ -178,7 +185,7 @@ console.log('\nLoading indicator')
   })
   await page.goto(URL + '#/john/3/en', { waitUntil: 'domcontentloaded' })
   await page.waitForTimeout(500)
-  await page.locator('#v-en-16').click()
+  await openStudy(page, '#v-en-16')
   await page.locator('.strongs').waitFor({ state: 'visible', timeout: 5000 })
   const spinner = await page.locator('.strongs .spin').count()
   const text = await page.locator('.strongs .loadrow').innerText().catch(() => '')
@@ -194,7 +201,7 @@ console.log('\nPronounce glyph')
 {
   const { ctx, page } = await open(BASE, { hash: '#/1-corinthians/13/en' })
   await page.waitForTimeout(1800)
-  await page.locator('#v-en-13').click()
+  await openStudy(page, '#v-en-13')
   await page.locator('.strongs .conclist li').first().waitFor({ state: 'visible', timeout: 3000 })
   // These used to assert the button held a literal ▶ and that it matched the verse
   // play button's glyph. Both are gone: the design system bans glyph-as-icon, and the
@@ -212,7 +219,7 @@ console.log('\nGlossary (older words)')
 {
   const { ctx, page } = await open(BASE, { hash: '#/1-corinthians/13/en' })
   await page.waitForTimeout(1800)
-  await page.locator('#v-en-13').click()
+  await openStudy(page, '#v-en-13')
   await page.locator('.gloss .conclist li').first().waitFor({ state: 'visible', timeout: 5000 })
   const txt = await page.locator('.gloss').innerText()
   check('shows the false friend', /charity/.test(txt), txt.split('\n').slice(0, 4).join(' | '))
@@ -240,7 +247,7 @@ console.log('\nGlossary precision')
 {
   const { ctx, page } = await open(BASE, { hash: '#/john/3/en' })
   await page.waitForTimeout(1800)
-  await page.locator('#v-en-16').click()
+  await openStudy(page, '#v-en-16')
   await page.locator('.verse-sheet').waitFor({ state: 'visible' })
   await page.waitForTimeout(600)
   check('no panel when a verse has nothing archaic', await page.locator('.gloss').count() === 0)
@@ -249,14 +256,14 @@ console.log('\nGlossary precision')
   // `let` means hinder in three verses and allow in hundreds; only the three are tagged.
   const a = await open(BASE, { hash: '#/romans/1/en' })
   await a.page.waitForTimeout(1800)
-  await a.page.locator('#v-en-13').click()
+  await openStudy(a.page, '#v-en-13')
   await a.page.locator('.gloss').waitFor({ state: 'visible', timeout: 5000 })
   check('rare sense tagged where it applies', /let/.test(await a.page.locator('.gloss').innerText()))
   await a.ctx.close()
 
   const b = await open(BASE, { hash: '#/romans/5/en' })
   await b.page.waitForTimeout(1800)
-  await b.page.locator('#v-en-3').click()
+  await openStudy(b.page, '#v-en-3')
   await b.page.locator('.verse-sheet').waitFor({ state: 'visible' })
   await b.page.waitForTimeout(600)
   const bt = (await b.page.locator('.gloss').count()) ? await b.page.locator('.gloss').innerText() : ''
@@ -266,7 +273,7 @@ console.log('\nGlossary precision')
   // A derived Webster entry, badged so its provenance is visible.
   const c = await open(BASE, { hash: '#/1-chronicles/29/en' })
   await c.page.waitForTimeout(1800)
-  await c.page.locator('#v-en-4').click()
+  await openStudy(c.page, '#v-en-4')
   await c.page.locator('.gloss').waitFor({ state: 'visible', timeout: 5000 })
   const ct = await c.page.locator('.gloss').innerText()
   check('derived archaic word shown', /withal/.test(ct), ct.replace(/\n/g, ' ').slice(0, 60))
@@ -276,7 +283,7 @@ console.log('\nGlossary precision')
   // Not the KJV: no glossary, and the cross-edition fallback instead.
   const d = await open(BASE, { hash: '#/1-corinthians/13/ja' })
   await d.page.waitForTimeout(1500)
-  await d.page.locator('#v-ja-13').click()
+  await openStudy(d.page, '#v-ja-13')
   await d.page.locator('.verse-sheet').waitFor({ state: 'visible' })
   check('absent for a non-KJV edition', await d.page.locator('.gloss').count() === 0)
   check('which falls back to comparing', await d.page.locator('.compare .crow').count() === 3)
@@ -287,7 +294,7 @@ console.log('\nGlossary precision')
 console.log('\nCard shows one edition')
 {
   const { ctx, page } = await open(BASE, { hash: '#/john/3/en' })
-  await page.locator('#v-en-16').click()
+  await openStudy(page, '#v-en-16')
   await page.locator('.verse-sheet').waitFor({ state: 'visible' })
   check('exactly one edition row', await page.locator('.compare .crow').count() === 1, `${await page.locator('.compare .crow').count()}`)
   const row = await page.locator('.compare .crow').innerText()
@@ -296,7 +303,7 @@ console.log('\nCard shows one edition')
 
   // An edition with no word panel falls back to comparing across editions.
   const j = await open(BASE, { hash: '#/john/3/ja' })
-  await j.page.locator('#v-ja-16').click()
+  await openStudy(j.page, '#v-ja-16')
   await j.page.locator('.verse-sheet').waitFor({ state: 'visible' })
   const jrows = await j.page.locator('.compare .crow').count()
   check('no panel yet for the 文語訳', await j.page.locator('.strongs').count() === 0)
@@ -309,7 +316,7 @@ console.log('\nMobile')
 {
   const { ctx, page } = await open(BASE, { mobile: true, hash: '#/1-corinthians/13/en' })
   await page.waitForTimeout(1800)
-  await page.locator('#v-en-13').click()
+  await openStudy(page, '#v-en-13')
   await page.locator('.strongs .conclist li').first().waitFor({ state: 'visible', timeout: 3000 })
   const box = await page.locator('.strongs .crowbtn').first().boundingBox()
   check('row is a 44px touch target', box.height >= 44, `${Math.round(box.height)}px`)

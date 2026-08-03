@@ -20,6 +20,14 @@ const check = (name, ok, detail = '') => {
 const browser = await chromium.launch()
 
 /** Fresh context with prefs seeded before the app boots. */
+// The verse sheet is now two taps away: a verse tap opens the action bar, and only
+// its Study button opens the sheet.
+async function openStudy(page, sel = '#v-en-16', position = { x: 300, y: 8 }) {
+  await page.locator(sel).click({ position })
+  await page.locator(`${sel} .vbtn.study`).click()
+  await page.waitForSelector('.verse-sheet')
+}
+
 async function open(prefs, { mobile = false, hash = '' } = {}) {
   const ctx = await browser.newContext(
     mobile
@@ -320,8 +328,7 @@ console.log('\nInvite links')
   // Sending: the builder picks which editions to share, and their order.
   const { ctx: c2, page: p2 } = await open({ ...BASE, ui: 'en', columns: ['en', 'ja'] }, { hash: '#/matthew/15/en' })
   await p2.waitForSelector('.verse')
-  await p2.locator('#v-en-3').click({ position: { x: 300, y: 8 } })
-  await p2.waitForSelector('.verse-sheet')
+  await openStudy(p2, '#v-en-3')
   await p2.locator('.verse-sheet .sheet-foot .mini').nth(3).click()   // Copy invite
   await p2.waitForSelector('.sheet.invite')
   check('builder lists the sender’s editions first', (await p2.locator('.sheet.invite .colrow:not(.off)').count()) === 2)
@@ -347,8 +354,7 @@ console.log('\nVerse sheet')
 {
   const { ctx, page } = await open({ ...BASE, ui: 'en', columns: ['en', 'fr'] }, { hash: '#/john/3/en' })
   await page.waitForSelector('.verse')
-  await page.locator('#v-en-16').click({ position: { x: 300, y: 8 } })
-  await page.waitForSelector('.verse-sheet')
+  await openStudy(page)
   check('only visible editions are compared', (await page.locator('.verse-sheet .crow').count()) === 2)
   check('no whole-verse colour swatches', (await page.locator('.verse-sheet .hlctl').count()) === 0)
 
@@ -371,7 +377,7 @@ console.log('\nVerse sheet')
   check('only the selected words are highlighted', painted.join('') === 'For God so ', `got "${painted.join('')}"`)
   check('reader shows the same partial highlight', (await page.locator('#v-en-16 .hl.hl-blue').count()) > 0)
   await page.screenshot({ path: `${OUT}/10-versesheet.png` })
-  await page.locator('.verse-sheet .abtn.tiny').click()
+  await page.locator('.verse-sheet .clearhl').click()
   await page.waitForTimeout(250)
   check('per-edition clear removes it', (await page.locator('#sv-en-3-16 .ctext .hl').count()) === 0)
   await ctx.close()
@@ -462,22 +468,18 @@ console.log('\nVerse row is the tap target')
   check('the row extends well past the text', box.x + box.width - textRight > 200,
     `${Math.round(box.x + box.width - textRight)}px of empty row`)
   await page.mouse.click(box.x + box.width - 12, box.y + box.height / 2)
-  await page.waitForSelector('.verse-sheet', { timeout: 3000 })
-  check('tapping empty space in the row opens the verse', /11:35/.test(await page.locator('.verse-sheet b').innerText()))
+  await page.waitForSelector('#v-en-35 .vbar', { timeout: 3000 })
+  check('tapping empty space in the row opens the action bar', true)
+  await page.locator('#v-en-35 .vbtn.study').click()
+  await page.waitForSelector('.verse-sheet')
+  check('and Study opens that verse', /11:35/.test(await page.locator('.verse-sheet .sheet-head b').innerText()))
   await page.keyboard.press('Escape')
   await page.waitForTimeout(250)
 
   // The controls inside the row must keep their own behaviour.
-  const play = page.locator('#v-en-35 .vplay')
-  if (await play.count()) {
-    await play.click()
-    await page.waitForTimeout(300)
-    check('the play control does not open the sheet', (await page.locator('.verse-sheet').count()) === 0)
-    await page.locator('#v-en-35 .vplay').click().catch(() => {})
-    await page.waitForTimeout(200)
-  } else {
-    check('the play control does not open the sheet', true, 'no voice on this machine, skipped')
-  }
+  await page.locator('#v-en-35 .vn').click()
+  await page.waitForTimeout(300)
+  check('the verse number does not open the bar', (await page.locator('.vbar').count()) === 0)
   await ctx.close()
 }
 
@@ -486,8 +488,7 @@ console.log('\nNotes drawer')
 {
   const { ctx, page } = await open({ ...BASE, ui: 'en', columns: ['en'] }, { hash: '#/john/3/en' })
   await page.waitForSelector('.verse')
-  await page.locator('#v-en-16').click({ position: { x: 300, y: 8 } })
-  await page.waitForSelector('.verse-sheet')
+  await openStudy(page)
   await page.locator('.verse-sheet .primary').click()
   await page.waitForSelector('.notearea')
   await page.locator('.notearea').fill('God so loved the world')
@@ -500,8 +501,7 @@ console.log('\nNotes drawer')
   await page.waitForTimeout(250)
 
   // A second note should offer the first note's tags as dimmed, clickable chips.
-  await page.locator('#v-en-17').click({ position: { x: 300, y: 8 } })
-  await page.waitForSelector('.verse-sheet')
+  await openStudy(page, '#v-en-17')
   await page.locator('.verse-sheet .primary').click()
   await page.waitForSelector('.notearea')
   const dim = await page.locator('.tagedit .chip.dim').allInnerTexts()
@@ -765,12 +765,15 @@ console.log('\nSettings: stop at chapter end + licences sheet')
 
   // With nothing to show, the sheet must be evenly padded: an empty results
   // container used to leave more space under the field than above it.
+  // Measured from the field, not from the head box: the head carries its own top
+  // padding now, so the gap between the sheet and the head is zero by construction
+  // and says nothing about what the reader sees.
   const pad = await page.evaluate(() => {
     const sh = document.querySelector('.sheet.search').getBoundingClientRect()
-    const hd = document.querySelector('.sheet.search .sheet-head').getBoundingClientRect()
+    const inp = document.querySelector('.searchin').getBoundingClientRect()
     const rs = document.querySelector('.sheet.search .results')
-    const last = rs && rs.getBoundingClientRect().height ? rs.getBoundingClientRect() : hd
-    return { top: Math.round(hd.top - sh.top), bottom: Math.round(sh.bottom - last.bottom) }
+    const last = rs && rs.getBoundingClientRect().height ? rs.getBoundingClientRect() : inp
+    return { top: Math.round(inp.top - sh.top), bottom: Math.round(sh.bottom - last.bottom) }
   })
   check('empty search sheet is evenly padded', Math.abs(pad.top - pad.bottom) <= 2,
     `${pad.top}px top vs ${pad.bottom}px bottom`)
@@ -856,7 +859,7 @@ console.log('\nPanel consistency')
     ['saved', async () => page.locator('.tools .icon').nth(1).click()],
     ['settings', async () => page.locator('.tools .icon').nth(2).click()],
     ['navigator', async () => page.locator('.navbtn').click()],
-    ['verse', async () => page.locator('#v-en-16').click({ position: { x: 300, y: 8 } })],
+    ['verse', async () => openStudy(page)],
     ['licences', async () => page.locator('.attrib .liclink').click()],
   ]
   const results = []
@@ -950,7 +953,7 @@ console.log('\nTouch targets and control spacing')
     ['saved', async (p) => p.locator('.tools .icon').nth(1).click()],
     ['settings', async (p) => p.locator('.tools .icon').nth(2).click()],
     ['navigator', async (p) => p.locator('.navbtn').click()],
-    ['verse', async (p) => p.locator('#v-en-16').click({ position: { x: 200, y: 8 } })],
+    ['verse', async (p) => openStudy(p, '#v-en-16', { x: 200, y: 8 })],
   ]
   for (const [name, open_] of surfaces) {
     if (open_) {

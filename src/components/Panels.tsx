@@ -427,6 +427,7 @@ export interface DrawerItem {
   note?: string
   tags: string[]
   colors: HColor[]
+  bookmarked: boolean
   createdAt?: number
   updatedAt?: number
 }
@@ -440,11 +441,13 @@ export function Drawer({
   sort,
   asc,
   thisBook,
+  bookmarksOnly,
   tagFilter,
   tags,
   onSort,
   onAsc,
   onThisBook,
+  onBookmarksOnly,
   onToggleTag,
   onDeleteTag,
   onCreateTags,
@@ -463,11 +466,13 @@ export function Drawer({
   sort: SortMode
   asc: boolean
   thisBook: boolean
+  bookmarksOnly: boolean
   tagFilter: string[]
   tags: string[]
   onSort: (s: SortMode) => void
   onAsc: (v: boolean) => void
   onThisBook: (v: boolean) => void
+  onBookmarksOnly: (v: boolean) => void
   onToggleTag: (tag: string) => void
   /** Remove a tag from every note that carries it. */
   onDeleteTag: (tag: string) => void
@@ -510,6 +515,10 @@ export function Drawer({
             <label className="dcheck">
               <input type="checkbox" checked={thisBook} onChange={(e) => onThisBook(e.target.checked)} />
               <span>{t('this_book')}</span>
+            </label>
+            <label className="dcheck">
+              <input type="checkbox" checked={bookmarksOnly} onChange={(e) => onBookmarksOnly(e.target.checked)} />
+              <span>{t('bookmarks')}</span>
             </label>
           </div>
           {/* Rendered even with no tags yet, otherwise there is nowhere to create
@@ -597,6 +606,7 @@ export function Drawer({
                 <button className="dref" onClick={() => onJump(it.ref)}>
                   <span className="dlabel">
                     {it.label}
+                    {it.bookmarked && <span className="dtag"><Icon name="bookmarked" size={12} /></span>}
                     {it.colors.map((c, k) => (
                       <span key={k} className={`dot sw-${c}`} />
                     ))}

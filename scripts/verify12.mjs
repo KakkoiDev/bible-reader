@@ -36,8 +36,11 @@ async function open({ mobile = false, hash = '' } = {}) {
   return { ctx, page }
 }
 
+// The sheet is now two taps away: the verse opens the bar, and Study opens the sheet.
 async function openVerseSheet(page, id = '#v-en-13') {
   await page.locator(id).click()
+  await page.locator(`${id} .vbar`).waitFor({ state: 'visible' })
+  await page.locator(`${id} .vbtn.study`).click()
   await page.locator('.verse-sheet').waitFor({ state: 'visible' })
   await page.waitForTimeout(900) // the concordance card lands and grows the body
 }
@@ -75,16 +78,20 @@ async function dragDown(page, box, dy, { startY = box.y + box.height / 2 } = {})
 // ---------- 0. precondition ----------
 // Everything below addresses the shell's parts by name. Without the shell the suite
 // would time out on a locator and print a stack trace, which says nothing.
-console.log('\nThe shell is in the build')
+console.log('\nThe shell and the bar are in the build')
 {
   const { ctx, page } = await open({ mobile: true, hash: '#/john/3/en' })
   await page.locator('#v-en-16').click()
-  await page.locator('.sheet').waitFor({ state: 'visible' })
+  await page.waitForTimeout(400)
+  const bar = (await page.locator('#v-en-16 .vbar').count()) === 1
+  check('a verse tap opens the action bar', bar)
+  if (bar) await page.locator('#v-en-16 .vbtn.study').click()
+  await page.locator('.sheet').waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
   const absent = await page.evaluate(() =>
     ['.sheet-grab', '.sheet-head', '.sheet-body', '.sheet-foot'].filter((s) => !document.querySelector(s)))
   check('handle, head, body and footer all exist', absent.length === 0, `missing ${absent.join(' ')}`)
   await ctx.close()
-  if (absent.length) {
+  if (!bar || absent.length) {
     await browser.close()
     console.log(`\n${failures} check(s) failed\n`)
     process.exit(1)
@@ -231,7 +238,115 @@ console.log('\nAll sheets use the shell')
   await shell('search', () => page.locator('.icon[title="Search"]').click())
   await shell('settings', () => page.locator('.icon[title="Settings"]').click())
   await shell('saved', () => page.locator('.icon[title^="Saved"]').click())
-  await shell('verse', () => page.locator('#v-en-16').click())
+  await shell('verse', () => openVerseSheet(page, '#v-en-16'))
+  await ctx.close()
+}
+
+// ---------- 6. the verse action bar ----------
+console.log('\nVerse action bar')
+{
+  const { ctx, page } = await open({ mobile: true, hash: '#/john/3/en' })
+  await page.locator('#v-en-16').click()
+  await page.locator('#v-en-16 .vbar').waitFor({ state: 'visible' })
+  check('tapping a verse opens the bar', await page.locator('.vbar').count() === 1)
+  check('and does NOT open the sheet', await page.locator('.verse-sheet').count() === 0)
+  check('there is no per-verse play button left', await page.locator('.vplay').count() === 0)
+
+  const cells = page.locator('#v-en-16 .vbar .vbtn')
+  check('six controls', await cells.count() === 6, `${await cells.count()}`)
+  const labels = await cells.evaluateAll((els) =>
+    els.map((e) => e.getAttribute('aria-label') || e.textContent.trim()))
+  check('highlight, share, bookmark, note, listen, Study',
+    JSON.stringify(labels) === JSON.stringify(['Highlight', 'Share', 'Bookmark', 'Add note', 'Listen from here', 'Study']),
+    labels.join(' | '))
+
+  const boxes = await cells.evaluateAll((els) => els.map((e) => {
+    const r = e.getBoundingClientRect()
+    return [Math.round(r.width), Math.round(r.height)]
+  }))
+  check('every control is a 44pt target', boxes.every(([w, h]) => w >= 44 && h >= 44), JSON.stringify(boxes))
+  const rows = new Set(await cells.evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top))))
+  check('the row does not wrap at 390px', rows.size === 1, `${rows.size} row(s)`)
+
+  // Tapping another verse moves the bar; tapping the same one puts it away.
+  await page.locator('#v-en-17').click()
+  check('one bar at a time', await page.locator('.vbar').count() === 1)
+  check('and it moved to the tapped verse', await page.locator('#v-en-17 .vbar').count() === 1)
+  await page.locator('#v-en-17').click()
+  check('tapping the same verse closes it', await page.locator('.vbar').count() === 0)
+  await ctx.close()
+}
+
+console.log('\nBar actions')
+{
+  const { ctx, page } = await open({ mobile: true, hash: '#/john/3/en' })
+  await page.locator('#v-en-16').click()
+
+  // Highlight swaps the row in place rather than opening anything.
+  await page.locator('#v-en-16 .vbar .vbtn').first().click()
+  await page.locator('#v-en-16 .vbar .swatch').first().waitFor({ state: 'visible' })
+  check('highlight swaps the row in place', await page.locator('.sheet').count() === 0)
+  check('five colours, no clear yet', await page.locator('#v-en-16 .vbar .swatch').count() === 5)
+  await page.locator('#v-en-16 .vbar .sw-blue').click()
+  await page.waitForTimeout(200)
+  check('the whole verse is tinted', await page.locator('#v-en-16 .hl.hl-blue').count() > 0)
+  check('and the row is back to its six', await page.locator('#v-en-16 .vbar .vbtn').count() === 6)
+
+  await page.locator('#v-en-16 .vbar .vbtn').first().click()
+  check('now clear is the sixth swatch', await page.locator('#v-en-16 .vbar .swatch').count() === 6)
+  await page.locator('#v-en-16 .vbar .swatch.nocolour').click()
+  await page.waitForTimeout(200)
+  check('and it removes the tint', await page.locator('#v-en-16 .hl').count() === 0)
+
+  // Bookmark completes on the tap: no sheet, and it survives a reload.
+  await page.locator('#v-en-16 .vbar .vbtn').nth(2).click()
+  await page.waitForTimeout(200)
+  check('bookmark opens nothing', await page.locator('.sheet').count() === 0)
+  check('the bar stays open', await page.locator('#v-en-16 .vbar').count() === 1)
+  check('the verse is marked in the reader', await page.locator('#v-en-16 .mk.bm').count() === 1)
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('annotations.v1') || '{}'))
+  check('and it is written to storage', saved['john.3.16']?.bookmarked === true, JSON.stringify(saved['john.3.16']))
+
+  await page.reload({ waitUntil: 'networkidle' })
+  await page.waitForSelector('.verse')
+  check('a bookmark with nothing else survives a reload', await page.locator('#v-en-16 .mk.bm').count() === 1)
+
+  // Share holds three things and opens no sheet of its own.
+  await page.locator('#v-en-16').click()
+  await page.locator('#v-en-16 .vbar .vbtn').nth(1).click()
+  await page.waitForTimeout(150)
+  check('share swaps the row too', await page.locator('.sheet').count() === 0)
+  check('back plus three actions', await page.locator('#v-en-16 .vbar .vbtn').count() === 4)
+  await page.locator('#v-en-16 .vbar .vbtn').first().click()
+  check('back returns to the six', await page.locator('#v-en-16 .vbar .vbtn').count() === 6)
+
+  // Study is the one control that opens the sheet.
+  await page.locator('#v-en-16 .vbtn.study').click()
+  await page.locator('.verse-sheet').waitFor({ state: 'visible' })
+  check('Study opens the sheet', await page.locator('.verse-sheet').count() === 1)
+  check('and closes the bar', await page.locator('.vbar').count() === 0)
+  await ctx.close()
+}
+
+console.log('\nBookmarks in the Saved drawer')
+{
+  const { ctx, page } = await open({ mobile: true, hash: '#/john/3/en' })
+  await page.evaluate(() => {
+    localStorage.setItem('annotations.v1', JSON.stringify({
+      'john.3.16': { bookmarked: true, createdAt: 1, updatedAt: 1 },
+      'genesis.1.1': { note: 'a note', createdAt: 2, updatedAt: 2 },
+    }))
+  })
+  await page.reload({ waitUntil: 'networkidle' })
+  await page.locator('.icon[title^="Saved"]').click()
+  await page.locator('.sheet.saved').waitFor({ state: 'visible' })
+  check('a bookmark-only verse is listed', await page.locator('.dlist li').count() === 2,
+    `${await page.locator('.dlist li').count()}`)
+  await page.locator('.dcheck', { hasText: 'Bookmarks' }).locator('input').check()
+  await page.waitForTimeout(200)
+  const rows = await page.locator('.dlist li').count()
+  check('the filter leaves only the bookmark', rows === 1, `${rows}`)
+  check('and it is John 3:16', /John 3:16/.test(await page.locator('.dlist li').innerText()))
   await ctx.close()
 }
 
