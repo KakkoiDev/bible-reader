@@ -18,8 +18,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      # Project sites are served under /<repo>/ — build with that base path.
-      BASE_PATH: /${{ github.event.repository.name }}/
+      # The site is served from its own domain (public/CNAME), so assets resolve at the
+      # root. A project site under /<repo>/ would need BASE_PATH=/bible-reader/ here,
+      # and the manifest's start_url and scope follow whatever this is set to.
+      BASE_PATH: /
       # Don't download Playwright browsers during install (dev-only dependency).
       PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
     steps:

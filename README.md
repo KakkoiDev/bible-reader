@@ -341,7 +341,7 @@ available offline from then on.
 
 ## Deploy
 
-**Live: <https://kakkoidev.github.io/bible-reader/>**
+**Live: <https://bible.kakkoi.dev/>**
 
 ### How it works
 
@@ -361,9 +361,13 @@ You can also trigger it by hand from the Actions tab (the workflow declares
 
 Two details that matter:
 
-- **`BASE_PATH` is set by the workflow**, to `/${{ github.event.repository.name }}/`
-  — i.e. `/bible-reader/`. Project Pages sites are served from a subpath, and Vite
-  needs `base` to match or every asset 404s. You never set this manually for CI.
+- **`BASE_PATH` is `/`, and `public/CNAME` is why.** The site answers on its own
+  domain, so assets resolve at the root. `CNAME` ships in `dist/`, which is how Pages
+  keeps the custom domain across deploys instead of losing it on every publish. Going
+  back to a project site under `kakkoidev.github.io/bible-reader/` means deleting
+  `public/CNAME` *and* setting `BASE_PATH: /bible-reader/` in the workflow: the two
+  have to agree or every asset 404s. `start_url` and `scope` in the manifest follow
+  `base`, so the service worker's scope moves with it.
 - **CI runs `npm run build`, not `npm run fetch`.** The build only reads
   `data-src/*.md`, so **the source Markdown must be committed**. This is why those
   files are in git despite being ~50 MB: it keeps the build reproducible and offline,
@@ -380,21 +384,26 @@ Then confirm the live site is really serving the new build — a green run only 
 the artifact uploaded:
 
 ```bash
-U=https://kakkoidev.github.io/bible-reader/
+U=https://bible.kakkoi.dev/
 curl -s -o /dev/null -w '%{http_code}\n' $U
+curl -s $U | grep -o 'href="/assets[^"]*"' | head -1    # root-relative, not /bible-reader/
 curl -s -o /dev/null -w '%{http_code}\n' ${U}data/index.json
 curl -s -o /dev/null -w '%{http_code}\n' ${U}data/ar/matthew.json   # an opt-in edition
 ```
 
 ### Before you push
 
-The subpath build is the one that ships, and it is *not* what `npm run build`
-produces locally. Test it the way CI will:
+CI builds with `BASE_PATH=/`, which is also the local default, so what you build is
+what ships. Two things to confirm:
 
 ```bash
-BASE_PATH=/bible-reader/ npm run build
-grep -o 'href="[^"]*favicon[^"]*"' dist/index.html   # expect /bible-reader/favicon.svg
+npm run build
+grep -o 'href="[^"]*favicon[^"]*"' dist/index.html   # expect /favicon.svg
+cat dist/CNAME                                       # expect bible.kakkoi.dev
 ```
+
+`dist/CNAME` missing means Pages drops the custom domain on the next publish and the
+site starts 404ing.
 
 Worth a glance at the build output too — `precache N entries (M KiB)` should stay
 around **215 entries / ~18 MB**. If it jumps toward 55 MB, `workbox.globPatterns` in
