@@ -9,6 +9,7 @@ import { verseGloss, type GlossWord, type GlossKind } from '../lib/glossary'
 import type { T, StringKey } from '../lib/i18n'
 import { coverageNote } from './Panels'
 import { Icon } from './Icon'
+import { Sheet } from './Sheet'
 
 /* ------------------------------- Search ------------------------------- */
 export function SearchSheet({
@@ -108,19 +109,21 @@ export function SearchSheet({
     return { parts, lead: from > 0, tail: to < h.text.length }
   }
   return (
-    <div className="sheet-backdrop" onClick={onClose}>
-      <div className="sheet search" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet-head">
-          <input
-            className="searchin"
-            autoFocus
-            placeholder={t('search_placeholder')}
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
-          <button className="icon" onClick={onClose} aria-label={t('close')}><Icon name="close" /></button>
-        </div>
-        {hasResults && (
+    <Sheet
+      variant="search"
+      onClose={onClose}
+      closeLabel={t('close')}
+      title={
+        <input
+          className="searchin"
+          autoFocus
+          placeholder={t('search_placeholder')}
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+      }
+    >
+      {hasResults && (
         <div className="results">
           {jump && (
             <button className="dref go" onClick={() => onNavigate(jump.slug, jump.ch, jump.v)}>
@@ -153,9 +156,8 @@ export function SearchSheet({
             })}
           </ul>
         </div>
-        )}
-      </div>
-    </div>
+      )}
+    </Sheet>
   )
 }
 
@@ -193,35 +195,34 @@ export function Navigator({
     </div>
   )
   return (
-    <div className="sheet-backdrop" onClick={onClose}>
-      <div className="sheet nav" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet-head">
-          <b>{sel ? bookName(sel, ui) : t('choose_book')}</b>
-          <button className="icon" onClick={onClose} aria-label={t('close')}><Icon name="close" /></button>
-        </div>
-        {sel ? (
-          <>
-            <button className="mini back" onClick={() => setBook('')}>
-              <Icon name="prev" size={15} flip /> {t('all_books')}
-            </button>
-            <div className="chgrid">
-              {sel.chapters.map((_, i) => (
-                <button key={i} className="chbtn" onClick={() => onNavigate(sel.slug, i + 1)}>
-                  {i + 1}
-                </button>
-              ))}
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="bgtitle">{t('old_testament')}</div>
-            {grid(index.slice(0, 39))}
-            <div className="bgtitle">{t('new_testament')}</div>
-            {grid(index.slice(39))}
-          </>
-        )}
-      </div>
-    </div>
+    <Sheet
+      variant="nav"
+      onClose={onClose}
+      closeLabel={t('close')}
+      title={<b>{sel ? bookName(sel, ui) : t('choose_book')}</b>}
+    >
+      {sel ? (
+        <>
+          <button className="mini back" onClick={() => setBook('')}>
+            <Icon name="prev" size={15} flip /> {t('all_books')}
+          </button>
+          <div className="chgrid">
+            {sel.chapters.map((_, i) => (
+              <button key={i} className="chbtn" onClick={() => onNavigate(sel.slug, i + 1)}>
+                {i + 1}
+              </button>
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="bgtitle">{t('old_testament')}</div>
+          {grid(index.slice(0, 39))}
+          <div className="bgtitle">{t('new_testament')}</div>
+          {grid(index.slice(39))}
+        </>
+      )}
+    </Sheet>
   )
 }
 
@@ -708,15 +709,25 @@ export function VerseSheet({
     )
   }
   return (
-    <div className="sheet-backdrop" onClick={onClose}>
-      <div className="sheet verse-sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet-head">
-          <b>{data.label}</b>
-          <button className="icon" onClick={onClose} aria-label={t('close')}><Icon name="close" /></button>
-        </div>
-        {/* Only the edition you opened is shown, so it is unambiguous which single verse
-            Copy takes. Saved highlights render here and can be cleared. */}
-        <div className="compare">
+    <Sheet
+      variant="verse-sheet"
+      onClose={onClose}
+      closeLabel={t('close')}
+      title={<b>{data.label}</b>}
+      footer={
+        <>
+          <button className="mini" onClick={onPlay}><Icon name="play" size={15} /> {t('play')}</button>
+          <button className="mini" onClick={onCopyText}>{t('copy_text')}</button>
+          <button className="mini" onClick={onCopyLink}>{t('copy_link')}</button>
+          <button className="mini" onClick={onCopyInvite}>{t('copy_invite')}</button>
+          <span className="spacer" />
+          <button className="primary" onClick={onNote}>{t('note')}</button>
+        </>
+      }
+    >
+      {/* Only the edition you opened is shown, so it is unambiguous which single verse
+          Copy takes. Saved highlights render here and can be cleared. */}
+      <div className="compare">
           {/* id lets selectionContext() resolve a selection made in here, so you can
               highlight by selecting words in the sheet. */}
           <div id={`sv-${l}-${data.ch}-${data.v}`} className="crow" lang={m.htmlLang} dir={m.dir}>
@@ -760,45 +771,36 @@ export function VerseSheet({
                 onGlossClick={l === 'en' ? openGlossEntry : undefined}
               />
             </div>
-          </div>
-        </div>
-        {WORD_PANEL[data.lang]?.includes('glossary') && (
-          <Glossary
-            words={glossWords}
-            open={openGloss}
-            onOpenChange={setOpenGloss}
-            vocabOpen={vocabOpen}
-            onVocabOpenChange={setVocabOpen}
-            spiritualOpen={spiritualOpen}
-            onSpiritualOpenChange={setSpiritualOpen}
-            t={t}
-            canSpeak={canSpeak}
-            onSpeakWord={onSpeakWord}
-          />
-        )}
-        {WORD_PANEL[data.lang]?.includes('concordance') && (
-          <Concordance
-            slug={data.slug}
-            ch={data.ch}
-            v={data.v}
-            orig={origVerse}
-            t={t}
-            canSpeak={canSpeak}
-            onSpeakWord={onSpeakWord}
-            onSpeakVerse={onSpeakVerse}
-            sheetPlaying={sheetPlaying}
-          />
-        )}
-        <div className="noteact wrap">
-          <button className="mini" onClick={onPlay}><Icon name="play" size={15} /> {t('play')}</button>
-          <button className="mini" onClick={onCopyText}>{t('copy_text')}</button>
-          <button className="mini" onClick={onCopyLink}>{t('copy_link')}</button>
-          <button className="mini" onClick={onCopyInvite}>{t('copy_invite')}</button>
-          <span className="spacer" />
-          <button className="primary" onClick={onNote}>{t('note')}</button>
         </div>
       </div>
-    </div>
+      {WORD_PANEL[data.lang]?.includes('glossary') && (
+        <Glossary
+          words={glossWords}
+          open={openGloss}
+          onOpenChange={setOpenGloss}
+          vocabOpen={vocabOpen}
+          onVocabOpenChange={setVocabOpen}
+          spiritualOpen={spiritualOpen}
+          onSpiritualOpenChange={setSpiritualOpen}
+          t={t}
+          canSpeak={canSpeak}
+          onSpeakWord={onSpeakWord}
+        />
+      )}
+      {WORD_PANEL[data.lang]?.includes('concordance') && (
+        <Concordance
+          slug={data.slug}
+          ch={data.ch}
+          v={data.v}
+          orig={origVerse}
+          t={t}
+          canSpeak={canSpeak}
+          onSpeakWord={onSpeakWord}
+          onSpeakVerse={onSpeakVerse}
+          sheetPlaying={sheetPlaying}
+        />
+      )}
+    </Sheet>
   )
 }
 
@@ -848,43 +850,44 @@ export function InviteBuilder({
   }
 
   return (
-    <div className="sheet-backdrop" onClick={onClose}>
-      <div className="sheet invite" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet-head">
-          <b>{t('invite_build_title')}</b>
-          <button className="icon" onClick={onClose} aria-label={t('close')}><Icon name="close" /></button>
-        </div>
-        <p className="empty">{t('invite_build_body')}</p>
-        <div className="collist">
-          {cols.map((l, i) => (
-            <div className="colrow" key={l}>
-              {i === 0 ? <span className="opens">{refLabel}</span> : null}
-              {label(l)}
-              <div className="colctl">
-                <button className="mini" disabled={i === 0} onClick={() => move(l, -1)} aria-label={t('move_up')}>
-                  <Icon name="collapse" size={16} />
-                </button>
-                <button className="mini" disabled={i === cols.length - 1} onClick={() => move(l, 1)} aria-label={t('move_down')}>
-                  <Icon name="expand" size={16} />
-                </button>
-                <button className="mini" disabled={cols.length <= 1} onClick={() => setCols(cols.filter((x) => x !== l))}>
-                  {t('hide')}
-                </button>
-              </div>
-            </div>
-          ))}
-          {VERSIONS.filter((v) => !cols.includes(v.id)).map((v) => (
-            <div className="colrow off" key={v.id}>
-              {label(v.id)}
-              <button className="mini" onClick={() => setCols([...cols, v.id])}>{t('show')}</button>
-            </div>
-          ))}
-        </div>
-        <div className="noteact">
+    <Sheet
+      variant="invite"
+      onClose={onClose}
+      closeLabel={t('close')}
+      title={<b>{t('invite_build_title')}</b>}
+      footer={
+        <>
           <span className="spacer" />
           <button className="primary" onClick={() => onCopy(cols)}>{t('copy_invite')}</button>
-        </div>
+        </>
+      }
+    >
+      <p className="empty">{t('invite_build_body')}</p>
+      <div className="collist">
+        {cols.map((l, i) => (
+          <div className="colrow" key={l}>
+            {i === 0 ? <span className="opens">{refLabel}</span> : null}
+            {label(l)}
+            <div className="colctl">
+              <button className="mini" disabled={i === 0} onClick={() => move(l, -1)} aria-label={t('move_up')}>
+                <Icon name="collapse" size={16} />
+              </button>
+              <button className="mini" disabled={i === cols.length - 1} onClick={() => move(l, 1)} aria-label={t('move_down')}>
+                <Icon name="expand" size={16} />
+              </button>
+              <button className="mini" disabled={cols.length <= 1} onClick={() => setCols(cols.filter((x) => x !== l))}>
+                {t('hide')}
+              </button>
+            </div>
+          </div>
+        ))}
+        {VERSIONS.filter((v) => !cols.includes(v.id)).map((v) => (
+          <div className="colrow off" key={v.id}>
+            {label(v.id)}
+            <button className="mini" onClick={() => setCols([...cols, v.id])}>{t('show')}</button>
+          </div>
+        ))}
       </div>
-    </div>
+    </Sheet>
   )
 }

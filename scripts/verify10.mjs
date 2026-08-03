@@ -322,7 +322,7 @@ console.log('\nInvite links')
   await p2.waitForSelector('.verse')
   await p2.locator('#v-en-3').click({ position: { x: 300, y: 8 } })
   await p2.waitForSelector('.verse-sheet')
-  await p2.locator('.verse-sheet .noteact .mini').nth(3).click()   // Copy invite
+  await p2.locator('.verse-sheet .sheet-foot .mini').nth(3).click()   // Copy invite
   await p2.waitForSelector('.sheet.invite')
   check('builder lists the sender’s editions first', (await p2.locator('.sheet.invite .colrow:not(.off)').count()) === 2)
   check('builder offers the other nine', (await p2.locator('.sheet.invite .colrow.off').count()) === 9)

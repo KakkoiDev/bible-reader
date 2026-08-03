@@ -477,19 +477,49 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: var(--f-ui); }
    not <body>, so the lock has to sit on the document element. */
 html.modal-open { overflow: hidden; }
 .sheet-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.4); z-index: 70; display: flex; }
+/* A flex column with exactly one scroller in it. That is what makes the head and
+   the footer pinned by construction rather than by `position: sticky`, and it is
+   what the design system's sheet anatomy asks for. `overflow: hidden` here clips
+   the body's scroll to the rounded corners. */
 .sheet {
   margin: auto;
+  display: flex;
+  flex-direction: column;
   width: min(440px, 92vw);
   max-height: 92dvh;
-  overflow: auto;
-  /* Keep the sheet's own scroll from chaining out to the page behind it. */
-  overscroll-behavior: contain;
+  overflow: hidden;
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: var(--r-sheet);
-  padding: 16px;
   box-shadow: var(--e-float);
 }
+.sheet-body {
+  flex: 1 1 auto;
+  /* Without this a flex item refuses to shrink below its content, so the sheet
+     grows past 92dvh instead of the body scrolling. */
+  min-height: 0;
+  overflow: auto;
+  /* Keep the sheet's own scroll from chaining out to the page behind it. */
+  overscroll-behavior: contain;
+  padding: 0 16px 16px;
+}
+.sheet-foot {
+  flex: none;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid var(--line);
+  background: var(--card);
+}
+/* A wrapped footer would put the spacer on its own line and push everything after
+   it down a row, which is the opposite of what a spacer is for. */
+.sheet-foot .spacer { flex: 1 1 0; min-width: 0; }
+/* The grab handle is a real element, not a pseudo: the drag has to be able to tell
+   whether the pointer went down on it. Hidden on wide, where the sheet is a
+   centred card and there is no edge to drag it back to. */
+.sheet-grab { display: none; }
 .sheet.note { width: min(520px, 94vw); }
 /* The saved panel used to be a right-edge drawer, the only panel that wasn't a
    centered sheet. It shares the sheet shell now, which also means it no longer
@@ -498,24 +528,18 @@ html.modal-open { overflow: hidden; }
 .sheet.saved { width: min(560px, 94vw); }
 /* gap matters: the close button's hover background sat flush against the search
    input's border without it, which read as the two controls bleeding together.
-   Sticky is not decoration here: a bottom-docked sheet whose whole body scrolls
-   would carry its own close button off the top of the screen. The 16px box-shadow
-   spread is the head's background bleeding out into the sheet's padding, so text
-   scrolling up disappears behind the head instead of into its gutters; the sheet's
-   own overflow clips the halo to the rounded corners. */
+   No sticky and no bleeding box-shadow any more: the head sits outside the
+   scroller, so it cannot scroll away and has nothing to hide text behind. */
 .sheet-head {
-  position: sticky;
-  top: 0;
-  z-index: 2;
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 12px;
+  padding: 16px 16px 12px;
   font-family: var(--f-ui);
   font-size: var(--fs-sheet-title);
   background: var(--card);
-  box-shadow: 0 0 0 16px var(--card);
 }
 .sheet-head .icon { flex: none; }
 /* The whole row is the label, so the row carries the target and the checkbox inside
@@ -529,7 +553,6 @@ html.modal-open { overflow: hidden; }
 .seg button { flex: 1; font-family: var(--f-ui); font-size: 13px; font-weight: 600; padding: 0 13px; background: none; color: var(--muted); border: 0; border-radius: var(--r-control); cursor: pointer; text-transform: capitalize; }
 .seg button.on { background: var(--card); color: var(--fg); box-shadow: var(--e-raised); }
 .notearea { width: 100%; min-height: 150px; box-sizing: border-box; font-family: var(--f-ui); font-size: 15px; padding: 12px 14px; border: 0; border-radius: var(--r-button); background: var(--sunken); color: var(--fg); resize: vertical; }
-.noteact { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
 .spacer { flex: 1; }
 .primary,
 .ghost,
@@ -589,7 +612,7 @@ html.modal-open { overflow: hidden; }
 .searchin::placeholder { color: var(--muted); }
 /* The search field is the whole head, so the gap below it belongs to the results
    block and disappears with it. */
-.sheet.search .sheet-head { margin-bottom: 0; }
+.sheet.search .sheet-head { padding-bottom: 0; }
 .results { margin-top: 14px; }
 .results .dref.go {
   background: var(--accent-bg);
@@ -1099,7 +1122,6 @@ html.modal-open { overflow: hidden; }
   text-transform: none;
   letter-spacing: normal;
 }
-.noteact.wrap { flex-wrap: wrap; }
 
 /* ---------- RTL: the floating toolbar is positioned in raw pixels ---------- */
 [dir='rtl'] .atoolbar.bottom { transform: translateX(50%); }
@@ -1115,10 +1137,6 @@ html.modal-open { overflow: hidden; }
    This block sits at the end of the sheet rules on purpose: `.sheet-backdrop > .sheet`
    ties the specificity of `.sheet.saved` and the other width variants, so source
    order is what decides, and the dock has to win.
-
-   Drag-to-dismiss is not here. The sheets mount and unmount with no transition
-   state, so a drag would have nothing to animate back to; the handle is the
-   affordance for the close button and the backdrop tap, both of which work.
    ============================================================================ */
 @media (max-width: 640px) {
   .sheet-backdrop { align-items: flex-end; }
@@ -1129,29 +1147,20 @@ html.modal-open { overflow: hidden; }
     border: 1px solid var(--line);
     border-bottom: 0;
     border-radius: var(--r-sheet) var(--r-sheet) 0 0;
-    padding-top: 0;
     padding-bottom: var(--safe-bottom);
     box-shadow: var(--e-sheet);
   }
-  /* The grab handle. A full-width sticky band with the pill painted into it, not a
-     bare 42px pill: a bare pill leaves the strip either side of it transparent and
-     the body scrolls up through the gap. It supplies the sheet's top padding as well,
-     which is why padding-top goes to 0 above. A negative top margin would have done
-     the same thing, but sticky resolves its offset against the margin box, so the
-     band would settle 16px lower than the gap it was covering. */
-  .sheet-backdrop > .sheet::before {
-    content: '';
+  /* The grab handle, and the sheet's top padding. `touch-action: none` is not
+     decoration: without it the browser claims the vertical gesture for a scroll or
+     a pull-to-refresh before the pointer handler ever sees the second move. */
+  .sheet-grab {
     display: block;
-    position: sticky;
-    top: 0;
-    z-index: 3;
-    height: 30px;
-    margin: 0 -16px 8px;
-    background: var(--card) linear-gradient(var(--line-strong), var(--line-strong)) center 20px / 42px 4px no-repeat;
+    flex: none;
+    height: 22px;
+    touch-action: none;
+    background: linear-gradient(var(--line-strong), var(--line-strong)) center 12px / 42px 4px no-repeat;
   }
-  /* 38, not 30: the head's resting position is the band's 30px plus its 8px margin,
-     and pinning it any higher makes it hop up the moment the body starts scrolling. */
-  .sheet-backdrop > .sheet > .sheet-head { top: 38px; }
+  .sheet-grab + .sheet-head { padding-top: 4px; }
 }
 
 /* ============================================================================

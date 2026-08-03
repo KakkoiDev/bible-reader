@@ -3,6 +3,7 @@ import { COLORS, parseTags, type HColor } from '../lib/annotations'
 import { BY_ID, VERSIONS, type Lang } from '../lib/versions'
 import type { T } from '../lib/i18n'
 import { Icon } from './Icon'
+import { Sheet } from './Sheet'
 
 export type Theme = 'system' | 'light' | 'dark'
 export type Size = 'sm' | 'md' | 'lg'
@@ -192,13 +193,7 @@ export function Settings({
   }
 
   return (
-    <div className="sheet-backdrop" onClick={onClose}>
-      <div className="sheet" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet-head">
-          <b>{t('settings')}</b>
-          <button className="icon" onClick={onClose} aria-label={t('close')}><Icon name="close" /></button>
-        </div>
-
+    <Sheet onClose={onClose} closeLabel={t('close')} title={<b>{t('settings')}</b>}>
         <div className="sgroup">{t('group_reading')}</div>
         <div className="srow">
           <span>{t('theme')}</span>
@@ -342,9 +337,7 @@ export function Settings({
           <span>{t('swipe')}</span>
           <input type="checkbox" checked={swipe} onChange={(e) => onSwipe(e.target.checked)} />
         </label>
-
-      </div>
-    </div>
+    </Sheet>
   )
 }
 
@@ -364,12 +357,7 @@ export function LicencesSheet({
 }) {
   if (!open) return null
   return (
-    <div className="sheet-backdrop" onClick={onClose}>
-      <div className="sheet licences" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet-head">
-          <b>{t('licences')}</b>
-          <button className="icon" onClick={onClose} aria-label={t('close')}><Icon name="close" /></button>
-        </div>
+    <Sheet variant="licences" onClose={onClose} closeLabel={t('close')} title={<b>{t('licences')}</b>}>
         <p className="empty">{t('licences_intro')}</p>
         <ul className="liclist">
           {VERSIONS.map((v) => (
@@ -388,8 +376,7 @@ export function LicencesSheet({
         <p className="licrepo">
           <a href={repoUrl} target="_blank" rel="noreferrer noopener">{t('source_code')}</a>
         </p>
-      </div>
-    </div>
+    </Sheet>
   )
 }
 
@@ -410,19 +397,23 @@ export function ConfirmSheet({
   onClose: () => void
 }) {
   return (
-    <div className="sheet-backdrop confirm-back" onClick={onClose}>
-      <div className="sheet confirm" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet-head">
-          <b>{title}</b>
-        </div>
-        <p className="empty">{body}</p>
-        <div className="noteact">
+    <Sheet
+      variant="confirm"
+      backdropClass="confirm-back"
+      onClose={onClose}
+      closeLabel={t('cancel')}
+      noClose
+      title={<b>{title}</b>}
+      footer={
+        <>
           <button className="ghost" onClick={onClose}>{t('cancel')}</button>
           <span className="spacer" />
           <button className="danger" onClick={onConfirm}>{confirmLabel}</button>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    >
+      <p className="empty">{body}</p>
+    </Sheet>
   )
 }
 
@@ -495,13 +486,7 @@ export function Drawer({
   if (!open) return null
   const modes: SortMode[] = ['book', 'created', 'updated', 'custom']
   return (
-    <div className="sheet-backdrop" onClick={onClose}>
-      <div className="sheet saved" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet-head">
-          <b>{t('saved')}</b>
-          <button className="icon" onClick={onClose} aria-label={t('close')}><Icon name="close" /></button>
-        </div>
-
+    <Sheet variant="saved" onClose={onClose} closeLabel={t('close')} title={<b>{t('saved')}</b>}>
         <div className="dfilters">
           <div className="dfrow">
             <span className="dflabel">{t('sort')}</span>
@@ -636,8 +621,7 @@ export function Drawer({
             ))}
           </ul>
         )}
-      </div>
-    </div>
+    </Sheet>
   )
 }
 
@@ -684,12 +668,19 @@ export function NoteEditor({
   const saved = useMemo(() => createdAt || updatedAt, [createdAt, updatedAt])
 
   return (
-    <div className="sheet-backdrop" onClick={onClose}>
-      <div className="sheet note" onClick={(e) => e.stopPropagation()}>
-        <div className="sheet-head">
-          <b>{label}</b>
-          <button className="icon" onClick={onClose} aria-label={t('close')}><Icon name="close" /></button>
-        </div>
+    <Sheet
+      variant="note"
+      onClose={onClose}
+      closeLabel={t('close')}
+      title={<b>{label}</b>}
+      footer={
+        <>
+          <button className="ghost" onClick={onDelete}>{t('delete')}</button>
+          <span className="spacer" />
+          <button className="primary" onClick={() => onSave(text, list)}>{t('save')}</button>
+        </>
+      }
+    >
         <textarea
           className="notearea"
           value={text}
@@ -742,12 +733,6 @@ export function NoteEditor({
             {fmtDate(updatedAt, ui, t('unknown'))}
           </p>
         )}
-        <div className="noteact">
-          <button className="ghost" onClick={onDelete}>{t('delete')}</button>
-          <span className="spacer" />
-          <button className="primary" onClick={() => onSave(text, list)}>{t('save')}</button>
-        </div>
-      </div>
-    </div>
+    </Sheet>
   )
 }

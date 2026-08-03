@@ -460,6 +460,19 @@ navigation, verse alignment, RTL, partial-coverage editions, multilingual refere
 parsing, hidden-edition link fallback, invite links, the verse sheet, selection
 highlighting, notes, and the splash screen. Screenshots land in `/tmp/shots`.
 
+```bash
+npx vite preview --port 4181 --strictPort
+node scripts/verify12.mjs   # the shared sheet shell
+```
+
+`verify12.mjs` is the gate on `src/components/Sheet.tsx`: one scroller, head and
+footer pinned while the body scrolls, the 92% cap, the grab handle appearing only
+where the sheet is a drawer, drag past a quarter of the height dismissing, a short
+drag springing back, and a scrolled body keeping its scroll instead of dragging. It
+does not cover the flick threshold: velocity is measured between the last
+`pointermove` and the `pointerup`, and Playwright's `mouse.up()` carries no
+coordinate, so a synthetic release always reads as zero. That one is by hand.
+
 `scripts/verify2.mjs`–`verify9.mjs` are one-off diagnostic scripts from earlier
 sessions that target port 4180; some assert against UI that no longer exists.
 
