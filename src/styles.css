@@ -746,8 +746,11 @@ html.modal-open { overflow: hidden; }
   list-style: none;
 }
 .worddrop > summary::-webkit-details-marker { display: none; }
-.worddrop > summary::before { content: '▸'; color: var(--muted); font-size: 10px; font-weight: 400; }
-.worddrop[open] > summary::before { content: '▾'; }
+/* One chevron rotated rather than two glyphs swapped: the open state only reaches CSS
+   through [open], and two of these four blocks are uncontrolled, so React cannot pick
+   the icon. */
+.dropcaret { display: inline-flex; flex: none; color: var(--muted); }
+.worddrop[open] > summary .dropcaret { transform: rotate(180deg); }
 .worddrop > summary small { color: var(--muted); font-size: 11px; font-weight: 400; }
 .worddrop > summary .cvspeak { margin-inline-start: auto; }
 /* the original-language verse above the concordance terms */
@@ -764,9 +767,12 @@ html.modal-open { overflow: hidden; }
 .crowline:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
 .crowline:has(> .crowbtn.on) { background: var(--accent-bg); }
 /* Its own 44px square, because it sits beside a target that is already 44px and a
-   thumb aiming at one must not hit the other. The glyph matches the verse play
-   button (.vplay) so one arrow means "speak this" everywhere in the reader. */
+   thumb aiming at one must not hit the other. It carries the speak icon, not the
+   play one: it pronounces a word, it does not start playback of the verse. */
 .cspeak {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex: none;
   width: 44px;
   min-height: 44px;
@@ -774,10 +780,8 @@ html.modal-open { overflow: hidden; }
   border: 0;
   border-radius: var(--r-button);
   color: var(--muted);
-  font-size: 10px;
   line-height: 1;
   cursor: pointer;
-  unicode-bidi: isolate;
 }
 .cspeak:hover { color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
 .cspeak:active { color: var(--accent); background: var(--accent-bg); }

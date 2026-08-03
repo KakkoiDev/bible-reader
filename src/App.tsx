@@ -33,6 +33,7 @@ import {
   type SortMode,
 } from './components/Panels'
 import { SearchSheet, Navigator, VerseSheet, InviteBuilder, type VerseSheetData } from './components/Sheets'
+import { Icon } from './components/Icon'
 
 const BASE = import.meta.env.BASE_URL
 const SWIPE_MIN = 45
@@ -536,7 +537,7 @@ export default function App() {
   )
 
   // Full-verse playback from the verse sheet: pausable, tracked by edition so the button
-  // toggles ▶/⏹. Unlike speakWord (a one-shot word) this can be stopped, and unlike the
+  // toggles play/stop. Unlike speakWord (a one-shot word) this can be stopped, and unlike the
   // reader's playVerse it doesn't autoscroll or raise the audio FAB over the sheet.
   const [sheetPlay, setSheetPlay] = useState<Lang | null>(null)
   const speakSheetVerse = useCallback(
@@ -1214,17 +1215,21 @@ export default function App() {
     <div className="app">
       <header className="bar">
         <button className="navbtn" onClick={() => setNavOpen(true)}>
-          {title} {pos.chapter} <span className="caret">▾</span>
+          {title} {pos.chapter} <span className="caret"><Icon name="expand" size={13} /></span>
         </button>
         <div className="tools">
           {/* Composing an invite lives in the verse sheet, not here: you share a
               passage rather than a bare chapter, and the header is reserved for the
               actions a reader uses routinely. */}
-          <button className="icon" title={t('search')} onClick={() => setSearchOpen(true)}>🔍</button>
-          <button className="icon" title={t('saved_aria')} onClick={() => setDrawerOpen(true)}>🔖</button>
-          {/* U+2699 defaults to text presentation, so the bare gear rendered small and
-              monochrome beside the two emoji. VS16 forces the emoji form. */}
-          <button className="icon" title={t('settings')} onClick={() => setSettingsOpen(true)}>⚙️</button>
+          <button className="icon" title={t('search')} onClick={() => setSearchOpen(true)}>
+            <Icon name="search" />
+          </button>
+          <button className="icon" title={t('saved_aria')} onClick={() => setDrawerOpen(true)}>
+            <Icon name="bookmark" />
+          </button>
+          <button className="icon" title={t('settings')} onClick={() => setSettingsOpen(true)}>
+            <Icon name="settings" />
+          </button>
         </div>
       </header>
 
@@ -1307,7 +1312,7 @@ export default function App() {
                           title={playingLang === l ? t('stop') : `${t('play_chapter')}: ${m.label}`}
                           onClick={() => (playingLang === l ? stopAudio() : playChapter(l))}
                         >
-                          {playingLang === l ? '⏹' : '▶'} {m.edition}
+                          <Icon name={playingLang === l ? 'stop' : 'play'} size={13} /> {m.edition}
                         </button>
                       )}
                     </div>
@@ -1349,12 +1354,12 @@ export default function App() {
                               title={spk ? t('stop') : t('play_verse')}
                               onClick={() => (spk ? stopAudio() : playVerse(l, pos.chapter, v.v, text))}
                             >
-                              {spk ? '⏹' : '▶'}
+                              <Icon name={spk ? 'stop' : 'play'} size={11} />
                             </button>
                           )}
                           {ann?.note && (
                             <button className="mk note" title={t('note')} onClick={() => setNoteRef(ref)}>
-                              ✎
+                              <Icon name="note" size={12} />
                             </button>
                           )}
                           <span className="vt">
@@ -1609,7 +1614,7 @@ export default function App() {
 
       {flow && playingLang && (
         <button className="audiofab" onClick={stopAudio} title={t('stop_audio')} aria-label={t('stop_audio')}>
-          ⏹
+          <Icon name="stop" size={22} />
         </button>
       )}
 

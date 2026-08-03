@@ -8,6 +8,7 @@ import { verseWords, wordDef, cardReady, prefetchDefs, type StrongWord, type Str
 import { verseGloss, type GlossWord, type GlossKind } from '../lib/glossary'
 import type { T, StringKey } from '../lib/i18n'
 import { coverageNote } from './Panels'
+import { Icon } from './Icon'
 
 /* ------------------------------- Search ------------------------------- */
 export function SearchSheet({
@@ -117,14 +118,14 @@ export function SearchSheet({
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
-          <button className="icon" onClick={onClose} aria-label={t('close')}>✕</button>
+          <button className="icon" onClick={onClose} aria-label={t('close')}><Icon name="close" /></button>
         </div>
         {hasResults && (
         <div className="results">
           {jump && (
             <button className="dref go" onClick={() => onNavigate(jump.slug, jump.ch, jump.v)}>
               <span className="dlabel">
-                → {t('go_to')} {bySlug.get(jump.slug)} {jump.ch}
+                <Icon name="next" size={15} /> {t('go_to')} {bySlug.get(jump.slug)} {jump.ch}
                 {jump.v ? `:${jump.v}` : ''}
               </span>
             </button>
@@ -196,7 +197,7 @@ export function Navigator({
       <div className="sheet nav" onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
           <b>{sel ? bookName(sel, ui) : t('choose_book')}</b>
-          <button className="icon" onClick={onClose} aria-label={t('close')}>✕</button>
+          <button className="icon" onClick={onClose} aria-label={t('close')}><Icon name="close" /></button>
         </div>
         {sel ? (
           <>
@@ -298,6 +299,7 @@ function Glossary({
           onToggle={(e) => onVocabOpenChange(e.currentTarget.open)}
         >
           <summary>
+            <span className="dropcaret"><Icon name="expand" size={13} /></span>
             <b>{t('glossary')}</b>
             <small>{t('glossary_sub')}</small>
           </summary>
@@ -324,7 +326,7 @@ function Glossary({
                         aria-label={`${t('pronounce')}: ${w.word}`}
                         onClick={() => onSpeakWord(w.word, 'en')}
                       >
-                        ▶
+                        <Icon name="speak" size={17} />
                       </button>
                     )}
                   </div>
@@ -333,7 +335,7 @@ function Glossary({
                       <span>{w.note}</span>
                       {w.modern && canSpeak('en') && (
                         <button className="mini gsay" onClick={() => onSpeakWord(w.modern!, 'en')}>
-                          ▶ {w.modern}
+                          <Icon name="speak" size={15} /> {w.modern}
                         </button>
                       )}
                     </div>
@@ -347,6 +349,7 @@ function Glossary({
       {grammar.length > 0 && (
         <details className="conc worddrop">
           <summary>
+            <span className="dropcaret"><Icon name="expand" size={13} /></span>
             <b>{t('glossary_grammar')}</b>
           </summary>
           <ul className="conclist">
@@ -368,6 +371,7 @@ function Glossary({
           onToggle={(e) => onSpiritualOpenChange(e.currentTarget.open)}
         >
           <summary>
+            <span className="dropcaret"><Icon name="expand" size={13} /></span>
             <b>{t('glossary_spiritual')}</b>
           </summary>
           <ul className="conclist">
@@ -391,7 +395,7 @@ function Glossary({
                         aria-label={`${t('pronounce')}: ${w.word}`}
                         onClick={() => onSpeakWord(w.word, 'en')}
                       >
-                        ▶
+                        <Icon name="speak" size={17} />
                       </button>
                     )}
                   </div>
@@ -493,6 +497,7 @@ function Concordance({
     // Collapsed by default; the play button in the title speaks the original verse.
     <details className="conc strongs worddrop">
       <summary>
+        <span className="dropcaret"><Icon name="expand" size={13} /></span>
         <b>{t('concordance')}</b>
         <small>{BY_ID.en.edition}</small>
         {orig && canSpeak(orig.lang) && (
@@ -506,7 +511,7 @@ function Concordance({
               onSpeakVerse(orig.text, orig.lang)
             }}
           >
-            {sheetPlaying === orig.lang ? '⏹' : '▶'}
+            <Icon name={sheetPlaying === orig.lang ? 'stop' : 'play'} size={16} />
           </button>
         )}
       </summary>
@@ -567,7 +572,7 @@ function Concordance({
                       aria-label={`${t('pronounce')}: ${w.lemma}`}
                       onClick={() => onSpeakWord(w.lemma, speakLang)}
                     >
-                      ▶
+                      <Icon name="speak" size={17} />
                     </button>
                   )}
                 </div>
@@ -705,7 +710,7 @@ export function VerseSheet({
       <div className="sheet verse-sheet" onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
           <b>{data.label}</b>
-          <button className="icon" onClick={onClose} aria-label={t('close')}>✕</button>
+          <button className="icon" onClick={onClose} aria-label={t('close')}><Icon name="close" /></button>
         </div>
         {/* Only the edition you opened is shown, so it is unambiguous which single verse
             Copy takes. Saved highlights render here and can be cleared. */}
@@ -726,7 +731,7 @@ export function VerseSheet({
                     aria-label={t('remove_highlight')}
                     onClick={onClearHighlight}
                   >
-                    ⌫
+                    <Icon name="noColour" size={17} />
                   </button>
                 )}
                 {/* Play the verse from its title row, pausable. Distinct from the bottom
@@ -738,7 +743,7 @@ export function VerseSheet({
                     aria-label={sheetPlaying === l ? t('stop') : t('pronounce')}
                     onClick={() => onSpeakVerse(text, l)}
                   >
-                    {sheetPlaying === l ? '⏹' : '▶'}
+                    <Icon name={sheetPlaying === l ? 'stop' : 'play'} size={16} />
                   </button>
                 )}
               </span>
@@ -783,7 +788,7 @@ export function VerseSheet({
           />
         )}
         <div className="noteact wrap">
-          <button className="mini" onClick={onPlay}>▶ {t('play')}</button>
+          <button className="mini" onClick={onPlay}><Icon name="play" size={15} /> {t('play')}</button>
           <button className="mini" onClick={onCopyText}>{t('copy_text')}</button>
           <button className="mini" onClick={onCopyLink}>{t('copy_link')}</button>
           <button className="mini" onClick={onCopyInvite}>{t('copy_invite')}</button>
@@ -845,7 +850,7 @@ export function InviteBuilder({
       <div className="sheet invite" onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
           <b>{t('invite_build_title')}</b>
-          <button className="icon" onClick={onClose} aria-label={t('close')}>✕</button>
+          <button className="icon" onClick={onClose} aria-label={t('close')}><Icon name="close" /></button>
         </div>
         <p className="empty">{t('invite_build_body')}</p>
         <div className="collist">
@@ -854,8 +859,12 @@ export function InviteBuilder({
               {i === 0 ? <span className="opens">{refLabel}</span> : null}
               {label(l)}
               <div className="colctl">
-                <button className="mini" disabled={i === 0} onClick={() => move(l, -1)} aria-label={t('move_up')}>↑</button>
-                <button className="mini" disabled={i === cols.length - 1} onClick={() => move(l, 1)} aria-label={t('move_down')}>↓</button>
+                <button className="mini" disabled={i === 0} onClick={() => move(l, -1)} aria-label={t('move_up')}>
+                  <Icon name="collapse" size={16} />
+                </button>
+                <button className="mini" disabled={i === cols.length - 1} onClick={() => move(l, 1)} aria-label={t('move_down')}>
+                  <Icon name="expand" size={16} />
+                </button>
                 <button className="mini" disabled={cols.length <= 1} onClick={() => setCols(cols.filter((x) => x !== l))}>
                   {t('hide')}
                 </button>

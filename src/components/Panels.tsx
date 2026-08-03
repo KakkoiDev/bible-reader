@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { COLORS, parseTags, type HColor } from '../lib/annotations'
 import { BY_ID, VERSIONS, type Lang } from '../lib/versions'
 import type { T } from '../lib/i18n'
+import { Icon } from './Icon'
 
 export type Theme = 'system' | 'light' | 'dark'
 export type Size = 'sm' | 'md' | 'lg'
@@ -67,10 +68,12 @@ export function Toolbar({
         />
       ))}
       <span className="asep" />
-      <button className="abtn" onClick={onNote} title={t('add_note')}>✎</button>
+      <button className="abtn" onClick={onNote} title={t('add_note')} aria-label={t('add_note')}>
+        <Icon name="note" />
+      </button>
       {hasHL && (
-        <button className="abtn" onClick={onClear} title={t('remove_highlight')}>
-          ⌫
+        <button className="abtn" onClick={onClear} title={t('remove_highlight')} aria-label={t('remove_highlight')}>
+          <Icon name="noColour" />
         </button>
       )}
     </div>
@@ -182,7 +185,7 @@ export function Settings({
       <div className="sheet" onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
           <b>{t('settings')}</b>
-          <button className="icon" onClick={onClose} aria-label={t('close')}>✕</button>
+          <button className="icon" onClick={onClose} aria-label={t('close')}><Icon name="close" /></button>
         </div>
 
         <div className="sgroup">{t('group_reading')}</div>
@@ -296,8 +299,12 @@ export function Settings({
             <div className="colrow" key={l}>
               {versionLabel(l)}
               <div className="colctl">
-                <button className="mini" disabled={i === 0} onClick={() => moveCol(l, -1)} aria-label={t('move_up')}>↑</button>
-                <button className="mini" disabled={i === columns.length - 1} onClick={() => moveCol(l, 1)} aria-label={t('move_down')}>↓</button>
+                <button className="mini" disabled={i === 0} onClick={() => moveCol(l, -1)} aria-label={t('move_up')}>
+                  <Icon name="collapse" size={16} />
+                </button>
+                <button className="mini" disabled={i === columns.length - 1} onClick={() => moveCol(l, 1)} aria-label={t('move_down')}>
+                  <Icon name="expand" size={16} />
+                </button>
                 <button className="mini" disabled={columns.length <= 1} onClick={() => onColumns(columns.filter((x) => x !== l))}>
                   {t('hide')}
                 </button>
@@ -350,7 +357,7 @@ export function LicencesSheet({
       <div className="sheet licences" onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
           <b>{t('licences')}</b>
-          <button className="icon" onClick={onClose} aria-label={t('close')}>✕</button>
+          <button className="icon" onClick={onClose} aria-label={t('close')}><Icon name="close" /></button>
         </div>
         <p className="empty">{t('licences_intro')}</p>
         <ul className="liclist">
@@ -481,7 +488,7 @@ export function Drawer({
       <div className="sheet saved" onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
           <b>{t('saved')}</b>
-          <button className="icon" onClick={onClose} aria-label={t('close')}>✕</button>
+          <button className="icon" onClick={onClose} aria-label={t('close')}><Icon name="close" /></button>
         </div>
 
         <div className="dfilters">
@@ -502,7 +509,7 @@ export function Drawer({
               onClick={() => onAsc(!asc)}
               title={asc ? t('ascending') : t('descending')}
             >
-              {asc ? '↑' : '↓'} {asc ? t('ascending') : t('descending')}
+              <Icon name={asc ? 'collapse' : 'expand'} size={15} /> {asc ? t('ascending') : t('descending')}
             </button>
             <label className="dcheck">
               <input type="checkbox" checked={thisBook} onChange={(e) => onThisBook(e.target.checked)} />
@@ -521,7 +528,7 @@ export function Drawer({
                     <span key={tag} className="chip on">
                       {tag}
                       <button className="chipx" onClick={() => onDeleteTag(tag)} aria-label={`${t('delete')}: ${tag}`}>
-                        ✕
+                        <Icon name="close" size={13} />
                       </button>
                     </span>
                   ) : (
@@ -583,8 +590,12 @@ export function Drawer({
               <li key={it.ref}>
                 {sort === 'custom' && (
                   <div className="dmove">
-                    <button className="mini" disabled={i === 0} onClick={() => onMove(it.ref, -1)} aria-label={t('move_up')}>↑</button>
-                    <button className="mini" disabled={i === items.length - 1} onClick={() => onMove(it.ref, 1)} aria-label={t('move_down')}>↓</button>
+                    <button className="mini" disabled={i === 0} onClick={() => onMove(it.ref, -1)} aria-label={t('move_up')}>
+                      <Icon name="collapse" size={15} />
+                    </button>
+                    <button className="mini" disabled={i === items.length - 1} onClick={() => onMove(it.ref, 1)} aria-label={t('move_down')}>
+                      <Icon name="expand" size={15} />
+                    </button>
                   </div>
                 )}
                 <button className="dref" onClick={() => onJump(it.ref)}>
@@ -593,7 +604,7 @@ export function Drawer({
                     {it.colors.map((c, k) => (
                       <span key={k} className={`dot sw-${c}`} />
                     ))}
-                    {it.note && <span className="dtag">✎</span>}
+                    {it.note && <span className="dtag"><Icon name="note" size={12} /></span>}
                   </span>
                   {it.note && <span className="dnote">{it.note}</span>}
                   {it.tags.length > 0 && (
@@ -607,8 +618,8 @@ export function Drawer({
                     {t('updated')} {fmtDate(it.updatedAt, ui, t('unknown'))}
                   </span>
                 </button>
-                <button className="icon del" title={t('delete')} onClick={() => onDelete(it.ref)}>
-                  🗑
+                <button className="icon del" title={t('delete')} aria-label={t('delete')} onClick={() => onDelete(it.ref)}>
+                  <Icon name="delete" />
                 </button>
               </li>
             ))}
@@ -666,7 +677,7 @@ export function NoteEditor({
       <div className="sheet note" onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
           <b>{label}</b>
-          <button className="icon" onClick={onClose} aria-label={t('close')}>✕</button>
+          <button className="icon" onClick={onClose} aria-label={t('close')}><Icon name="close" /></button>
         </div>
         <textarea
           className="notearea"
@@ -683,7 +694,7 @@ export function NoteEditor({
             {list.map((tag) => (
               <button key={tag} className="chip on" onClick={() => setList(list.filter((x) => x !== tag))}>
                 {tag}
-                <span className="chipx" aria-hidden="true">✕</span>
+                <span className="chipx"><Icon name="close" size={12} /></span>
               </button>
             ))}
             {knownTags
