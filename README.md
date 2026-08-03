@@ -268,6 +268,13 @@ the publisher as-is. In summary, of the 41 verses the KJV carries and the export
 
 ## Frontend conventions
 
+- **The design system is `design-system/`.** `DESIGN.md` is the short spec,
+  `design-system/design-system.html` the full illustrated document (open it in a
+  browser, no build step), and `tokens.css` the token set. `src/styles.css`
+  `@import`s that token file, so it is a build input and not just documentation:
+  changing a colour, radius, shadow or type size means changing it there. Two rules
+  it is easy to break are **no emoji anywhere in the product** (`src/components/Icon.tsx`
+  holds the whole icon set) and **44x44 minimum touch targets**.
 - **No em-dash (`—`) in user-visible copy.** Use a period, a colon, or a middot
   (`·`). This covers the `src/lib/i18n.ts` string tables in all eleven languages,
   the `attribution` text in `src/lib/versions.ts`, JSX literals, `title` and

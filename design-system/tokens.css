@@ -1,0 +1,87 @@
+/* Bible Reader — design tokens
+ * Generated from the design system document. Drop next to styles.css and
+ * @import it, or paste the :root blocks in. Values marked NEW did not exist
+ * before; everything else matches the current styles.css. */
+
+:root {
+  /* surface & text */
+  --bg: #faf8f4;
+  --card: #ffffff;
+  --fg: #1f2430;
+  --muted: #666c7d;          /* 5.24:1 on --bg. Never lighten: #8a8f9c fails AA. */
+  --line: #e7e2d8;
+  --line-strong: #e0dace;    /* NEW — borders on white */
+  --accent: #4338ca;
+  --accent-press: #372cae;   /* NEW */
+  --accent-bg: #eceafe;
+  --supplied: #8a7f68;
+  --sunken: #f1eee6;         /* NEW — filled fields, segmented tracks */
+  --selected: #f1eee6;       /* NEW — selected verse tint */
+  --danger-bg: #faf3f2;      /* NEW */
+  --danger-line: #ecd9d5;    /* NEW */
+  --danger-fg: #8a4a4a;      /* NEW */
+
+  /* highlights — HColor */
+  --h-yellow: #f6e7a3;
+  --h-green: #cfe8c4;
+  --h-blue: #c7dcf2;
+  --h-pink: #f3ccd8;
+  --h-purple: #ded0f2;
+
+  /* space */
+  --s-1: 4px;  --s-2: 8px;  --s-3: 12px; --s-4: 16px;
+  --s-5: 20px; --s-6: 26px;
+
+  /* radius */
+  --r-control: 8px;
+  --r-button: 12px;
+  --r-card: 16px;
+  --r-sheet: 24px;
+  --r-pill: 999px;
+
+  /* elevation */
+  --e-raised: 0 1px 3px rgba(31, 36, 48, 0.14);
+  --e-float: 0 8px 24px rgba(31, 36, 48, 0.16);
+  --e-sheet: 0 -12px 44px rgba(20, 19, 26, 0.3);
+
+  /* targets */
+  --touch: 44px;
+  --touch-row: 62px;
+  --safe-bottom: 26px;
+
+  /* motion */
+  --t-sheet-in: 260ms;
+  --t-sheet-out: 200ms;
+  --t-header: 180ms;
+  --t-select: 120ms;
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+
+  /* type */
+  --f-scripture: ui-serif, Georgia, 'Times New Roman', 'Yu Mincho', 'Hiragino Mincho ProN', serif;
+  --f-ui: system-ui, -apple-system, sans-serif;
+  --fs-scripture: 19px;
+  --lh-scripture: 1.85;
+  --fs-chapter: 27px;
+  --fs-row: 15px;
+  --fs-row-sub: 12px;
+  --fs-eyebrow: 11px;
+  --fs-verse-no: 10.5px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --t-sheet-in: 0ms; --t-sheet-out: 0ms; --t-header: 0ms; --t-select: 0ms; }
+}
+
+:root[data-theme='dark'] {
+  --bg: #14131a;
+  --card: #1b1a23;
+  --fg: #e9e6df;
+  --muted: #8c8a95;
+  --line: #2a2833;
+  --line-strong: #2a2833;
+  --accent: #a9a2ff;
+  --accent-bg: #211f3a;
+  --supplied: #9a93a8;
+  --sunken: #221f2b;
+  --selected: #221f2b;
+}
