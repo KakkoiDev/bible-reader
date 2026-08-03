@@ -196,10 +196,13 @@ console.log('\nPronounce glyph')
   await page.waitForTimeout(1800)
   await page.locator('#v-en-13').click()
   await page.locator('.strongs .conclist li').first().waitFor({ state: 'visible', timeout: 3000 })
-  const glyph = (await page.locator('.strongs .cspeak').first().innerText()).trim()
-  const versePlay = (await page.locator('.vplay').first().innerText()).trim()
-  check('uses the verse play arrow', glyph === '▶', JSON.stringify(glyph))
-  check('same glyph as the verse button', glyph === versePlay, `${glyph} vs ${versePlay}`)
+  // These used to assert the button held a literal ▶ and that it matched the verse
+  // play button's glyph. Both are gone: the design system bans glyph-as-icon, and the
+  // two buttons are now deliberately different icons, because .cspeak pronounces a
+  // word and .vplay starts playback of the verse.
+  const speakIcon = await page.locator('.strongs .cspeak svg.ic').first().count()
+  const speakText = (await page.locator('.strongs .cspeak').first().innerText()).trim()
+  check('pronounce is an icon, not a glyph', speakIcon === 1 && speakText === '', JSON.stringify(speakText))
   check('no speaker emoji anywhere', !(await page.locator('.strongs').innerText()).includes('🔊'))
   await ctx.close()
 }

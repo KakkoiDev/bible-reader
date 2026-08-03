@@ -267,7 +267,9 @@ console.log('\nReference search in any edition language')
     await page.locator('.searchin').fill(query)
     await page.waitForTimeout(120)
     const go = page.locator('.dref.go .dlabel')
-    const got = (await go.count()) ? (await go.innerText()).replace(/^→\s*Go to\s*/, '').trim() : '(none)'
+    // The row led with a literal arrow character until the design system banned
+    // glyphs-as-icons; it is an <svg> now, so innerText starts at "Go to".
+    const got = (await go.count()) ? (await go.innerText()).replace(/^Go to\s*/, '').trim() : '(none)'
     check(`"${query}" → ${expect}`, got === expect, `got "${got}"`)
     await page.keyboard.press('Escape')
     await page.waitForTimeout(150)
