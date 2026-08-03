@@ -208,7 +208,7 @@ export default function App() {
   /** A day's chapters, opened as one passage. Null when the normal reader is showing. */
   const [patch, setPatch] = useState<PlanRef[] | null>(null)
   const readerRef = useRef<HTMLElement>(null)
-  const { blocks, progress, addBlock, removeBlock, moveBlock, markVerse, toggleChapter } = usePlans()
+  const { blocks, progress, addBlock, removeBlock, moveBlock, markVerse, toggleChapter, importPlans } = usePlans()
 
   // saved-notes drawer controls
   const [sort, setSort] = useState<SortMode>('book')
@@ -1210,12 +1210,42 @@ export default function App() {
     say(n ? t('exported_n', { n }) : t('nothing_to_export'))
   }, [store, vocab, t, say])
 
-  const importAnnotations = useCallback(
+  // Plans go out as their own file. They are a different kind of thing from notes: a
+  // note is something the reader wrote, a plan is a schedule, and someone moving to a
+  // new phone may want one without the other.
+  const exportPlans = useCallback(() => {
+    const payload = {
+      app: 'bible-reader',
+      type: 'plans',
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      blocks,
+      progress,
+    }
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `bible-plans-${new Date().toISOString().slice(0, 10)}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+    say(blocks.length ? t('exported_n', { n: blocks.length }) : t('nothing_to_export'))
+  }, [blocks, progress, t, say])
+
+  // One import, two kinds of file: the payload says which it is, so a reader who picks
+  // the wrong one of the two buttons still gets what is in the file.
+  const importData = useCallback(
     (file: File) => {
       const reader = new FileReader()
       reader.onload = () => {
         try {
           const parsed = JSON.parse(String(reader.result))
+          if (parsed?.type === 'plans') {
+            if (!Array.isArray(parsed.blocks)) throw new Error('bad')
+            importPlans({ blocks: parsed.blocks, progress: parsed.progress })
+            say(t('imported_n', { n: parsed.blocks.length }))
+            return
+          }
           const data = parsed && parsed.type === 'annotations' && parsed.data ? parsed.data : parsed
           if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('bad')
           importStore(data)
@@ -1228,7 +1258,7 @@ export default function App() {
       reader.onerror = () => say(t('import_failed'))
       reader.readAsText(file)
     },
-    [importStore, importVocab, t, say],
+    [importStore, importVocab, importPlans, t, say],
   )
 
   const labelFor = useCallback(
@@ -1796,8 +1826,9 @@ export default function App() {
         onFlow={(v) => setPref({ flow: v })}
         onStopAtChapterEnd={(v) => setPref({ stopAtChapterEnd: v })}
         onExport={exportAnnotations}
+        onExportPlans={exportPlans}
         onExportAnki={exportAnki}
-        onImport={importAnnotations}
+        onImport={importData}
         onClose={() => setSettingsOpen(false)}
       />
 

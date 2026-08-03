@@ -123,9 +123,29 @@ export interface SettingsProps {
   onStopAtChapterEnd: (v: boolean) => void
   onColumns: (c: Lang[]) => void
   onExport: () => void
+  onExportPlans: () => void
   onExportAnki: () => void
   onImport: (file: File) => void
   onClose: () => void
+}
+
+// Both data rows carry one, and both accept either file: the payload names its own kind,
+// so the row a reader picks does not decide what is read.
+function ImportBtn({ label, onPick }: { label: string; onPick: (f: File) => void }) {
+  return (
+    <label className="mini">
+      {label}
+      <input
+        type="file"
+        accept="application/json,.json"
+        onChange={(e) => {
+          const f = e.target.files?.[0]
+          if (f) onPick(f)
+          e.target.value = ''
+        }}
+      />
+    </label>
+  )
 }
 
 export function Settings({
@@ -158,6 +178,7 @@ export function Settings({
   onStopAtChapterEnd,
   onColumns,
   onExport,
+  onExportPlans,
   onExportAnki,
   onImport,
   onClose,
@@ -233,18 +254,14 @@ export function Settings({
                 why this is a file and not a "sync": there is no cross-platform way
                 for a web page to put a card into Anki directly. */}
             <button className="mini" onClick={onExportAnki}>{t('anki')}</button>
-            <label className="mini">
-              {t('import')}
-              <input
-                type="file"
-                accept="application/json,.json"
-                onChange={(e) => {
-                  const f = e.target.files?.[0]
-                  if (f) onImport(f)
-                  e.target.value = ''
-                }}
-              />
-            </label>
+            <ImportBtn label={t('import')} onPick={onImport} />
+          </div>
+        </div>
+        <div className="srow">
+          <span>{t('planner')}</span>
+          <div className="databtns">
+            <button className="mini" onClick={onExportPlans}>{t('export')}</button>
+            <ImportBtn label={t('import')} onPick={onImport} />
           </div>
         </div>
 

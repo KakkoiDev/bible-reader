@@ -13,6 +13,7 @@
 // Run:  npx vite preview --port 4184 --strictPort
 //       node scripts/verify16.mjs
 import { chromium } from 'playwright'
+import { readFile } from 'node:fs/promises'
 
 const URL = 'http://localhost:4184/'
 
@@ -68,19 +69,23 @@ const STUB = () => {
   window.__spoken = spoken
 }
 
-async function open({ plans = [], progress = {}, phone = false, tts = false } = {}) {
-  const ctx = await browser.newContext({ viewport: phone ? { width: 390, height: 844 } : { width: 1280, height: 900 } })
+async function open({ plans = [], progress = {}, anns = {}, phone = false, tts = false } = {}) {
+  const ctx = await browser.newContext({
+    viewport: phone ? { width: 390, height: 844 } : { width: 1280, height: 900 },
+    acceptDownloads: true,
+  })
   // addInitScript runs on every navigation, so seeding unconditionally would wipe
   // whatever the app wrote before a reload. Seed once and let the reload be a reload.
   await ctx.addInitScript(
-    ([p, blocks, prog]) => {
+    ([p, blocks, prog, ann]) => {
       if (localStorage.getItem('seeded')) return
       localStorage.setItem('prefs', JSON.stringify(p))
       localStorage.setItem('plans.v1', JSON.stringify(blocks))
       localStorage.setItem('plan-progress.v1', JSON.stringify(prog))
+      localStorage.setItem('annotations.v1', JSON.stringify(ann))
       localStorage.setItem('seeded', '1')
     },
-    [PREFS, plans, progress],
+    [PREFS, plans, progress, anns],
   )
   if (tts) await ctx.addInitScript(STUB)
   const page = await ctx.newPage()
@@ -323,6 +328,75 @@ console.log('\nDeleting a block leaves the rest contiguous')
   check('one block left', (await page.locator('.pblock').count()) === 1)
   const left = await page.evaluate(() => JSON.parse(localStorage.getItem('plans.v1')))
   check('and it is renumbered to 0', left.length === 1 && left[0].order === 0, JSON.stringify(left))
+  await ctx.close()
+}
+
+console.log('\nPlans and notes leave as two files, and either one comes back through either button')
+{
+  const anns = {
+    'john.3.16': {
+      note: 'the hinge of the book',
+      highlights: [{ lang: 'en', start: 4, end: 20, color: 'yellow' }],
+      tags: ['love'],
+      createdAt: daysAgo(3),
+    },
+  }
+  const { ctx, page } = await open({ plans: [plan()], progress: { 'proverbs.1.1': true }, anns })
+  const settings = async () => {
+    await page.locator('header .icon[title="Settings"]').click()
+    await page.locator('.sheet .sgroup').first().waitFor({ state: 'visible' })
+  }
+  const grab = async (row) => {
+    const wait = page.waitForEvent('download')
+    await page.locator('.srow', { hasText: row }).locator('button.mini').first().click()
+    const dl = await wait
+    return { name: dl.suggestedFilename(), body: JSON.parse(await readFile(await dl.path(), 'utf8')) }
+  }
+  await settings()
+  const plans = await grab('Reading plan')
+  check('the plans file names itself a plans file', plans.body.type === 'plans', plans.body.type)
+  check('and is called one', /^bible-plans-\d{4}-\d\d-\d\d\.json$/.test(plans.name), plans.name)
+  check('it carries the block', plans.body.blocks?.length === 1 && plans.body.blocks[0].name === 'Proverbs in a month',
+    JSON.stringify(plans.body.blocks?.map((b) => b.name)))
+  check('and what has been read', JSON.stringify(plans.body.progress) === '{"proverbs.1.1":true}',
+    JSON.stringify(plans.body.progress))
+  check('and no notes', plans.body.data === undefined)
+
+  const notes = await grab('Notes & highlights')
+  check('the notes file names itself annotations', notes.body.type === 'annotations', notes.body.type)
+  // The request was for notes export to include highlights. It always has; asserted so
+  // it stays that way.
+  check('it carries the highlight, not only the note',
+    notes.body.data['john.3.16'].highlights?.[0].color === 'yellow',
+    JSON.stringify(notes.body.data['john.3.16'].highlights))
+  check('and no plan', notes.body.blocks === undefined)
+  await ctx.close()
+}
+
+{
+  // The payload names its own kind, so the row a reader picks does not decide what is
+  // read. Feeding a plans file to the notes row must still land the plan.
+  const { ctx, page } = await open()
+  const file = {
+    name: 'bible-plans-2026-01-01.json',
+    mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify({
+      app: 'bible-reader', type: 'plans', version: 1,
+      blocks: [plan({ id: 'imported', name: 'Gospels in a week', days: 7 })],
+      progress: { 'matthew.1': true },
+    })),
+  }
+  await page.locator('header .icon[title="Settings"]').click()
+  await page.locator('.sheet .sgroup').first().waitFor({ state: 'visible' })
+  await page.locator('.srow', { hasText: 'Notes & highlights' }).locator('input[type=file]').setInputFiles(file)
+  await page.locator('.srow', { hasText: 'Notes & highlights' }).waitFor()
+  const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('plans.v1')))
+  check('a plans file dropped on the notes row still lands the plan',
+    stored.length === 1 && stored[0].name === 'Gospels in a week', JSON.stringify(stored.map((b) => b.name)))
+  const prog = await page.evaluate(() => JSON.parse(localStorage.getItem('plan-progress.v1')))
+  check('with its progress', JSON.stringify(prog) === '{"matthew.1":true}', JSON.stringify(prog))
+  const kept = await page.evaluate(() => localStorage.getItem('annotations.v1'))
+  check('and the notes store is untouched', kept === '{}', kept)
   await ctx.close()
 }
 

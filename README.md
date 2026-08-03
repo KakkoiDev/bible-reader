@@ -68,7 +68,9 @@ Every attribution is reproduced verbatim in the app under **Texts & licences**.
   verse in every visible edition, which is the next best help it can give.
 - **Notes & highlights** with tags, sorting (book / created / updated / hand-arranged),
   a this-book filter, timestamps, JSON export/import, and a TSV export Anki imports
-  natively.
+  natively. Notes and reading plans export as separate files, since one is what you
+  wrote and the other is a schedule. Import is one code path either way: the payload
+  names its own kind, so the button you pick does not decide what is read.
 - **Audio** reads a chapter aloud with word-level highlighting (EN/FR), optionally
   stopping at the chapter end rather than rolling into the next. It holds a screen
   wake lock while playing so an idle phone doesn't cut it off, and if you leave the
