@@ -497,6 +497,19 @@ read names it. Reverting any of the three changes fails it: without the spine pa
 comes back with eight blank verses, and without the title precedence `build-data`
 throws before the sweep can run.
 
+```bash
+npx vite preview --port 4183 --strictPort
+node scripts/verify14.mjs   # what reaches the speech synthesiser
+```
+
+`verify14.mjs` stubs `speechSynthesis` and `SpeechSynthesisUtterance` before the app
+boots and records the text of every utterance the reader hands over, which is the last
+thing the app controls. It asserts that no all-caps divine name reaches the engine in
+English or French, that Psalm 119's acrostic headings keep their capitals because those
+really are letters, and that the run is the chapter's own verses in order. **How any of
+it sounds is not covered and cannot be**: the API reports no phonemes, so the audible
+result is the user's to confirm.
+
 `scripts/verify2.mjs`–`verify9.mjs` are one-off diagnostic scripts from earlier
 sessions that target port 4180; some assert against UI that no longer exists.
 

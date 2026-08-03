@@ -7,10 +7,24 @@ export const ttsSupported = () => typeof window !== 'undefined' && 'speechSynthe
 
 const langTag = (lang: Lang) => BY_ID[lang].speech
 
+// Small caps are typography for the divine name, not an instruction to spell it out,
+// but an all-caps token reaches the engine as an initialism and is read L-O-R-D. The
+// names are listed rather than matched by shape: the KJV also sets Psalm 119's acrostic
+// headings (ALEPH, BETH, GIMEL) in capitals, and those really are letters, and the
+// Spanish edition capitalises whole opening words (ALABAD, ACONTECIÓ) as ornament.
+const DIVINE_NAMES: Partial<Record<Lang, RegExp>> = {
+  en: /\b(?:LORD|GOD|JEHOVAH|JAH)\b/g,
+  fr: /\b(?:SEIGNEUR|DIEU|JEHOVAH|JAH)\b/g,
+  es: /\b(?:JEHOVÁ|JAH)\b/g,
+}
+const titleCase = (w: string) => w[0] + w.slice(1).toLowerCase()
+
 /** Convert stored verse text into something a modern TTS voice reads correctly. */
 export function speechText(text: string, lang: Lang): string {
   const markup = BY_ID[lang].markup
   let s = text
+  const names = DIVINE_NAMES[lang]
+  if (names) s = s.replace(names, titleCase)
   if (markup === 'ruby')
     s = s.replace(/\{\{[^|}]*\|([^}]+)\}\}/g, '$1').replace(/[〔〕]/g, ' ') // {{漢字|かな}} → かな
   else if (markup === 'kjv') s = s.replace(/[{}]/g, '') // drop supplied-word braces
