@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { COLORS, parseTags, type HColor } from '../lib/annotations'
 import { BY_ID, VERSIONS, type Lang } from '../lib/versions'
 import type { T } from '../lib/i18n'
@@ -49,15 +49,24 @@ export function Toolbar({
   onNote: () => void
   onClear: () => void
 }) {
+  // Measured rather than assumed: the half-width used to be the constant 132, which
+  // stopped being half the bar's width the moment the swatches grew to 44px, and a
+  // selection near the right edge pushed the bar off the viewport.
+  const el = useRef<HTMLDivElement>(null)
+  const [w, setW] = useState(0)
+  useLayoutEffect(() => {
+    const n = el.current?.offsetWidth ?? 0
+    setW((prev) => (prev === n ? prev : n))
+  })
   const style =
     dock === 'float'
       ? {
           top: Math.max(8, rect.top - 50),
-          left: Math.min(Math.max(8, rect.left + rect.width / 2 - 132), window.innerWidth - 272),
+          left: Math.min(Math.max(8, rect.left + rect.width / 2 - w / 2), Math.max(8, window.innerWidth - w - 8)),
         }
       : undefined
   return (
-    <div className={`atoolbar ${dock === 'bottom' ? 'bottom' : ''}`} style={style} onMouseDown={(e) => e.preventDefault()}>
+    <div ref={el} className={`atoolbar ${dock === 'bottom' ? 'bottom' : ''}`} style={style} onMouseDown={(e) => e.preventDefault()}>
       {COLORS.map((c) => (
         <button
           key={c}
@@ -67,15 +76,17 @@ export function Toolbar({
           onClick={() => onColor(c)}
         />
       ))}
+      {/* The design system makes removal the sixth swatch rather than a separate
+          button, so it reads as one of the colours and not as a destructive action. */}
+      {hasHL && (
+        <button className="swatch nocolour" onClick={onClear} title={t('remove_highlight')} aria-label={t('remove_highlight')}>
+          <Icon name="noColour" size={26} />
+        </button>
+      )}
       <span className="asep" />
       <button className="abtn" onClick={onNote} title={t('add_note')} aria-label={t('add_note')}>
         <Icon name="note" />
       </button>
-      {hasHL && (
-        <button className="abtn" onClick={onClear} title={t('remove_highlight')} aria-label={t('remove_highlight')}>
-          <Icon name="noColour" />
-        </button>
-      )}
     </div>
   )
 }
