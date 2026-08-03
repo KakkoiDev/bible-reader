@@ -125,7 +125,7 @@ export function SearchSheet({
           {jump && (
             <button className="dref go" onClick={() => onNavigate(jump.slug, jump.ch, jump.v)}>
               <span className="dlabel">
-                <Icon name="next" size={15} /> {t('go_to')} {bySlug.get(jump.slug)} {jump.ch}
+                <Icon name="next" size={15} flip /> {t('go_to')} {bySlug.get(jump.slug)} {jump.ch}
                 {jump.v ? `:${jump.v}` : ''}
               </span>
             </button>
@@ -201,7 +201,9 @@ export function Navigator({
         </div>
         {sel ? (
           <>
-            <button className="mini back" onClick={() => setBook('')}>{t('all_books')}</button>
+            <button className="mini back" onClick={() => setBook('')}>
+              <Icon name="prev" size={15} flip /> {t('all_books')}
+            </button>
             <div className="chgrid">
               {sel.chapters.map((_, i) => (
                 <button key={i} className="chbtn" onClick={() => onNavigate(sel.slug, i + 1)}>

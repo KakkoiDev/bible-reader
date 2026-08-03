@@ -74,12 +74,16 @@ export type IconName = keyof typeof ICONS
  * An icon is decoration: the button around it carries the accessible name through
  * its `aria-label` or `title`, so this is hidden from assistive technology and
  * never announced twice.
+ *
+ * `flip` marks the horizontally directional ones (prev, next). Arabic and Hebrew
+ * read the other way, so a chevron that means "the chapter before this one" has to
+ * point the other way with them; `[dir='rtl'] .ic-dir` mirrors it.
  */
-export function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
+export function Icon({ name, size = 20, flip }: { name: IconName; size?: number; flip?: boolean }) {
   const spec: Spec = ICONS[name]
   return (
     <svg
-      className="ic"
+      className={flip ? 'ic ic-dir' : 'ic'}
       width={size}
       height={size}
       viewBox="0 0 24 24"

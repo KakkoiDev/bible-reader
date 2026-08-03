@@ -87,6 +87,14 @@ body {
   -webkit-text-size-adjust: 100%;
 }
 
+/* Every glyph in the interface comes from src/components/Icon.tsx. It is sized by its
+   own width/height, inherits the button's colour, and never sits on the text baseline,
+   which would drop it a couple of pixels below a label beside it. */
+.ic { display: inline-block; vertical-align: middle; flex: none; }
+/* Prev, next and back. Arabic and Hebrew read the other way, so the chevron that means
+   "the chapter before this one" points the other way with them. */
+[dir='rtl'] .ic-dir { transform: scaleX(-1); }
+
 .app { min-height: 100dvh; }
 
 /* top bar */
@@ -213,6 +221,9 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: var(--f-ui); }
   border-top: 1px solid var(--line);
 }
 .chapnav button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font: inherit;
   font-family: var(--f-ui);
   font-size: 15px;
@@ -502,6 +513,7 @@ html.modal-open { overflow: hidden; }
   border-color: color-mix(in srgb, var(--accent) 32%, transparent);
   margin-bottom: 8px;
 }
+.results .dref.go .dlabel { display: flex; align-items: center; gap: 6px; }
 .results .dnote { white-space: normal; }
 .badge { font-family: var(--f-ui); font-size: 10px; color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 0 4px; }
 /* The document is explicit that a search match is tinted in the same highlight
@@ -527,7 +539,7 @@ html.modal-open { overflow: hidden; }
 .bkbtn.on { border-color: var(--accent); color: var(--accent); }
 .chgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)); gap: 6px; margin-top: 8px; }
 .chbtn { font-family: var(--f-ui); font-size: 15px; padding: 10px 0; background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: var(--r-button); cursor: pointer; }
-.mini.back { margin-bottom: 8px; }
+.mini.back { display: inline-flex; align-items: center; gap: 5px; margin-bottom: 8px; }
 
 /* ---------- flow / reading mode ---------- */
 .flow { max-width: 720px; margin: 0 auto; }
@@ -594,6 +606,9 @@ html.modal-open { overflow: hidden; }
 
 .databtns { display: inline-flex; gap: 8px; }
 .mini {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   font-family: var(--f-ui);
   font-size: 13px;
   padding: 6px 12px;
@@ -603,7 +618,6 @@ html.modal-open { overflow: hidden; }
   border-radius: var(--r-button);
   cursor: pointer;
 }
-.mini.asbtn { display: inline-flex; align-items: center; }
 .mini input[type='file'] { display: none; }
 
 /* ---------- toast ---------- */

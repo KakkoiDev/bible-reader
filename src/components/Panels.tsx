@@ -227,7 +227,7 @@ export function Settings({
                 why this is a file and not a "sync": there is no cross-platform way
                 for a web page to put a card into Anki directly. */}
             <button className="mini" onClick={onExportAnki}>{t('anki')}</button>
-            <label className="mini asbtn">
+            <label className="mini">
               {t('import')}
               <input
                 type="file"

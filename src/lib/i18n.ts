@@ -11,11 +11,11 @@ import { BY_ID, isLang, type Lang } from './versions'
 
 const en = {
   choose_book: 'Choose a book',
-  all_books: '← All books',
+  all_books: 'All books',
   old_testament: 'Old Testament',
   new_testament: 'New Testament',
-  prev: '← Prev',
-  next: 'Next →',
+  prev: 'Prev',
+  next: 'Next',
 
   search_placeholder: 'Search text or reference (e.g. John 3:16)',
   searching: 'Searching…',
@@ -160,8 +160,8 @@ export type StringKey = keyof typeof en
 type Dict = Partial<Record<StringKey, string>>
 
 const ja: Dict = {
-  choose_book: '書を選ぶ', all_books: '← すべての書', old_testament: '旧約聖書', new_testament: '新約聖書',
-  prev: '← 前の章', next: '次の章 →',
+  choose_book: '書を選ぶ', all_books: 'すべての書', old_testament: '旧約聖書', new_testament: '新約聖書',
+  prev: '前の章', next: '次の章',
   search_placeholder: '本文または箇所を検索（例：ヨハネ3:16）', searching: '検索中…', no_results: '該当なし。', go_to: '移動',
   settings: '設定', theme: 'テーマ', theme_system: 'システム', theme_light: 'ライト', theme_dark: 'ダーク',
   font_size: '文字サイズ', flow: '節番号なしの連続表示', furigana: 'ふりがな（日本語）',
@@ -203,8 +203,8 @@ const ja: Dict = {
 }
 
 const fr: Dict = {
-  choose_book: 'Choisir un livre', all_books: '← Tous les livres', old_testament: 'Ancien Testament',
-  new_testament: 'Nouveau Testament', prev: '← Précédent', next: 'Suivant →',
+  choose_book: 'Choisir un livre', all_books: 'Tous les livres', old_testament: 'Ancien Testament',
+  new_testament: 'Nouveau Testament', prev: 'Précédent', next: 'Suivant',
   search_placeholder: 'Rechercher un texte ou une référence (ex. Jean 3:16)', searching: 'Recherche…',
   no_results: 'Aucun résultat.', go_to: 'Aller à',
   settings: 'Paramètres', theme: 'Thème', theme_system: 'système', theme_light: 'clair', theme_dark: 'sombre',
@@ -250,8 +250,8 @@ const fr: Dict = {
 }
 
 const zht: Dict = {
-  choose_book: '選擇書卷', all_books: '← 全部書卷', old_testament: '舊約', new_testament: '新約',
-  prev: '← 上一章', next: '下一章 →',
+  choose_book: '選擇書卷', all_books: '全部書卷', old_testament: '舊約', new_testament: '新約',
+  prev: '上一章', next: '下一章',
   search_placeholder: '搜尋經文或章節（例：約翰福音3:16）', searching: '搜尋中…', no_results: '沒有結果。', go_to: '前往',
   settings: '設定', theme: '主題', theme_system: '系統', theme_light: '淺色', theme_dark: '深色',
   font_size: '字型大小', flow: '連續排版（不顯示節號）', furigana: '振假名（日文）',
@@ -285,8 +285,8 @@ const zht: Dict = {
 }
 
 const zhs: Dict = {
-  choose_book: '选择书卷', all_books: '← 全部书卷', old_testament: '旧约', new_testament: '新约',
-  prev: '← 上一章', next: '下一章 →',
+  choose_book: '选择书卷', all_books: '全部书卷', old_testament: '旧约', new_testament: '新约',
+  prev: '上一章', next: '下一章',
   search_placeholder: '搜索经文或章节（例：约翰福音3:16）', searching: '搜索中…', no_results: '没有结果。', go_to: '前往',
   settings: '设置', theme: '主题', theme_system: '系统', theme_light: '浅色', theme_dark: '深色',
   font_size: '字号', flow: '连续排版（不显示节号）', furigana: '振假名（日文）',
@@ -320,8 +320,8 @@ const zhs: Dict = {
 }
 
 const pt: Dict = {
-  choose_book: 'Escolher um livro', all_books: '← Todos os livros', old_testament: 'Antigo Testamento',
-  new_testament: 'Novo Testamento', prev: '← Anterior', next: 'Próximo →',
+  choose_book: 'Escolher um livro', all_books: 'Todos os livros', old_testament: 'Antigo Testamento',
+  new_testament: 'Novo Testamento', prev: 'Anterior', next: 'Próximo',
   search_placeholder: 'Pesquisar texto ou referência (ex. João 3:16)', searching: 'Pesquisando…',
   no_results: 'Nenhum resultado.', go_to: 'Ir para',
   settings: 'Configurações', theme: 'Tema', theme_system: 'sistema', theme_light: 'claro', theme_dark: 'escuro',
@@ -361,8 +361,8 @@ const pt: Dict = {
 }
 
 const es: Dict = {
-  choose_book: 'Elegir un libro', all_books: '← Todos los libros', old_testament: 'Antiguo Testamento',
-  new_testament: 'Nuevo Testamento', prev: '← Anterior', next: 'Siguiente →',
+  choose_book: 'Elegir un libro', all_books: 'Todos los libros', old_testament: 'Antiguo Testamento',
+  new_testament: 'Nuevo Testamento', prev: 'Anterior', next: 'Siguiente',
   search_placeholder: 'Buscar texto o referencia (p. ej. Juan 3:16)', searching: 'Buscando…',
   no_results: 'Sin resultados.', go_to: 'Ir a',
   settings: 'Ajustes', theme: 'Tema', theme_system: 'sistema', theme_light: 'claro', theme_dark: 'oscuro',
@@ -403,8 +403,8 @@ const es: Dict = {
 }
 
 const ar: Dict = {
-  choose_book: 'اختر سفرًا', all_books: '← جميع الأسفار', old_testament: 'العهد القديم',
-  new_testament: 'العهد الجديد', prev: '← السابق', next: 'التالي →',
+  choose_book: 'اختر سفرًا', all_books: 'جميع الأسفار', old_testament: 'العهد القديم',
+  new_testament: 'العهد الجديد', prev: 'السابق', next: 'التالي',
   search_placeholder: 'ابحث في النص أو عن مرجع (مثال: يوحنا ٣:١٦)', searching: 'جارٍ البحث…',
   no_results: 'لا نتائج.', go_to: 'انتقل إلى',
   settings: 'الإعدادات', theme: 'المظهر', theme_system: 'النظام', theme_light: 'فاتح', theme_dark: 'داكن',
@@ -443,8 +443,8 @@ const ar: Dict = {
 }
 
 const tl: Dict = {
-  choose_book: 'Pumili ng aklat', all_books: '← Lahat ng aklat', old_testament: 'Lumang Tipan',
-  new_testament: 'Bagong Tipan', prev: '← Nauna', next: 'Susunod →',
+  choose_book: 'Pumili ng aklat', all_books: 'Lahat ng aklat', old_testament: 'Lumang Tipan',
+  new_testament: 'Bagong Tipan', prev: 'Nauna', next: 'Susunod',
   search_placeholder: 'Maghanap ng teksto o sanggunian (hal. Juan 3:16)', searching: 'Naghahanap…',
   no_results: 'Walang resulta.', go_to: 'Pumunta sa',
   settings: 'Mga setting', theme: 'Tema', theme_system: 'sistema', theme_light: 'maliwanag',
@@ -486,8 +486,8 @@ const tl: Dict = {
 
 // Modern Greek chrome; the text itself stays Koine.
 const el: Dict = {
-  choose_book: 'Επιλέξτε βιβλίο', all_books: '← Όλα τα βιβλία', old_testament: 'Παλαιά Διαθήκη',
-  new_testament: 'Καινή Διαθήκη', prev: '← Προηγούμενο', next: 'Επόμενο →',
+  choose_book: 'Επιλέξτε βιβλίο', all_books: 'Όλα τα βιβλία', old_testament: 'Παλαιά Διαθήκη',
+  new_testament: 'Καινή Διαθήκη', prev: 'Προηγούμενο', next: 'Επόμενο',
   search_placeholder: 'Αναζήτηση κειμένου ή παραπομπής (π.χ. Ιωάννης 3:16)', searching: 'Αναζήτηση…',
   no_results: 'Κανένα αποτέλεσμα.', go_to: 'Μετάβαση σε',
   settings: 'Ρυθμίσεις', theme: 'Θέμα', theme_system: 'σύστημα', theme_light: 'φωτεινό', theme_dark: 'σκοτεινό',
@@ -531,8 +531,8 @@ const el: Dict = {
 
 // Modern Hebrew chrome; the text itself stays the Masoretic consonantal tradition.
 const he: Dict = {
-  choose_book: 'בחר ספר', all_books: '← כל הספרים', old_testament: 'התנ״ך', new_testament: 'הברית החדשה',
-  prev: '← הקודם', next: 'הבא →',
+  choose_book: 'בחר ספר', all_books: 'כל הספרים', old_testament: 'התנ״ך', new_testament: 'הברית החדשה',
+  prev: 'הקודם', next: 'הבא',
   search_placeholder: 'חיפוש טקסט או מקור (למשל יוחנן 3:16)', searching: 'מחפש…',
   no_results: 'אין תוצאות.', go_to: 'עבור אל',
   settings: 'הגדרות', theme: 'ערכת נושא', theme_system: 'מערכת', theme_light: 'בהיר', theme_dark: 'כהה',

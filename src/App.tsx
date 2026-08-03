@@ -1383,11 +1383,11 @@ export default function App() {
 
         <nav className="chapnav">
           <button onClick={() => goChapter(-1)} disabled={bookIdx <= 0 && pos.chapter <= 1}>
-            {t('prev')}
+            <Icon name="prev" size={16} flip /> {t('prev')}
           </button>
           <span className="chaplabel">{title} {pos.chapter}</span>
           <button onClick={() => goChapter(1)} disabled={bookIdx === index.length - 1 && pos.chapter >= chapterCount}>
-            {t('next')}
+            {t('next')} <Icon name="next" size={16} flip />
           </button>
         </nav>
 
