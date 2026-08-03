@@ -462,3 +462,22 @@ highlighting, notes, and the splash screen. Screenshots land in `/tmp/shots`.
 
 `scripts/verify2.mjs`–`verify9.mjs` are one-off diagnostic scripts from earlier
 sessions that target port 4180; some assert against UI that no longer exists.
+
+**Two checks in `verify10.mjs` and one in `verify11.mjs` were already failing before
+the design-system work**, and are left failing rather than papered over: `builder
+offers the other nine`, `only visible editions are compared`, and `verify10.mjs:374`
+waits on `.verse-sheet .abtn.tiny`, a selector no component has rendered for some
+time, which aborts the rest of that run. `verify11.mjs:54` aborts the same way on
+`.strongs .conclist li`. Verified by building `fc823f9` in a worktree and running
+both suites against it: identical failures, same lines.
+
+```bash
+node scripts/design-audit.mjs http://localhost:4178 /tmp/shots after
+```
+
+`design-audit.mjs` is the design system's own gate. It resolves the tokens as the
+browser computes them, measures `--muted` and every highlight tint against WCAG in
+both themes, and sweeps seven screens for controls under 44x44, counting `::after`
+overlays and `<label>` rows as part of the target the way a thumb does. The only
+results it should report are the documented exceptions listed under **Departures**
+in `design-system/DESIGN.md`.

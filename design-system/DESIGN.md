@@ -59,6 +59,29 @@ See `tokens.css`. Two notes that are easy to get wrong:
 - Highlights are tints *behind a run of text* — never boxes, never borders, and
   grey is never a highlight colour (it means "already read" during playback).
 
+## Departures made while implementing this
+
+Recorded here so the document and the code do not tell different stories.
+
+- **A 39th icon, `stop`.** The icon set ships `play` and `pause`, but the
+  Listening header above is described as carrying pause, time remaining *and*
+  stop. This reader stops rather than pauses (playback resets to the start of
+  the verse), so `pause` would have named something the button does not do.
+  Drawn to match `pause`: same 14-tall body, same 1px rounded corner.
+- **Pills and chips stay at 32-36, not 44.** Principle 2 says 44 with one
+  exception, but the atom sheet itself draws every chip and status pill at
+  32-36 in the same panel. The artwork is the more specific instruction, so
+  `.chip` is 36 and the playback pill is 36. The controls that grew to 44 are
+  the buttons, fields, icon buttons, swatches, grid cells and list rows.
+- **A segmented cell is 38.** That is the 44 track minus its own 3px padding,
+  which is the geometry drawn above. The track is the target.
+- **The verse number and the inline play button stay at ~30.** They sit four
+  pixels apart in the text flow, so growing both to 44 makes them collide. The
+  answer this document gives is that per-verse play does not exist inline at
+  all; that is a later pass.
+- **`.gloss-mark` is left as text.** A glossed word is a word in the measure;
+  the atom sheet lists it under text atoms, not controls.
+
 ## Data this design assumes
 
 | Field | Status |
