@@ -664,6 +664,10 @@ html.modal-open { overflow: hidden; }
   white-space: nowrap;
 }
 .navbtn .caret { color: var(--muted); font-size: 12px; }
+/* The selector reads the same in a day's reading as out of it, so the state has to be
+   on the control itself: the calendar glyph plus the accent say which of the two this
+   chapter is being read as. */
+.navbtn.onplan { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
 
 /* ---------- search + navigator sheets ---------- */
 .sheet.search,
@@ -1239,12 +1243,20 @@ html.modal-open { overflow: hidden; }
   }
   /* The grab handle, and the sheet's top padding. `touch-action: none` is not
      decoration: without it the browser claims the vertical gesture for a scroll or
-     a pull-to-refresh before the pointer handler ever sees the second move. */
+     a pull-to-refresh before the pointer handler ever sees the second move. The head
+     carries it too, because the drag is documented to start on the title and a thumb
+     aiming at a 22px handle lands on the head often enough to read as "sometimes it
+     works". The search sheet is the one sheet that puts a field in its head
+     (Sheets.tsx passes the `.searchin` input as `title`), and `touch-action` is the
+     intersection over the ancestor chain rather than an inherited value, so a
+     descendant rule cannot hand the field its touch behaviour back. That sheet keeps
+     its handle and gives up its head. */
+  .sheet-grab { touch-action: none; }
+  .sheet:not(.search) .sheet-head { touch-action: none; }
   .sheet-grab {
     display: block;
     flex: none;
     height: 22px;
-    touch-action: none;
     background: linear-gradient(var(--line-strong), var(--line-strong)) center 12px / 42px 4px no-repeat;
   }
   .sheet-grab + .sheet-head { padding-top: 4px; }
@@ -1476,7 +1488,15 @@ html.modal-open { overflow: hidden; }
 }
 .patch section:first-child .patchbook { margin-top: 0; }
 .patchchap { margin-bottom: 26px; }
-.patchchap.read .fpar { opacity: 0.55; }
+.patchchap.read .fpar,
+.patchchap.read .verses { opacity: 0.55; }
+/* Verse mode has no running paragraph for the chapter badge to sit at the head of. */
+.patchchapno { margin: 0 0 6px; }
+/* The day carries no per-verse action in either mode, so its numbers are labels. The
+   reader's number is a link button and must not be imitated by something inert. */
+.patch .vn { cursor: default; }
+.patch .vn:hover { text-decoration: none; }
+.patch .vn::after { content: none; }
 .ptick {
   display: inline-flex;
   align-items: center;

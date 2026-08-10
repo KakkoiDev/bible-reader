@@ -220,10 +220,22 @@ export default function App() {
   const t = useMemo(() => translator(prefs.ui), [prefs.ui])
   const setPref = useCallback((p: Partial<Prefs>) => setPrefs((prev) => ({ ...prev, ...p })), [])
 
+  // The hash the app wrote itself, so the listener below can tell its own echo from a
+  // location the reader supplied. Held as a ref because it has to be readable by the
+  // very next event, before any render.
+  const selfHash = useRef<string | null>(null)
+
   // navigation via URL hash (shareable, back-button friendly)
   const navigate = useCallback((next: { slug?: string; chapter?: number; lang?: Lang; verse?: number }) => {
     setPos((prev) => {
-      location.hash = buildHash(next.slug ?? prev.slug, next.chapter ?? prev.chapter, next.lang ?? prev.lang, next.verse)
+      const h = buildHash(next.slug ?? prev.slug, next.chapter ?? prev.chapter, next.lang ?? prev.lang, next.verse)
+      // Claimed unconditionally, and before the write. A claim only lives until the next
+      // hashchange, and an unchanged hash fires none, so the one location a surviving
+      // claim could match is the app's own current one, which no back or forward press
+      // produces an event for. Reading the hash back here to decide would instead be
+      // read-after-write inside an updater React is free to run more than once.
+      selfHash.current = h
+      location.hash = h
       return prev
     })
   }, [])
@@ -700,6 +712,11 @@ export default function App() {
   const go = useCallback(
     (next: { slug?: string; chapter?: number; lang?: Lang; verse?: number }) => {
       stopAudio()
+      // Naming a book or a chapter is leaving the day's reading: the navigator, the
+      // chapter-end row, search and the saved list all arrive here, so none of them is
+      // a dead end while a day is open. Naming only an edition is not leaving, so the
+      // language ring re-reads the same day in another translation.
+      if (next.chapter != null || next.slug != null) setPatch(null)
       if (flow && (next.chapter != null || next.slug != null)) {
         setFlowTarget({ ch: next.chapter ?? pos.chapter, v: next.verse ?? 1 })
       }
@@ -744,6 +761,14 @@ export default function App() {
       }
       if (!h.loc) return
       const loc = h.loc
+      // A location the reader supplied names a chapter, and naming a chapter leaves the
+      // day exactly as `go` reads it, so a back press lands on the chapter the history
+      // entry names rather than leaving a stale name over the day's text. The app's own
+      // writes are not that: `go` has already decided whether the day survives, and the
+      // language ring re-reads the same day through one of them.
+      const own = selfHash.current === location.hash
+      selfHash.current = null
+      if (!own) setPatch(null)
       setPos((prev) => {
         if (flow && (loc.slug !== prev.slug || loc.chapter !== prev.chapter))
           setFlowTarget({ ch: loc.chapter, v: loc.verse ?? 1 })
@@ -986,10 +1011,15 @@ export default function App() {
 
   // ---- the patchwork reader ----
   //
-  // A day's chapters read as one passage, in the reading language only, with no verse
-  // numbers: the request asked for "a patch-worked temporary book", and for no verse
-  // mode. A day can cross books, so the books it spans are fetched through the same
-  // per-book cache the reader uses and a faint heading marks each seam.
+  // A day's chapters read as one passage, in the reading language only. A day can cross
+  // books, so the books it spans are fetched through the same per-book cache the reader
+  // uses and a faint heading marks each seam.
+  //
+  // This is a third branch of the reader rather than the ordinary one fed different
+  // input: the ordinary reader renders one chapter of one book, or in flow the whole of
+  // one book, and a day is neither. What it does share is the mode: `prefs.flow` decides
+  // whether the day runs on as prose or as numbered verses, exactly as it does for a
+  // chapter, and there is no separate preference for the day.
   const patchKey = useMemo(() => (patch ? [...new Set(patch.map((r) => r.slug))].join(',') : ''), [patch])
   const [patchTexts, setPatchTexts] = useState<Record<string, EditionBook>>({})
   useEffect(() => {
@@ -1044,6 +1074,52 @@ export default function App() {
     [patchBooks],
   )
 
+  /** Open a day as one passage, with the selectors on the chapter it starts at.
+   *
+   *  `setPos` rather than `go`, for two reasons: `go` reads naming a chapter as leaving
+   *  the day, and the day is not a hash-addressable place. Writing the hash here would
+   *  put the day's first chapter in the history, so a back press would restore the old
+   *  chapter into the header while the day stayed on screen, which is the bug this is
+   *  fixing. Flow mode already lets `pos` follow the scroll without touching the hash. */
+  const openDay = useCallback((refs: PlanRef[]) => {
+    setPatch(refs)
+    setPlannerOpen(false)
+    if (refs.length) setPos((prev) => ({ ...prev, slug: refs[0].slug, chapter: refs[0].ch }))
+    window.scrollTo({ top: 0 })
+  }, [])
+
+  // Which chapter of the day is on screen. A day is often several chapters and sometimes
+  // several books, so no single value is honest for the whole passage; the selector names
+  // the chapter being read, which is what it names in flow mode for the same reason.
+  useEffect(() => {
+    if (!patch || !patchVerses.length) return
+    const el = readerRef.current
+    if (!el) return
+    const order = new Map(patch.map((r, i) => [`${r.slug}.${r.ch}`, i]))
+    const visible = new Map<string, { slug: string; ch: number }>()
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          const m = /^pv-(.+)-(\d+)-\d+$/.exec(e.target.id)
+          if (!m) continue
+          if (e.isIntersecting) visible.set(e.target.id, { slug: m[1], ch: Number(m[2]) })
+          else visible.delete(e.target.id)
+        }
+        let best: { slug: string; ch: number; at: number } | null = null
+        for (const c of visible.values()) {
+          const at = order.get(`${c.slug}.${c.ch}`) ?? 0
+          if (!best || at < best.at) best = { ...c, at }
+        }
+        if (!best) return
+        const top = best
+        setPos((prev) => (prev.slug === top.slug && prev.chapter === top.ch ? prev : { ...prev, slug: top.slug, chapter: top.ch }))
+      },
+      { rootMargin: '-84px 0px -55% 0px', threshold: 0 },
+    )
+    el.querySelectorAll('.pverse').forEach((x) => io.observe(x))
+    return () => io.disconnect()
+  }, [patch, patchVerses.length, flow])
+
   // Play from the planner: the chapters are still being fetched when the button is
   // pressed, so the request is held until there is something to speak. Not continuous,
   // because the day's list is the whole run and rolling on would read past it.
@@ -1089,7 +1165,7 @@ export default function App() {
       io.disconnect()
       for (const id of timers.values()) clearTimeout(id)
     }
-  }, [patch, patchVerses.length, patchBooks, markVerse])
+  }, [patch, patchVerses.length, patchBooks, markVerse, flow])
 
   useEffect(() => {
     if (!toast) return
@@ -1428,8 +1504,16 @@ export default function App() {
   return (
     <div className="app">
       <header className="bar">
-        <button className="navbtn" onClick={() => setNavOpen(true)}>
-          {title} {pos.chapter} <span className="caret"><Icon name="expand" size={13} /></span>
+        {/* The selector names the chapter on screen whether that chapter is being
+            browsed or is part of the day's reading, so the day has to be marked here:
+            this is the one line of the reader that survives scrolling. */}
+        <button
+          className={`navbtn ${patch ? 'onplan' : ''}`}
+          onClick={() => setNavOpen(true)}
+          title={patch ? t('plan_reading') : undefined}
+        >
+          {patch && <Icon name="calendar" size={14} />} {title} {pos.chapter}{' '}
+          <span className="caret"><Icon name="expand" size={13} /></span>
         </button>
         <div className="tools">
           {/* Composing an invite lives in the verse sheet, not here: you share a
@@ -1502,22 +1586,38 @@ export default function App() {
                 <h2 className="patchbook">{g.name}</h2>
                 {g.chapters.map((c) => {
                   const read = chapterRead(progress, c.slug, c.ch)
+                  const spoken = (v: number) =>
+                    speaking?.slug === c.slug && speaking.ch === c.ch && speaking.v === v ? 'speaking' : ''
                   return (
                     <div className={`patchchap ${read ? 'read' : ''}`} key={`${c.slug}-${c.ch}`}>
-                      <p className="fpar">
-                        <span className="fchap" dir="ltr">{c.ch}</span>
-                        {c.verses.map((v) => (
-                          <span
-                            key={v.v}
-                            id={patchVerseId(c.slug, c.ch, v.v)}
-                            className={`fverse pverse ${
-                              speaking?.slug === c.slug && speaking.ch === c.ch && speaking.v === v.v ? 'speaking' : ''
-                            }`}
-                          >
-                            <VerseText text={v.text} lang={pos.lang} showFurigana={prefs.furigana} highlights={v.hl} />{' '}
-                          </span>
-                        ))}
-                      </p>
+                      {flow ? (
+                        <p className="fpar">
+                          <span className="fchap" dir="ltr">{c.ch}</span>
+                          {c.verses.map((v) => (
+                            <span key={v.v} id={patchVerseId(c.slug, c.ch, v.v)} className={`fverse pverse ${spoken(v.v)}`}>
+                              <VerseText text={v.text} lang={pos.lang} showFurigana={prefs.furigana} highlights={v.hl} />{' '}
+                            </span>
+                          ))}
+                        </p>
+                      ) : (
+                        <>
+                          {/* Verse mode has no running paragraph to carry the chapter
+                              badge, so it gets the line above the numbers instead. */}
+                          <p className="patchchapno"><span className="fchap" dir="ltr">{c.ch}</span></p>
+                          <ol className="verses">
+                            {c.verses.map((v) => (
+                              <li key={v.v} id={patchVerseId(c.slug, c.ch, v.v)} className={`verse pverse ${spoken(v.v)}`}>
+                                {/* A label, not the reader's link button: the day carries no
+                                    per-verse action in either mode. */}
+                                <span className="vn">{v.v}</span>
+                                <span className="vt">
+                                  <VerseText text={v.text} lang={pos.lang} showFurigana={prefs.furigana} highlights={v.hl} />
+                                </span>
+                              </li>
+                            ))}
+                          </ol>
+                        </>
+                      )}
                       <button
                         className={`ptick ${read ? 'on' : ''}`}
                         lang={BY_ID[prefs.ui].htmlLang}
@@ -1715,7 +1815,10 @@ export default function App() {
 
         {/* You fall into the next chapter rather than aiming at it: the rule closes the
             passage, and the full-width row under it is the only large target on the
-            page. The floating pill is for turning mid-chapter; this is for finishing. */}
+            page. The floating pill is for turning mid-chapter; this is for finishing.
+            A day's reading ends with its own row, and "end of Jude 1" would be a lie
+            about what just ended when the day ran on into Revelation. */}
+        {!patch && (
         <nav className="chapend">
           <p className="chapend-rule"><span className="chaplabel">{t('end_of', { ref: `${title} ${pos.chapter}` })}</span></p>
           {nextRef && (
@@ -1738,6 +1841,7 @@ export default function App() {
             </button>
           </div>
         </nav>
+        )}
 
         <footer className="attrib">
           {installPrompt && (
@@ -1784,13 +1888,11 @@ export default function App() {
           onRemove={removeBlock}
           onMove={moveBlock}
           onRead={(refs) => {
-            setPatch(refs)
-            setPlannerOpen(false)
+            openDay(refs)
             stopAudio()
           }}
           onPlay={(refs) => {
-            setPatch(refs)
-            setPlannerOpen(false)
+            openDay(refs)
             setPlayPatch(true)
           }}
         />
