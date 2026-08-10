@@ -269,12 +269,21 @@ console.log('\nLeaving a day is a chapter away, and the day is where it leaves y
   check('and re-reads it in the other translation',
     (await page.locator('.patch').getAttribute('lang')) === 'fr', await page.locator('.patch').getAttribute('lang'))
 
+  // The way back sits at the end of the day, so reaching it is a scroll through the
+  // passage and the selector has followed it there. Scroll first and read the selector
+  // before the click: leaving with the click's own scroll still in flight is what
+  // decides between the day's first and last chapter, and neither is the thing under
+  // test here.
+  await page.evaluate(() => window.scrollTo({ top: document.body.scrollHeight }))
+  await page.waitForTimeout(400)
+  const onScreen = (await page.locator('.navbtn').innerText()).trim()
   await page.locator('.patchdone').click()
   await page.locator('.reader .cols').waitFor({ state: 'visible' })
   check('the way back leaves the day', (await page.locator('.patch').count()) === 0)
   check('and lands on the chapter that was being read, not the one before the day',
-    (await page.locator('.navbtn').innerText()).trim().startsWith('Jude 1'),
-    await page.locator('.navbtn').innerText())
+    onScreen.startsWith('Revelation 1') &&
+      (await page.locator('.navbtn').innerText()).trim().startsWith('Revelation 1'),
+    `${onScreen} then ${(await page.locator('.navbtn').innerText()).trim()}`)
   check('with the day marking gone', !(await page.locator('.navbtn').evaluate((e) => e.classList.contains('onplan'))))
   await ctx.close()
 }
