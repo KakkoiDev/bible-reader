@@ -49,6 +49,11 @@ Every attribution is reproduced verbatim in the app under **Texts & licences**.
 - **The passage closes on a chapter-end row**: a rule naming what you just finished,
   then a full-width row naming what comes next. At the end of a book that is the next
   book, which is the only place the reader names it.
+- **A day's reading opens as one passage.** The calendar sets out the whole of a plan's
+  day, running on across books where the day spans them. It honours the same flow and
+  verse toggle as ordinary reading, with no separate preference of its own. While a day
+  is open the book and chapter selectors follow the chapter on screen, and the header
+  button is marked, so a day is never mistaken for ordinary browsing.
 - **UI language** switches the chrome and displayed book names across all eleven
   languages, including right-to-left layout for Arabic and Hebrew.
 - **Search** matches text in the enabled editions, and resolves references in *any*

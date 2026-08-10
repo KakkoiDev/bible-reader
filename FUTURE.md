@@ -154,10 +154,15 @@ common vocabulary, but homographs and rare proper nouns will sometimes be wrong.
 hand-curated 文語訳 furigana stays the trustworthy one; a curated pass over jako, or a
 better source, could replace the generated readings later.
 
-## 6. Reading plans / daily verse
+## 6. Reading plans / daily verse — *partly shipped*
 
-Scheduled reading plans, a "verse of the day" — leaning on the existing resume +
-deep-link machinery.
+**Shipped: scheduled reading plans.** The header's calendar opens the planner
+(`src/components/Planner.tsx`); a day's reading is a pure function of the plan's start
+date, computed in `src/lib/plans.ts`, and "Read now" sets the day out as one passage in
+whichever reading mode is already on.
+
+Still open: a **"verse of the day"**, leaning on the existing resume + deep-link
+machinery.
 
 **Not streaks, and not a percentage-read figure.** Both were considered and dropped:
 coverage numbers and streaks invite a "you are behind" reading, and this reader is
