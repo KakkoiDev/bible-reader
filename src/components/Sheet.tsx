@@ -16,6 +16,11 @@ import { Icon } from './Icon'
  * case is a pointer-device one only. A touch there is claimed by the scroller
  * before the second move arrives, and the only way to stop that would be to take
  * `touch-action` off the one element in the sheet that has to keep scrolling.
+ *
+ * The search sheet gives up its title the same way and for the same reason: it is
+ * the one sheet whose title is a text field, and a field cannot keep the touch
+ * behaviour a field needs under an ancestor that has given it away. A touch drag
+ * on its head is claimed by the browser, so search drags by its handle alone.
  */
 
 const DISMISS_FRACTION = 0.25

@@ -229,9 +229,12 @@ export default function App() {
   const navigate = useCallback((next: { slug?: string; chapter?: number; lang?: Lang; verse?: number }) => {
     setPos((prev) => {
       const h = buildHash(next.slug ?? prev.slug, next.chapter ?? prev.chapter, next.lang ?? prev.lang, next.verse)
-      // An unchanged hash fires no event, so remembering it would leave a stale claim
-      // for whichever external change happened to match it next.
-      selfHash.current = h === location.hash ? null : h
+      // Claimed unconditionally, and before the write. A claim only lives until the next
+      // hashchange, and an unchanged hash fires none, so the one location a surviving
+      // claim could match is the app's own current one, which no back or forward press
+      // produces an event for. Reading the hash back here to decide would instead be
+      // read-after-write inside an updater React is free to run more than once.
+      selfHash.current = h
       location.hash = h
       return prev
     })
