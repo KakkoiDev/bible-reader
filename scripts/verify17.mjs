@@ -188,15 +188,29 @@ console.log('\nThe head taking touch-action leaves the rest of the sheet alone')
 }
 
 {
-  // The search sheet is the one that puts a field in the head, so it opts back out of
-  // `touch-action: none`. If the opt-out is dropped the field stops taking a caret.
-  const { ctx, page } = await open()
+  // The search sheet is the one that puts a field in the head, so its head is left out
+  // of the rule entirely. Reading the field's own `touch-action` would prove nothing:
+  // the property is not inherited and the effective behaviour is the intersection over
+  // the ancestor chain, so the head is the element that has to be measured.
+  const { ctx, page, cdp } = await open()
   await page.locator('header .icon[title="Search"]').click()
   await page.locator('.sheet.search').waitFor({ state: 'visible' })
-  const ta = await page.locator('.searchin').evaluate((el) => getComputedStyle(el).touchAction)
-  check('the search field keeps the browser touch behaviour a field needs', ta === 'auto', ta)
-  await page.locator('.searchin').fill('faith')
-  check('and still takes text', (await page.locator('.searchin').inputValue()) === 'faith')
+  await page.waitForTimeout(250)
+  const searchHead = await page.locator('.sheet.search .sheet-head').evaluate((el) => getComputedStyle(el).touchAction)
+  check('the search sheet\'s head is out of the rule, so the field keeps its touch behaviour', searchHead === 'auto', searchHead)
+
+  // Narrowing the rule must not cost the search sheet the handle every sheet drags by.
+  const grab = await centreOf(page, '.sheet-grab')
+  await swipe(cdp, grab.x, grab.y, 420)
+  check('and its handle still dismisses it under a finger', !(await isOpen(page)))
+  await ctx.close()
+}
+
+{
+  const { ctx, page } = await open()
+  await openTray(page)
+  const head = await page.locator('.sheet-head').evaluate((el) => getComputedStyle(el).touchAction)
+  check('every other sheet\'s head still takes touch-action: none', head === 'none', head)
   await ctx.close()
 }
 

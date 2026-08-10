@@ -220,10 +220,19 @@ export default function App() {
   const t = useMemo(() => translator(prefs.ui), [prefs.ui])
   const setPref = useCallback((p: Partial<Prefs>) => setPrefs((prev) => ({ ...prev, ...p })), [])
 
+  // The hash the app wrote itself, so the listener below can tell its own echo from a
+  // location the reader supplied. Held as a ref because it has to be readable by the
+  // very next event, before any render.
+  const selfHash = useRef<string | null>(null)
+
   // navigation via URL hash (shareable, back-button friendly)
   const navigate = useCallback((next: { slug?: string; chapter?: number; lang?: Lang; verse?: number }) => {
     setPos((prev) => {
-      location.hash = buildHash(next.slug ?? prev.slug, next.chapter ?? prev.chapter, next.lang ?? prev.lang, next.verse)
+      const h = buildHash(next.slug ?? prev.slug, next.chapter ?? prev.chapter, next.lang ?? prev.lang, next.verse)
+      // An unchanged hash fires no event, so remembering it would leave a stale claim
+      // for whichever external change happened to match it next.
+      selfHash.current = h === location.hash ? null : h
+      location.hash = h
       return prev
     })
   }, [])
@@ -749,6 +758,14 @@ export default function App() {
       }
       if (!h.loc) return
       const loc = h.loc
+      // A location the reader supplied names a chapter, and naming a chapter leaves the
+      // day exactly as `go` reads it, so a back press lands on the chapter the history
+      // entry names rather than leaving a stale name over the day's text. The app's own
+      // writes are not that: `go` has already decided whether the day survives, and the
+      // language ring re-reads the same day through one of them.
+      const own = selfHash.current === location.hash
+      selfHash.current = null
+      if (!own) setPatch(null)
       setPos((prev) => {
         if (flow && (loc.slug !== prev.slug || loc.chapter !== prev.chapter))
           setFlowTarget({ ch: loc.chapter, v: loc.verse ?? 1 })
@@ -1098,7 +1115,7 @@ export default function App() {
     )
     el.querySelectorAll('.pverse').forEach((x) => io.observe(x))
     return () => io.disconnect()
-  }, [patch, patchVerses.length])
+  }, [patch, patchVerses.length, flow])
 
   // Play from the planner: the chapters are still being fetched when the button is
   // pressed, so the request is held until there is something to speak. Not continuous,
@@ -1145,7 +1162,7 @@ export default function App() {
       io.disconnect()
       for (const id of timers.values()) clearTimeout(id)
     }
-  }, [patch, patchVerses.length, patchBooks, markVerse])
+  }, [patch, patchVerses.length, patchBooks, markVerse, flow])
 
   useEffect(() => {
     if (!toast) return

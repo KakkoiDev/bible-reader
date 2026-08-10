@@ -303,6 +303,71 @@ console.log('\nLeaving a day is a chapter away, and the day is where it leaves y
   await ctx.close()
 }
 
+console.log('\nSwitching mode inside a day does not cost the selector its scroll')
+{
+  // Flow and verse mode render the day's verses as different elements in the same slot,
+  // so the toggle unmounts every `.pverse` the observer holds. If the observer is not
+  // rebuilt it keeps the detached nodes and the selector freezes on the day's first
+  // chapter however far the reader goes.
+  const { ctx, page } = await open({ plans: [acrossBooks], phone: true })
+  await openPlanner(page)
+  await page.locator('.pactions .primary').click()
+  await readDay(page, 3)
+
+  await page.locator('header .icon[title="Settings"]').click()
+  await page.locator('.sheet .sgroup').first().waitFor({ state: 'visible' })
+  await page.locator('.srow', { hasText: 'Flowing text' }).locator('input[type=checkbox]').check()
+  await page.keyboard.press('Escape')
+  await page.locator('.sheet').waitFor({ state: 'detached' })
+  check('the day is still on screen after the toggle', (await page.locator('.patch').count()) === 1)
+  check('and it has been re-set as prose', (await page.locator('.patch .fpar').count()) === 3,
+    `${await page.locator('.patch .fpar').count()} paragraphs`)
+
+  // The day's second chapter put just above the observer's band, so nothing of the first
+  // is left in it and only the second can win.
+  await page.locator('.patchchap').nth(1).evaluate((el) =>
+    window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 20 }))
+  await page.waitForTimeout(500)
+  check('the selector follows the scroll into the second chapter of the day',
+    (await page.locator('.navbtn').innerText()).trim().startsWith('3 John 1'),
+    await page.locator('.navbtn').innerText())
+
+  // The dwell observer watches the same remounted nodes, so it goes deaf the same way and
+  // the day silently stops recording anything the reader has read.
+  await page.waitForTimeout(1600)
+  const marked = await page.evaluate(() => Object.keys(JSON.parse(localStorage.getItem('plan-progress.v1') || '{}')))
+  check('and dwelling still ticks the verses on screen off',
+    marked.some((k) => k.startsWith('3-john.1.')), marked.slice(0, 3).join(' ') || '(none)')
+  await ctx.close()
+}
+
+console.log('\nA back press out of a day leaves the day, rather than renaming it')
+{
+  // Opening a day writes no hash, but every earlier chapter did, so back lands on one of
+  // them. The day used to stay on screen under a header naming a passage that was not in
+  // it, and nothing but a scroll would put that right.
+  const { ctx, page } = await open({ plans: [acrossBooks], phone: true })
+  await page.evaluate(() => { location.hash = '#/john/4/en' })
+  await page.waitForFunction(() => document.querySelector('.navbtn')?.innerText.includes('John 4'))
+  await openPlanner(page)
+  await page.locator('.pactions .primary').click()
+  await readDay(page, 3)
+  check('the day is open, over the history of two chapters',
+    (await page.locator('.navbtn').innerText()).trim().startsWith('Jude 1'), await page.locator('.navbtn').innerText())
+
+  await page.goBack()
+  // Swallowed rather than awaited outright: a tree that has not been fixed never drops
+  // the day, and this section is worth more as four red checks than as one stack trace.
+  await page.locator('.patch').waitFor({ state: 'detached', timeout: 5000 }).catch(() => {})
+  check('going back leaves the day', (await page.locator('.patch').count()) === 0)
+  check('and lands on the chapter the history entry names',
+    (await page.locator('.navbtn').innerText()).trim().startsWith('John 3'), await page.locator('.navbtn').innerText())
+  check('with the day marking gone', !(await page.locator('.navbtn').evaluate((e) => e.classList.contains('onplan'))))
+  check('and the calendar glyph with it', (await page.locator('.navbtn > svg.ic').count()) === 0,
+    `${await page.locator('.navbtn > svg.ic').count()} glyphs`)
+  await ctx.close()
+}
+
 console.log('\nA chapter ticks off, and stays ticked')
 {
   const one = plan({ scope: { kind: 'chapters', refs: ['jude.1'] }, days: 1, startedAt: daysAgo(0) })

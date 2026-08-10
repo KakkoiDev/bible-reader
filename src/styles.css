@@ -1246,10 +1246,13 @@ html.modal-open { overflow: hidden; }
      a pull-to-refresh before the pointer handler ever sees the second move. The head
      carries it too, because the drag is documented to start on the title and a thumb
      aiming at a 22px handle lands on the head often enough to read as "sometimes it
-     works". The search sheet's field is in the head, so it opts back out. */
-  .sheet-grab,
-  .sheet-head { touch-action: none; }
-  .sheet-head input { touch-action: auto; }
+     works". The search sheet is the one sheet that puts a field in its head
+     (Sheets.tsx passes the `.searchin` input as `title`), and `touch-action` is the
+     intersection over the ancestor chain rather than an inherited value, so a
+     descendant rule cannot hand the field its touch behaviour back. That sheet keeps
+     its handle and gives up its head. */
+  .sheet-grab { touch-action: none; }
+  .sheet:not(.search) .sheet-head { touch-action: none; }
   .sheet-grab {
     display: block;
     flex: none;
