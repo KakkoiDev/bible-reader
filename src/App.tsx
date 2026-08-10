@@ -986,10 +986,15 @@ export default function App() {
 
   // ---- the patchwork reader ----
   //
-  // A day's chapters read as one passage, in the reading language only, with no verse
-  // numbers: the request asked for "a patch-worked temporary book", and for no verse
-  // mode. A day can cross books, so the books it spans are fetched through the same
-  // per-book cache the reader uses and a faint heading marks each seam.
+  // A day's chapters read as one passage, in the reading language only. A day can cross
+  // books, so the books it spans are fetched through the same per-book cache the reader
+  // uses and a faint heading marks each seam.
+  //
+  // This is a third branch of the reader rather than the ordinary one fed different
+  // input: the ordinary reader renders one chapter of one book, or in flow the whole of
+  // one book, and a day is neither. What it does share is the mode: `prefs.flow` decides
+  // whether the day runs on as prose or as numbered verses, exactly as it does for a
+  // chapter, and there is no separate preference for the day.
   const patchKey = useMemo(() => (patch ? [...new Set(patch.map((r) => r.slug))].join(',') : ''), [patch])
   const [patchTexts, setPatchTexts] = useState<Record<string, EditionBook>>({})
   useEffect(() => {
@@ -1502,22 +1507,38 @@ export default function App() {
                 <h2 className="patchbook">{g.name}</h2>
                 {g.chapters.map((c) => {
                   const read = chapterRead(progress, c.slug, c.ch)
+                  const spoken = (v: number) =>
+                    speaking?.slug === c.slug && speaking.ch === c.ch && speaking.v === v ? 'speaking' : ''
                   return (
                     <div className={`patchchap ${read ? 'read' : ''}`} key={`${c.slug}-${c.ch}`}>
-                      <p className="fpar">
-                        <span className="fchap" dir="ltr">{c.ch}</span>
-                        {c.verses.map((v) => (
-                          <span
-                            key={v.v}
-                            id={patchVerseId(c.slug, c.ch, v.v)}
-                            className={`fverse pverse ${
-                              speaking?.slug === c.slug && speaking.ch === c.ch && speaking.v === v.v ? 'speaking' : ''
-                            }`}
-                          >
-                            <VerseText text={v.text} lang={pos.lang} showFurigana={prefs.furigana} highlights={v.hl} />{' '}
-                          </span>
-                        ))}
-                      </p>
+                      {flow ? (
+                        <p className="fpar">
+                          <span className="fchap" dir="ltr">{c.ch}</span>
+                          {c.verses.map((v) => (
+                            <span key={v.v} id={patchVerseId(c.slug, c.ch, v.v)} className={`fverse pverse ${spoken(v.v)}`}>
+                              <VerseText text={v.text} lang={pos.lang} showFurigana={prefs.furigana} highlights={v.hl} />{' '}
+                            </span>
+                          ))}
+                        </p>
+                      ) : (
+                        <>
+                          {/* Verse mode has no running paragraph to carry the chapter
+                              badge, so it gets the line above the numbers instead. */}
+                          <p className="patchchapno"><span className="fchap" dir="ltr">{c.ch}</span></p>
+                          <ol className="verses">
+                            {c.verses.map((v) => (
+                              <li key={v.v} id={patchVerseId(c.slug, c.ch, v.v)} className={`verse pverse ${spoken(v.v)}`}>
+                                {/* A label, not the reader's link button: the day carries no
+                                    per-verse action in either mode. */}
+                                <span className="vn">{v.v}</span>
+                                <span className="vt">
+                                  <VerseText text={v.text} lang={pos.lang} showFurigana={prefs.furigana} highlights={v.hl} />
+                                </span>
+                              </li>
+                            ))}
+                          </ol>
+                        </>
+                      )}
                       <button
                         className={`ptick ${read ? 'on' : ''}`}
                         lang={BY_ID[prefs.ui].htmlLang}

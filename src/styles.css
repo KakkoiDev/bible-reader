@@ -1481,7 +1481,15 @@ html.modal-open { overflow: hidden; }
 }
 .patch section:first-child .patchbook { margin-top: 0; }
 .patchchap { margin-bottom: 26px; }
-.patchchap.read .fpar { opacity: 0.55; }
+.patchchap.read .fpar,
+.patchchap.read .verses { opacity: 0.55; }
+/* Verse mode has no running paragraph for the chapter badge to sit at the head of. */
+.patchchapno { margin: 0 0 6px; }
+/* The day carries no per-verse action in either mode, so its numbers are labels. The
+   reader's number is a link button and must not be imitated by something inert. */
+.patch .vn { cursor: default; }
+.patch .vn:hover { text-decoration: none; }
+.patch .vn::after { content: none; }
 .ptick {
   display: inline-flex;
   align-items: center;
