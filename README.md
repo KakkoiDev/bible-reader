@@ -567,8 +567,16 @@ asserts that the header's calendar is a 44pt target drawn from the icon set rath
 an emoji, that the advanced block is closed on open, that a plan seeded ten days back
 opens on day eleven with nothing in the sheet reading as an accusation, that a finished
 plan says so and a repeating one wraps, and that "Read now" renders the day as one
-passage with a faint book heading at each seam, no verse numbers, and real text from
-every book of the day.
+passage with a faint book heading at each seam and real text from every book of the day.
+
+The day is set in whichever of the reader's two modes is on rather than one of its own,
+so it is asserted twice: verse mode numbers every verse of the day, flow mode runs the
+same day on as prose, and toggling between them mid-day keeps both the selector and the
+dwell tick alive across the remount. The selectors move onto the day as well: opening a
+day names its first chapter, scrolling follows the chapter on screen, the button carries
+the day marking, and the chapter-end row is absent inside a day. Naming a chapter, a
+back press, or the way back at the end of the day all leave the day; changing edition
+does not, and re-reads the same day in the other translation.
 
 All three tick-off routes are covered, because all three were asked for. The manual
 tick writes one chapter key and survives a reload. Audio speaks the whole day across
@@ -588,6 +596,26 @@ and that block reordering stays a contiguous `0..n-1`. The last section is the c
 backstop: 1,189 chapters in the KJV spine, 1,190 in the index because the Masoretic
 Joel is four chapters, and Ecclesiastes twelve. Reverting the Song of Solomon fix fails
 the last of those.
+
+```bash
+npx vite preview --port 4185 --strictPort
+node scripts/verify17.mjs   # the sheet's drag-to-dismiss, driven by a real finger
+```
+
+`verify17.mjs` is the regression test for the sheet handle that "did not work all the
+time": one symptom over two faults, a scroll guard that killed gestures which never
+touched the scroller and `touch-action: none` missing from the head the drag is
+documented to start on. Both need a real touch pointer, so touch is dispatched through CDP
+`Input.dispatchTouchEvent`: `page.touchscreen` taps but does not drag, and a mouse
+exercises neither `touch-action` nor the race against a scroller. Every check runs at
+390x844 with `hasTouch`, the only viewport where the sheet is docked and the handle is
+drawn. It asserts that the handle dismisses a sheet whose body has been scrolled, that a
+drag on the title does too, and both negatives in the same file: a drag that starts in a
+scrolled body still keeps its scroll, and a wobbled tap under the commit threshold is
+still a tap. Without the negatives the guard's real job could quietly disappear. The last
+section is the cost of the CSS half: the body still scrolls under a finger, every sheet
+head but search's takes `touch-action: none`, and the search sheet, whose head is a text
+field, keeps `auto` there and drags by its handle alone.
 
 `scripts/verify2.mjs`-`verify9.mjs` are one-off diagnostic scripts from earlier
 sessions that target port 4180; some assert against UI that no longer exists.

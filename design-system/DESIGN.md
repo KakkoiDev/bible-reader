@@ -135,9 +135,12 @@ Recorded here so the document and the code do not tell different stories.
   treat it as a first draft, not as the design. A plan block is a `--sunken` card
   at `--r-card` carrying a name, what it covers, today's reference, a progress
   line and two actions; today's reading is at the top of the card because it is
-  the only part most readers ever need. The patchwork reader is flow mode over a
-  synthetic chapter list, with a `--fs-eyebrow` uppercase muted book heading at
-  each seam and a pill tick under each chapter. Everything the request called
+  the only part most readers ever need. The patchwork reader is the reader's own
+  two modes over a synthetic chapter list, flowing paragraphs or numbered verses
+  as the setting says, with a `--fs-eyebrow` uppercase muted book heading at each
+  seam and a pill tick under each chapter. In verse mode the chapter badge takes
+  the line above the numbers, since there is no running paragraph to open, and the
+  numbers are inert labels rather than the reader's link buttons. Everything the request called
   advanced is inside a closed `<details>`, so the common path is four taps and
   answers no question it can answer itself.
 
