@@ -1239,12 +1239,17 @@ html.modal-open { overflow: hidden; }
   }
   /* The grab handle, and the sheet's top padding. `touch-action: none` is not
      decoration: without it the browser claims the vertical gesture for a scroll or
-     a pull-to-refresh before the pointer handler ever sees the second move. */
+     a pull-to-refresh before the pointer handler ever sees the second move. The head
+     carries it too, because the drag is documented to start on the title and a thumb
+     aiming at a 22px handle lands on the head often enough to read as "sometimes it
+     works". The search sheet's field is in the head, so it opts back out. */
+  .sheet-grab,
+  .sheet-head { touch-action: none; }
+  .sheet-head input { touch-action: auto; }
   .sheet-grab {
     display: block;
     flex: none;
     height: 22px;
-    touch-action: none;
     background: linear-gradient(var(--line-strong), var(--line-strong)) center 12px / 42px 4px no-repeat;
   }
   .sheet-grab + .sheet-head { padding-top: 4px; }

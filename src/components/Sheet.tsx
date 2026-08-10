@@ -12,7 +12,10 @@ import { Icon } from './Icon'
  *
  * Dragging it down dismisses it. The gesture starts on the handle or the title,
  * or in the body when the body is already scrolled to the top: dragging down
- * from there has nothing to scroll to, so there is no gesture to steal.
+ * from there has nothing to scroll to, so there is no gesture to steal. The body
+ * case is a pointer-device one only. A touch there is claimed by the scroller
+ * before the second move arrives, and the only way to stop that would be to take
+ * `touch-action` off the one element in the sheet that has to keep scrolling.
  */
 
 const DISMISS_FRACTION = 0.25
@@ -49,7 +52,7 @@ export function Sheet({
   const back = useRef<HTMLDivElement>(null)
   const sheet = useRef<HTMLDivElement>(null)
   const body = useRef<HTMLDivElement>(null)
-  const drag = useRef<{ id: number; y0: number; y: number; t: number; on: boolean } | null>(null)
+  const drag = useRef<{ id: number; y0: number; y: number; t: number; on: boolean; inBody: boolean } | null>(null)
 
   const docked = () => window.matchMedia('(max-width: 640px)').matches
   const calm = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -92,8 +95,9 @@ export function Sheet({
     const el = e.target as HTMLElement
     // A control inside the head keeps its own behaviour; so does a text selection.
     if (el.closest('button, a, input, textarea, select, label')) return
-    if (el.closest('.sheet-body') && (body.current?.scrollTop ?? 0) > 0) return
-    drag.current = { id: e.pointerId, y0: e.clientY, y: e.clientY, t: e.timeStamp, on: false }
+    const inBody = !!el.closest('.sheet-body')
+    if (inBody && (body.current?.scrollTop ?? 0) > 0) return
+    drag.current = { id: e.pointerId, y0: e.clientY, y: e.clientY, t: e.timeStamp, on: false, inBody }
   }
 
   const onPointerMove = (e: React.PointerEvent) => {
@@ -101,10 +105,13 @@ export function Sheet({
     if (!d || d.id !== e.pointerId) return
     const dy = e.clientY - d.y0
     // Commit only past a few pixels, so a tap that wobbles is still a tap, and a
-    // body that has scrolled since pointerdown keeps its scroll.
+    // body that has scrolled since pointerdown keeps its scroll. Only a gesture that
+    // started *in* the body can lose that race; one that started on the handle or the
+    // title is not competing with the scroller, and killing it because the body happens
+    // to be scrolled is what made the handle dead on every tall sheet.
     if (!d.on) {
       if (dy < 8) return
-      if ((body.current?.scrollTop ?? 0) > 0) {
+      if (d.inBody && (body.current?.scrollTop ?? 0) > 0) {
         drag.current = null
         return
       }
