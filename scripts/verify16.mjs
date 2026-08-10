@@ -3,7 +3,8 @@
 // verify15.mjs covers the arithmetic without a page. This is the other half: that the
 // sheet builds a block, that today's reading is the day the calendar says and not the
 // first day of the plan, that "Read now" opens the day as one passage with a book
-// heading at each seam and no verse numbers, and that ticking a chapter off persists.
+// heading at each seam, in whichever of the reader's two modes is on and with the
+// selectors moved onto the day, and that ticking a chapter off persists.
 //
 // Plans are seeded through localStorage rather than by driving the form, except in the
 // one section that is about the form. A plan's whole contract is that it is a pure
@@ -69,7 +70,7 @@ const STUB = () => {
   window.__spoken = spoken
 }
 
-async function open({ plans = [], progress = {}, anns = {}, phone = false, tts = false } = {}) {
+async function open({ plans = [], progress = {}, anns = {}, phone = false, tts = false, flow = false, columns = PREFS.columns } = {}) {
   const ctx = await browser.newContext({
     viewport: phone ? { width: 390, height: 844 } : { width: 1280, height: 900 },
     acceptDownloads: true,
@@ -85,18 +86,30 @@ async function open({ plans = [], progress = {}, anns = {}, phone = false, tts =
       localStorage.setItem('annotations.v1', JSON.stringify(ann))
       localStorage.setItem('seeded', '1')
     },
-    [PREFS, plans, progress, anns],
+    [{ ...PREFS, flow, columns }, plans, progress, anns],
   )
   if (tts) await ctx.addInitScript(STUB)
   const page = await ctx.newPage()
   await page.goto(URL + '#/john/3/en', { waitUntil: 'networkidle' })
-  await page.locator('.col').first().waitFor({ state: 'visible' })
+  // Either shape of the reader: flow mode has no columns.
+  await page.locator('.col, .flow').first().waitFor({ state: 'visible' })
   return { ctx, page }
 }
 
 const openPlanner = async (page) => {
   await page.locator('header .icon[title="Reading plan"]').click()
   await page.locator('.sheet').waitFor({ state: 'visible' })
+}
+
+/** A day is complete only once every book it spans has been fetched; `.patch` appears
+ *  with the first one, so counting verses before this races the other two. */
+const readDay = async (page, chapters) => {
+  await page.locator('.patch').waitFor({ state: 'visible' })
+  await page.waitForFunction(
+    (n) => document.querySelectorAll('.patchchap').length === n &&
+      [...document.querySelectorAll('.patchchap')].every((c) => c.innerText.length > 200),
+    chapters,
+  )
 }
 
 console.log('\nThe planner opens from the header')
@@ -175,36 +188,118 @@ console.log('\nA plan that has run out says so instead of repeating')
   await ctx.close()
 }
 
-console.log('\nRead now opens the day as one passage')
+// A day that crosses a book boundary, so the seam has to be visible. Jude's 25 verses,
+// this KJV's maximal 15 in 3 John and Revelation 1's 20 make 60.
+const acrossBooks = plan({
+  scope: { kind: 'chapters', refs: ['jude.1', '3-john.1', 'revelation.1'] },
+  days: 1, startedAt: daysAgo(0),
+})
+
+console.log('\nRead now opens the day as one passage, and moves the reader to it')
 {
-  // A day that crosses a book boundary, so the seam has to be visible.
-  const acrossBooks = plan({
-    scope: { kind: 'chapters', refs: ['jude.1', '3-john.1', 'revelation.1'] },
-    days: 1, startedAt: daysAgo(0),
-  })
   const { ctx, page } = await open({ plans: [acrossBooks], phone: true })
   await openPlanner(page)
   check('the day names all three chapters', (await page.locator('.pref').innerText()).includes('Jude 1'),
     await page.locator('.pref').innerText())
   await page.locator('.pactions .primary').click()
-  await page.locator('.patch').waitFor({ state: 'visible' })
+  await readDay(page, 3)
 
   check('the header says it is today\'s reading', (await page.locator('h1.ref').innerText()) === "Today's reading",
     await page.locator('h1.ref').innerText())
+  // The selector used to keep naming whatever was being read before the day was opened.
+  check('and the selector names the chapter the day starts at, not the one left behind',
+    (await page.locator('.navbtn').innerText()).trim().startsWith('Jude 1'),
+    await page.locator('.navbtn').innerText())
+  check('which is marked as the day rather than ordinary browsing',
+    await page.locator('.navbtn').evaluate((e) => e.classList.contains('onplan')))
   const heads = await page.locator('.patchbook').allInnerTexts()
   check('one faint book heading per book, in reading order', heads.join(',') === 'JUDE,3 JOHN,REVELATION',
     heads.join(','))
   const faint = await page.locator('.patchbook').first().evaluate((e) => getComputedStyle(e).color)
-  const body = await page.locator('.patch .fpar').first().evaluate((e) => getComputedStyle(e).color)
+  const body = await page.locator('.patchchap').first().evaluate((e) => getComputedStyle(e).color)
   check('the heading is quieter than the text it introduces', faint !== body, `${faint} vs ${body}`)
 
   check('three chapters are rendered', (await page.locator('.patchchap').count()) === 3)
-  check('with no verse numbers', (await page.locator('.patch .vn').count()) === 0)
-  check('and no verse rows from the ordinary reader', (await page.locator('.patch .verse').count()) === 0)
+  // A day is whole chapters, so "end of Jude 1" would be a claim about a chapter the
+  // passage ran straight past.
+  check('and the chapter-end row is not offered inside a day', (await page.locator('.chapend').count()) === 0)
   // The verses have to be real text, not placeholders: this is the only check that the
   // second and third books were actually fetched.
-  const words = await page.locator('.patchchap').nth(2).locator('.fpar').innerText()
+  const words = await page.locator('.patchchap').nth(2).innerText()
   check('the last book of the day has its text', words.length > 400, `${words.length} chars`)
+  await ctx.close()
+}
+
+console.log('\nAnd it is set in the mode the reader is already in, not one of its own')
+{
+  // The seeded preference is the app's default, which is verse mode.
+  const { ctx, page } = await open({ plans: [acrossBooks], phone: true })
+  await openPlanner(page)
+  await page.locator('.pactions .primary').click()
+  await readDay(page, 3)
+  check('verse mode sets the day as numbered verses', (await page.locator('.patch .verses .verse').count()) === 60,
+    `${await page.locator('.patch .verses .verse').count()} rows`)
+  check('with a number on every one', (await page.locator('.patch .vn').count()) === 60)
+  check('and no flowing paragraph', (await page.locator('.patch .fpar').count()) === 0)
+  await ctx.close()
+}
+{
+  const { ctx, page } = await open({ plans: [acrossBooks], phone: true, flow: true })
+  await openPlanner(page)
+  await page.locator('.pactions .primary').click()
+  await readDay(page, 3)
+  check('flow mode runs the same day on as prose', (await page.locator('.patch .fpar').count()) === 3,
+    `${await page.locator('.patch .fpar').count()} paragraphs`)
+  check('with no verse numbers', (await page.locator('.patch .vn').count()) === 0)
+  check('and no verse rows from the ordinary reader', (await page.locator('.patch .verse').count()) === 0)
+  await ctx.close()
+}
+
+console.log('\nLeaving a day is a chapter away, and the day is where it leaves you')
+{
+  const { ctx, page } = await open({ plans: [acrossBooks], phone: true, columns: ['en', 'fr'] })
+  await openPlanner(page)
+  await page.locator('.pactions .primary').click()
+  await readDay(page, 3)
+  // The ring is the one control that must not be an exit: it is which translation the
+  // day is read in, not which passage.
+  await page.locator('.ringtab', { hasText: 'Français' }).click()
+  await page.waitForTimeout(600)
+  check('changing edition keeps the day', (await page.locator('.patch').count()) === 1)
+  check('and re-reads it in the other translation',
+    (await page.locator('.patch').getAttribute('lang')) === 'fr', await page.locator('.patch').getAttribute('lang'))
+
+  await page.locator('.patchdone').click()
+  await page.locator('.reader .cols').waitFor({ state: 'visible' })
+  check('the way back leaves the day', (await page.locator('.patch').count()) === 0)
+  check('and lands on the chapter that was being read, not the one before the day',
+    (await page.locator('.navbtn').innerText()).trim().startsWith('Jude 1'),
+    await page.locator('.navbtn').innerText())
+  check('with the day marking gone', !(await page.locator('.navbtn').evaluate((e) => e.classList.contains('onplan'))))
+  await ctx.close()
+}
+{
+  const { ctx, page } = await open({ plans: [acrossBooks], phone: true })
+  await openPlanner(page)
+  await page.locator('.pactions .primary').click()
+  await readDay(page, 3)
+  // Naming a chapter is the other way out, and the navigator opens on the day's book
+  // now that the selector has moved.
+  await page.locator('.navbtn').click()
+  await page.locator('.sheet.nav').waitFor({ state: 'visible' })
+  // The sheet keeps its own copy of the book and adopts the reader's on open, so read
+  // it once that has landed rather than on the frame it opened.
+  await page.waitForTimeout(300)
+  const on = (await page.locator('.sheet.nav .sheet-head b').innerText()).trim()
+  check('the navigator opens on the book of the day', on === 'Jude', on)
+  await page.locator('.sheet.nav .mini.back').click()
+  await page.locator('.bkbtn', { hasText: 'Genesis' }).first().click()
+  await page.locator('.chbtn').nth(4).click()
+  await page.locator('.reader .cols').waitFor({ state: 'visible' })
+  check('choosing a chapter leaves the day rather than being ignored',
+    (await page.locator('.patch').count()) === 0)
+  check('and goes where it was told', (await page.locator('.navbtn').innerText()).trim().startsWith('Genesis 5'),
+    await page.locator('.navbtn').innerText())
   await ctx.close()
 }
 

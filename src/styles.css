@@ -664,6 +664,10 @@ html.modal-open { overflow: hidden; }
   white-space: nowrap;
 }
 .navbtn .caret { color: var(--muted); font-size: 12px; }
+/* The selector reads the same in a day's reading as out of it, so the state has to be
+   on the control itself: the calendar glyph plus the accent say which of the two this
+   chapter is being read as. */
+.navbtn.onplan { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
 
 /* ---------- search + navigator sheets ---------- */
 .sheet.search,
