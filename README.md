@@ -1,8 +1,7 @@
-# Bible Reader — 11 parallel editions
+# Bible Reader — 14 parallel editions
 
-An offline-capable Progressive Web App to read the Bible in parallel across eleven
-editions, chosen to share a textual tradition (Masoretic + Textus Receptus) and,
-where possible, an archaic register.
+An offline-capable Progressive Web App to read the Bible in parallel across fourteen
+editions, favouring historically authoritative texts and, where possible, an archaic register.
 
 | Edition | Language | Coverage | Licence |
 | --- | --- | --- | --- |
@@ -17,8 +16,10 @@ where possible, an archaic register.
 | **Ang Dating Biblia** (1905) | Tagalog | full | public domain |
 | **Textus Receptus** | Ἑλληνική | **NT only** | public domain |
 | **Westminster Leningrad Codex** | עברית | **OT only** | public domain |
+| **La Sankta Biblio** (Londona Biblio, 1926) | Esperanto | full | public domain |
+| **Vulgata Clementina** (1598) | Latine | full 66-book parallel canon | public domain |
 
-The first three are visible by default; the other eight are opt-in per reader
+The first three are visible by default; the other eleven are opt-in per reader
 (Settings → Languages & versions) and are downloaded only once switched on.
 
 Every attribution is reproduced verbatim in the app under **Texts & licences**.
@@ -32,6 +33,10 @@ Every attribution is reproduced verbatim in the app under **Texts & licences**.
   boundaries differently (Numbers 16–17, Leviticus 5–6, Exodus 7–8 are the familiar
   cases). Rows are matched by verse *number*, so in those chapters the Hebrew column
   does not line up with the others.
+- **The Latin source has a larger canon.** This reader currently aligns the 66 books
+  shared with its KJV spine. The Vulgate's deuterocanonical books and the additions
+  to Esther and Daniel require a future canon-model expansion; they are not silently
+  folded into unrelated parallel rows.
 
 ## Reading UX
 
@@ -106,6 +111,8 @@ the machine-readable version; this table is the audit trail. Retrieved 2026-07-2
 | `tl` | getbible.net v2 | `https://api.getbible.net/v2/tagalog.json` | public domain |
 | `el` | eBible.org | `https://ebible.org/Scriptures/grctr_usfm.zip` | public domain |
 | `he` | eBible.org | `https://ebible.org/Scriptures/hebwlc_usfm.zip` | public domain |
+| `eo` | getbible.net v2 | `https://api.getbible.net/v2/esperanto.json` | public domain |
+| `la` | eBible.org | `https://ebible.org/Scriptures/latVUC_usfm.zip` | public domain |
 
 Catalogues used to choose the above:
 `https://ebible.org/Scriptures/translations.csv` and
@@ -294,7 +301,7 @@ the publisher as-is. In summary, of the 41 verses the KJV carries and the export
   it is easy to break are **no emoji anywhere in the product** (`src/components/Icon.tsx`
   holds the whole icon set) and **44x44 minimum touch targets**.
 - **No em-dash (`—`) in user-visible copy.** Use a period, a colon, or a middot
-  (`·`). This covers the `src/lib/i18n.ts` string tables in all eleven languages,
+  (`·`). This covers every `src/lib/i18n.ts` string table,
   the `attribution` text in `src/lib/versions.ts`, JSX literals, `title` and
   `aria-label` attributes, and `index.html`. It does not apply to code comments or
   to the punctuation-folding map in `src/lib/search.ts`, where `—` is a character
@@ -312,7 +319,7 @@ the publisher as-is. In summary, of the 41 verses the KJV carries and the export
 
 ```bash
 npm install
-npm run fetch     # download + normalise the 8 remote editions into data-src/
+npm run fetch     # download + normalise the 10 remote editions into data-src/
 npm run strongs   # download the KJV concordance + dictionaries into data-src/
 npm run glossary  # derive the archaic-word list from Webster's 1913 into data-src/
 npm run data      # rebuild public/data/** from data-src/*.md
@@ -628,15 +635,10 @@ field, keeps `auto` there and drags by its handle alone.
 `scripts/verify2.mjs`-`verify9.mjs` are one-off diagnostic scripts from earlier
 sessions that target port 4180; some assert against UI that no longer exists.
 
-**Six checks in `verify10.mjs` fail, and all six predate this work.** Four are the
-same defect: a twelfth edition was added and four assertions still count eleven
-(`builder offers the other nine`, `only visible editions are compared`, `licences
-sheet lists all 11 editions`, `splash markup lists 11 editions`). The other two are
-2px gaps between sibling controls, `.tools` (added in `391c082`) and `.crowline`
-(added in `05d1a81`). Four of the six only became visible once the run stopped
-aborting: `verify10.mjs` used to die on `.verse-sheet .abtn.tiny`, a selector no
-component had rendered for some time, which skipped everything after it. The clear
-control now carries `.clearhl` and the suite runs to the end.
+**Two checks in `verify10.mjs` predate this work.** They report 2px gaps between
+sibling controls, `.tools` (added in `391c082`) and `.crowline`
+(added in `05d1a81`). The edition-count assertions have been updated for the current
+fourteen-edition catalogue.
 
 **`verify11.mjs` still aborts at its first wait**, on `.strongs .conclist li`, and
 the cause is now known: the design pass put the concordance and glossary inside a

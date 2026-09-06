@@ -364,7 +364,7 @@ console.log('\nInvite links')
   await p2.locator('.verse-sheet .sheet-foot .mini').nth(3).click()   // Copy invite
   await p2.waitForSelector('.sheet.invite')
   check('builder lists the sender’s editions first', (await p2.locator('.sheet.invite .colrow:not(.off)').count()) === 2)
-  check('builder offers the other nine', (await p2.locator('.sheet.invite .colrow.off').count()) === 9)
+  check('builder offers the other twelve', (await p2.locator('.sheet.invite .colrow.off').count()) === 12)
   check('builder marks which edition it opens in', (await p2.locator('.sheet.invite .opens').count()) === 1)
   check('builder is reached from the verse, carrying the reference',
     /15:3/.test(await p2.locator('.sheet.invite .opens').innerText()),
@@ -780,7 +780,7 @@ console.log('\nSettings: stop at chapter end + licences sheet')
   await page.waitForTimeout(200)
   await page.locator('.attrib .liclink').click()
   await page.waitForSelector('.sheet.licences')
-  check('licences sheet lists all 11 editions', (await page.locator('.liclist li').count()) === 11)
+  check('licences sheet lists all 14 editions', (await page.locator('.liclist li').count()) === 14)
   check('licences sheet links the repo', (await page.locator('.licrepo a').count()) === 1)
   await page.keyboard.press('Escape')
   await page.waitForTimeout(200)
@@ -1049,8 +1049,8 @@ console.log('\nPWA splash')
   // Read the served document before scripts replace #root.
   const html = await (await fetch(URL)).text()
   const count = (html.match(/<li lang=/g) || []).length
-  check('splash markup lists 11 editions', count === 11, `${count} entries`)
-  for (const s of ['和合本', 'فان دايك', 'עברית', 'Ἑλληνική', 'Almeida', 'ADB 1905'])
+  check('splash markup lists 14 editions', count === 14, `${count} entries`)
+  for (const s of ['和合本', 'فان دايك', 'עברית', 'Ἑλληνική', 'Almeida', 'ADB 1905', 'Londona Biblio', 'Vulgata Clementina'])
     check(`splash mentions ${s}`, html.includes(s))
   await page.goto(URL, { waitUntil: 'networkidle' })
   check('splash is replaced once the app mounts', (await page.locator('#splash').count()) === 0)

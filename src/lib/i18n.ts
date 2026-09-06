@@ -773,7 +773,7 @@ const he: Dict = {
 }
 
 // jako is a Japanese edition, so its UI strings are the Japanese ones.
-const STRINGS: Record<Lang, Dict> = { en, ja, jako: ja, fr, zht, zhs, pt, es, ar, tl, el, he }
+const STRINGS: Record<Lang, Dict> = { en, ja, jako: ja, fr, zht, zhs, pt, es, ar, tl, el, he, eo: {}, la: {} }
 
 export type T = (key: StringKey, vars?: Record<string, string | number>) => string
 
@@ -798,7 +798,9 @@ export function detectUiLang(): Lang {
     // zh-TW / zh-Hant → zht, zh-CN → zhs
     if (tag.startsWith('zh')) return /hant|tw|hk|mo/.test(tag) ? 'zht' : 'zhs'
     const base = tag.split('-')[0]
-    const match = (Object.keys(STRINGS) as Lang[]).find((id) => BY_ID[id].speech.split('-')[0] === base)
+    const match = (Object.keys(STRINGS) as Lang[]).find(
+      (id) => BY_ID[id].uiAvailable !== false && BY_ID[id].speech.split('-')[0] === base,
+    )
     if (match) return match
   }
   return 'en'

@@ -47,6 +47,8 @@ async function fromEbible(src) {
     const en = code && USFM_BOOKS[code]
     if (!en) continue // intro files, apocrypha, front/back matter
     const parsed = parseUsfm(contents.toString('utf8'))
+    const ceiling = src.chapterCeilings?.[en]
+    if (ceiling) for (const chapter of parsed.chapters.keys()) if (chapter > ceiling) parsed.chapters.delete(chapter)
     if (parsed.chapters.size) books.set(en, parsed)
   }
   return books

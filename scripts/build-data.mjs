@@ -6,7 +6,7 @@
 //   ../public/data/paragraphs.json   flow-mode paragraph breaks (copied through)
 //
 // One file per edition per book is what lets the app download only the editions a
-// reader has switched on — with 11 editions, a combined file would make opening any
+// reader has switched on — with many editions, a combined file would make opening any
 // book pull eight translations nobody asked for.
 //
 // Run: node scripts/build-data.mjs

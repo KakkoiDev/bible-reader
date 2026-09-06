@@ -5,7 +5,7 @@
 // language codes so links shared before this change, and every saved annotation,
 // still resolve.
 
-export type Lang = 'en' | 'ja' | 'jako' | 'fr' | 'zht' | 'zhs' | 'pt' | 'es' | 'ar' | 'tl' | 'el' | 'he'
+export type Lang = 'en' | 'ja' | 'jako' | 'fr' | 'zht' | 'zhs' | 'pt' | 'es' | 'ar' | 'tl' | 'el' | 'he' | 'eo' | 'la'
 
 /** How a verse's stored text is marked up — drives tokenizing in format.tsx. */
 export type Markup =
@@ -32,6 +32,8 @@ export interface VersionMeta {
   coverage: Coverage
   /** Visible for a first-time reader. Everything added later is opt-in. */
   defaultOn: boolean
+  /** Whether this edition also supplies translated application chrome. */
+  uiAvailable?: boolean
   /** Attribution line for the footer. */
   attribution: string
 }
@@ -210,6 +212,36 @@ export const VERSIONS: VersionMeta[] = [
     // the Hebrew column will not line up with the others. Stated rather than hidden.
     attribution:
       'עברית: Westminster Leningrad Codex. Old Testament only, public domain. Hebrew chapter and verse divisions differ from the English in roughly one OT chapter in seven, so parallel rows do not always correspond.',
+  },
+  {
+    id: 'eo',
+    label: 'Esperanto',
+    edition: 'Londona Biblio',
+    fullName: 'La Sankta Biblio (Londona Biblio, 1926)',
+    htmlLang: 'eo',
+    dir: 'ltr',
+    speech: 'eo',
+    markup: 'plain',
+    coverage: 'all',
+    defaultOn: false,
+    uiAvailable: false,
+    attribution:
+      'Esperanto: La Sankta Biblio (Londona Biblio, 1926). Malnova Testamento tradukita de L. L. Zamenhof (1910); plena eldono de la Brita kaj Alilanda Biblia Societo. Public domain.',
+  },
+  {
+    id: 'la',
+    label: 'Latine',
+    edition: 'Vulgata Clementina',
+    fullName: 'Biblia Sacra Vulgata Clementina (1598)',
+    htmlLang: 'la',
+    dir: 'ltr',
+    speech: 'la',
+    markup: 'plain',
+    coverage: 'all',
+    defaultOn: false,
+    uiAvailable: false,
+    attribution:
+      'Latine: Biblia Sacra Vulgata Clementina (1598), textus ex editione Migne 1880. The reader includes the 66-book canon it can currently align; deuterocanonical continuations are not yet represented. Public domain; source: eBible.org latVUC.',
   },
 ]
 

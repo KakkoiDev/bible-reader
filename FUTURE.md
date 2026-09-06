@@ -55,7 +55,7 @@ show nothing, and a silent-carrier workaround would be needed to fake it.
 
 Full-text search plus reference lookup in any edition's language. The index is
 built lazily, per edition, over only the editions a reader has enabled
-(`src/lib/search.ts`) — indexing all eleven at once would be ~340k verse records.
+(`src/lib/search.ts`) — indexing all fourteen at once would be ~430k verse records.
 
 **Multi-word matching shipped too.** A verse matches when it contains every term in
 any order; a quoted run is an exact phrase. Terms match from the start of a word, so
@@ -107,10 +107,23 @@ says what it does.
 Still open: sync across devices, which needs a backend or a user-provided store
 (a gist, a file in their own cloud).
 
-## 5. More editions — *shipped (eleven)*
+## 5. More editions — *shipped (fourteen)*
 
 The pipeline is driven by a manifest (`scripts/sources.mjs`), so adding an edition
-is one entry plus `npm run fetch && npm run data`. Eleven ship today.
+is one entry plus `npm run fetch && npm run data`. Fourteen ship today.
+
+The 1926 **La Sankta Biblio** (Londona Biblio; Old Testament by Zamenhof) and the
+public-domain **Vulgata Clementina** now ship opt-in. The latter is used instead of
+the modern Nova Vulgata: Nova Vulgata is the present official Catholic Latin text,
+but its redistribution terms are not clear enough for bundling in this public PWA.
+The Clementine was the authoritative Roman standard from the late sixteenth century
+until the Nova Vulgata and matches this reader's historical-register purpose.
+
+The Latin source includes the deuterocanonical canon. The app currently models the
+66-book KJV spine, so this first integration keeps the shared 66 books and trims the
+additional Esther and Daniel chapters. Adding the deuterocanonical books honestly
+requires extending `BOOK_ORDER`, coverage/alignment rules, navigation and plans as one
+coherent change rather than squeezing extra material into Protestant verse rows.
 
 Still worth adding:
 

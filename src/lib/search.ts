@@ -1,6 +1,6 @@
 // Lazy in-memory search index over the (already cached) per-edition book JSON.
 //
-// Indexing is per edition and only for the editions a reader has visible: at 11
+// Indexing is per edition and only for the editions a reader has visible: with many
 // editions an index over everything would be ~340k verse records, so the cost is
 // kept proportional to what's actually on screen.
 import type { IndexItem, EditionBook } from './types'

@@ -312,7 +312,7 @@ export function Settings({
           <select className="sel" value={ui} onChange={(e) => onUi(e.target.value as Lang)}>
             {/* jako is a second Japanese edition, not a second UI language (it reuses
                 ja's strings), so it is not offered here as a duplicate 日本語. */}
-            {VERSIONS.filter((v) => v.id !== 'jako').map((v) => (
+            {VERSIONS.filter((v) => v.id !== 'jako' && v.uiAvailable !== false).map((v) => (
               <option key={v.id} value={v.id}>
                 {v.label}
               </option>
@@ -366,7 +366,7 @@ export function Settings({
 
 /* --------------------------- Texts & licences --------------------------- */
 /** Every edition's attribution in one place — the reader footer only links here,
- *  because eleven attribution lines inline made the page unreadable. */
+ *  because every attribution line inline made the page unreadable. */
 export function LicencesSheet({
   open,
   t,

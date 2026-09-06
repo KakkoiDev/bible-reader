@@ -64,6 +64,11 @@ export const SOURCES = [
   { id: 'tl', kind: 'getbible', ref: 'tagalog' },
   { id: 'el', kind: 'ebible', ref: 'grctr', coverage: 'nt' },
   { id: 'he', kind: 'ebible', ref: 'hebwlc', coverage: 'ot' },
+  { id: 'eo', kind: 'getbible', ref: 'esperanto' },
+  // The source also carries the Vulgate's deuterocanonical continuations to Esther
+  // and Daniel. The reader's alignment spine is presently the 66-book KJV canon, so
+  // keep this edition to the corresponding chapters until the canon model expands.
+  { id: 'la', kind: 'ebible', ref: 'latVUC', chapterCeilings: { Esther: 10, Daniel: 12 } },
 ]
 
 /** Genesis to Malachi, then Matthew to Revelation. */

@@ -15,7 +15,7 @@
 //
 //   3. Revelation 4 and 5 were interleaved under the single "### Revelation 4" heading
 //      with duplicate numbers (1,1,...,11,11,12,13,14). De-interleaved back to the 11
-//      true Revelation 4 verses; needs no outside text, since all eleven are already
+//      true Revelation 4 verses; needs no outside text, since all of them are already
 //      present in the block and are only selected and renumbered.
 //
 //   5. The Song of Solomon is filed as Ecclesiastes 13-20. The export's own chapter

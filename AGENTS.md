@@ -27,7 +27,7 @@ the previous bundle, so any run against a rebuilt tree measures the old code unt
 server is restarted. Restart it after every build.
 
 Green as of 2026-09-06: `verify.mjs`, `verify12`, `verify13`, `verify14`, `verify15`,
-`verify18` (no browser), `verify16`, `verify17`. `verify2` through `verify11` fail on UI the scripts
+`verify18`, `verify19` (no browser), `verify16`, `verify17`. `verify2` through `verify11` fail on UI the scripts
 still expect and the app no longer renders; the failures reproduce identically on older
 commits, so treat them as stale scripts, not as regressions, and re-check against the
 base commit before believing otherwise. What each script covers, and which of their

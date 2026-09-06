@@ -200,7 +200,7 @@ console.log('\nA year of the whole Bible')
     `${end[end.length - 1].slug} ${end[end.length - 1].ch}`)
 
   // The eight chapters the KJF export mis-filed used to land here as Ecclesiastes 13-20,
-  // scheduling nine days of nothing for eleven of the twelve editions.
+  // scheduling nine days of nothing for almost every edition.
   const ecc = P.scopeChapters({ kind: 'books', slugs: ['ecclesiastes'] }, index)
   check('Ecclesiastes schedules twelve chapters, not twenty', ecc.length === 12, `${ecc.length}`)
 }
