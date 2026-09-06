@@ -178,6 +178,42 @@ body {
   padding: 8px 18px calc(env(safe-area-inset-bottom) + 40px);
   touch-action: pan-y;
 }
+.print-passage { display: none; }
+
+@media print {
+  @page { margin: 12mm; }
+  :root { color-scheme: light; --ink: #111; --muted: #555; --line: #bbb; --paper: #fff; }
+  html, body, #root, .app { background: #fff !important; color: #111 !important; }
+  body { margin: 0; }
+  .bar, .langring, .chapend, .attrib, .atoolbar, .versebar, .audio-fab, .toast,
+  .sheet-wrap, .reader > .ref { display: none !important; }
+  .reader { width: auto; max-width: none; margin: 0; padding: 0; }
+
+  /* One row per verse keeps translations aligned, and the table header repeats on
+     every printed page. The interactive grid is deliberately screen-only. */
+  .reader:has(> .print-passage) > :not(.print-passage) { display: none !important; }
+  .print-passage { display: block; }
+  .print-passage h1 { margin: 0 0 7mm; font: 700 18pt/1.2 var(--f-ui); }
+  .print-passage table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  .print-passage th, .print-passage td {
+    border-bottom: .35pt solid #bbb;
+    padding: 2.2mm 2.5mm;
+    vertical-align: top;
+    text-align: start;
+    font-size: 9.5pt;
+    line-height: 1.55;
+  }
+  .print-passage thead th { border-bottom: 1pt solid #555; font-family: var(--f-ui); font-size: 8pt; }
+  .print-passage .print-vn { width: 7mm; padding-inline-start: 0; color: #555; text-align: end; }
+  .print-passage tr { break-inside: avoid; page-break-inside: avoid; }
+  .print-passage .hl { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .print-gap { color: #888; }
+
+  /* A plan day is already a linear passage. Keep it, minus interactive controls. */
+  .patch { max-width: none; }
+  .patchchap { break-inside: auto; }
+  .patchbook, .patchref, .patchsum { break-after: avoid; }
+}
 .ref {
   font-size: var(--fs-chapter);
   line-height: 1.15;

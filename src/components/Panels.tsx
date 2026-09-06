@@ -125,6 +125,7 @@ export interface SettingsProps {
   onExport: () => void
   onExportPlans: () => void
   onExportAnki: () => void
+  onPrint: () => void
   onImport: (file: File) => void
   onClose: () => void
 }
@@ -180,6 +181,7 @@ export function Settings({
   onExport,
   onExportPlans,
   onExportAnki,
+  onPrint,
   onImport,
   onClose,
 }: SettingsProps) {
@@ -263,6 +265,10 @@ export function Settings({
             <button className="mini" onClick={onExportPlans}>{t('export')}</button>
             <ImportBtn label={t('import')} onPick={onImport} />
           </div>
+        </div>
+        <div className="srow">
+          <span>{t('current_passage')}</span>
+          <button className="mini" onClick={onPrint}>{t('print_pdf')}</button>
         </div>
 
         {ttsOn && (

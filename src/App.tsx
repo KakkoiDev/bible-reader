@@ -33,6 +33,7 @@ import {
   type SortMode,
 } from './components/Panels'
 import { SearchSheet, Navigator, VerseSheet, InviteBuilder, type VerseSheetData } from './components/Sheets'
+import { PrintPassage } from './components/PrintPassage'
 import { VerseBar } from './components/VerseBar'
 import { Planner, formatRefs } from './components/Planner'
 import { usePlans, chapterRead, type Ref as PlanRef } from './lib/plans'
@@ -1308,6 +1309,12 @@ export default function App() {
     say(blocks.length ? t('exported_n', { n: blocks.length }) : t('nothing_to_export'))
   }, [blocks, progress, t, say])
 
+  const printPassage = useCallback(() => {
+    setSettingsOpen(false)
+    // Wait until the sheet has left the layout before print preview snapshots it.
+    requestAnimationFrame(() => requestAnimationFrame(() => window.print()))
+  }, [])
+
   // One import, two kinds of file: the payload says which it is, so a reader who picks
   // the wrong one of the two buttons still gets what is in the file.
   const importData = useCallback(
@@ -1562,6 +1569,18 @@ export default function App() {
           if (!(e.target as HTMLElement).closest('.verse')) setBarAt(null)
         }}
       >
+        {!patch && (
+          <PrintPassage
+            title={title}
+            chapter={chapter}
+            slug={pos.slug}
+            chapterNumber={pos.chapter}
+            bookIndex={bookIdx}
+            columns={prefs.columns}
+            store={store}
+            furigana={prefs.furigana}
+          />
+        )}
         <h1 className="ref">
           {patch ? (
             t('plan_reading')
@@ -1930,6 +1949,7 @@ export default function App() {
         onExport={exportAnnotations}
         onExportPlans={exportPlans}
         onExportAnki={exportAnki}
+        onPrint={printPassage}
         onImport={importData}
         onClose={() => setSettingsOpen(false)}
       />
@@ -2116,4 +2136,3 @@ export default function App() {
     </div>
   )
 }
-
