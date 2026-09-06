@@ -194,9 +194,15 @@ before persistent highlights became DOM spans). Their still-valid coverage —
 export/import round trip, continuous playback, verse-sheet behaviour — is worth
 folding into `verify10.mjs` and deleting the rest.
 
-## 10. Print / PDF
+## 10. Print / PDF — *shipped*
 
-Parked after looking into it. Flow mode would be easy — it is already one linear
+Settings → Notes & data → Print / save PDF prints the current passage. Ordinary
+chapters are rebuilt as a print-only table, one row per verse and one column per
+enabled edition, so headings repeat across pages and parallel verses remain aligned.
+Furigana and saved highlights are retained. A day's reading prints as the continuous
+single-language passage already on screen.
+
+The reason this needed a separate print view: flow mode would be easy — it is already one linear
 column, so `break-inside: avoid` and orphan/widow control would mostly do it. The
 parallel view is the problem: `.cols.many` is `overflow-x: auto`, which print clips
 rather than paginating, and the alignment depends on subgrid, whose behaviour across
@@ -206,7 +212,7 @@ A library exists (**paged.js**, which polyfills CSS paged media) but it reflows 
 DOM into page boxes and fights CSS grid, so it would likely break the alignment that
 makes a parallel printout worth having.
 
-The route that would work needs no library: render a print-only `<table>` from the
+The shipped route needs no library: render a print-only `<table>` from the
 same chapter data, one `<tr>` per verse and one `<td>` per edition, with `<thead>`
 repeating the edition names on each page. Tables are the one layout primitive every
 print engine fragments reliably, and verse-per-row is the alignment you want anyway.

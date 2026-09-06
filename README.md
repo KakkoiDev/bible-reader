@@ -83,6 +83,9 @@ Every attribution is reproduced verbatim in the app under **Texts & licences**.
 - **Links:** a verse link opens that verse; if it names an edition the recipient has
   hidden, it opens in their first visible one and says so. An **invite link** also
   carries the sender's edition set, and always asks before changing anything.
+- **Print / PDF** turns the current chapter into a page-safe parallel table with
+  repeating edition headings. Furigana and highlights survive; a reading-plan day
+  prints as the continuous passage on screen.
 
 ## Text sources, for audit
 
