@@ -10,6 +10,12 @@ export interface HRange {
   start: number
   end: number
   color: HColor
+  /** The highlighted words, markup stripped, saved at the moment the colour is
+   *  applied. The saved panel showed a highlight as a reference, a date and a
+   *  coloured dot and nothing else, which is no use at all for recall — and the
+   *  text cannot be recovered later without fetching the book the highlight is in,
+   *  in the edition it was made in. Absent on highlights saved before this. */
+  text?: string
 }
 export interface Ann {
   note?: string

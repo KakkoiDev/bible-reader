@@ -299,7 +299,7 @@ console.log('\nLeaving a day is a chapter away, and the day is where it leaves y
   // The sheet keeps its own copy of the book and adopts the reader's on open, so read
   // it once that has landed rather than on the frame it opened.
   await page.waitForTimeout(300)
-  const on = (await page.locator('.sheet.nav .sheet-head b').innerText()).trim()
+  const on = (await page.locator('.sheet.nav .sheet-title').innerText()).trim()
   check('the navigator opens on the book of the day', on === 'Jude', on)
   await page.locator('.sheet.nav .mini.back').click()
   await page.locator('.bkbtn', { hasText: 'Genesis' }).first().click()

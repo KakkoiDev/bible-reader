@@ -145,7 +145,7 @@ console.log('\nThe title is a drag start too, as the sheet has always claimed')
 {
   const { ctx, page, cdp } = await open()
   await openTray(page)
-  const b = await centreOf(page, '.sheet-head b')
+  const b = await centreOf(page, '.sheet-title')
   await swipe(cdp, b.x, b.y, 420)
   check('dragging the title down dismisses the tray', !(await isOpen(page)))
   await ctx.close()

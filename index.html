@@ -5,7 +5,8 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#1e1b4b" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#faf8f4" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#14131a" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>Bible · 14 editions</title>
@@ -31,8 +32,7 @@
       :root {
         --sbg: #faf8f4;
         --sfg: #1f2430;
-        --smuted: #8a8f9c;
-        --sline: #e7e2d8;
+        --smuted: #666c7d;   /* 4.94:1 — the token file's value. #8a8f9c was 3.05:1 */
         --saccent: #4338ca;
       }
       @media (prefers-color-scheme: dark) {
@@ -40,7 +40,6 @@
           --sbg: #14131a;
           --sfg: #e9e6df;
           --smuted: #8c8a95;
-          --sline: #2a2833;
           --saccent: #a9a2ff;
         }
       }
@@ -55,66 +54,53 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 22px;
-        padding: 32px 20px calc(env(safe-area-inset-bottom) + 32px);
+        gap: 18px;
+        padding: 32px 20px calc(env(safe-area-inset-bottom) + 32px + 7vh);
         box-sizing: border-box;
         color: var(--sfg);
         font-family: ui-serif, Georgia, 'Times New Roman', 'Yu Mincho', 'Hiragino Mincho ProN', serif;
-        animation: sfade 0.5s ease both;
       }
-      @keyframes sfade {
-        from { opacity: 0 }
-        to { opacity: 1 }
+      /* The same object as the installed icon, at the size it sits in the launcher,
+         so the splash reads as that icon growing into the app rather than a new screen.
+         No fade: the handoff to React should be invisible, and a 0.5s fade guarantees
+         it is not. */
+      #splash .stile {
+        width: 72px;
+        height: 72px;
+        flex: none;
+        border-radius: 22px;
+        /* Fixed, not themed: this is the launcher icon, and that does not
+           repaint when the OS switches to dark. */
+        background: #4338ca;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
       #splash .smark {
-        width: 44px;
-        height: 44px;
-        flex: none;
+        width: 72px;
+        height: 72px;
+        display: block;
+        fill: #faf8f4;
       }
       #splash h1 {
         margin: 0;
-        font-size: 27px;
+        font-size: 30px;
         font-weight: 600;
         letter-spacing: 0.01em;
       }
       #splash .stag {
-        margin: -14px 0 0;
+        margin: -12px 0 0;
         font-family: system-ui, sans-serif;
         font-size: 12px;
         letter-spacing: 0.06em;
         text-transform: uppercase;
         color: var(--smuted);
       }
-      #splash ul {
-        list-style: none;
-        margin: 0;
-        padding: 0;
-        width: min(560px, 100%);
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-        gap: 1px 0;
-        border-top: 1px solid var(--sline);
-      }
-      #splash li {
-        display: flex;
-        align-items: baseline;
-        justify-content: space-between;
-        gap: 10px;
-        padding: 9px 12px;
-        border-bottom: 1px solid var(--sline);
-        font-size: 16px;
-        line-height: 1.35;
-      }
-      #splash li small {
-        font-family: system-ui, sans-serif;
-        font-size: 11px;
-        color: var(--smuted);
-        white-space: nowrap;
-      }
       #splash .sload {
         display: flex;
         align-items: center;
         gap: 9px;
+        margin-top: 6px;
         font-family: system-ui, sans-serif;
         font-size: 12px;
         color: var(--smuted);
@@ -131,38 +117,21 @@
         50% { opacity: 1; transform: scale(1) }
       }
       @media (prefers-reduced-motion: reduce) {
-        #splash, #splash .sdot { animation: none }
+        #splash .sdot { animation: none; opacity: 0.6 }
       }
     </style>
   </head>
   <body>
     <div id="root">
       <div id="splash">
-        <svg class="smark" viewBox="0 0 48 48" aria-hidden="true">
-          <path d="M24 6v30" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" />
-          <path d="M13 17h22" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" />
-          <circle cx="14" cy="43" r="2.6" fill="#d4a03c" />
-          <circle cx="24" cy="43" r="2.6" fill="#d4657f" />
-          <circle cx="34" cy="43" r="2.6" fill="#5b9bd5" />
-        </svg>
+        <div class="stile">
+          <svg class="smark" viewBox="0 0 512 512" aria-hidden="true">
+            <rect x="227.5" y="61" width="56.9" height="390" rx="14.8" />
+            <rect x="135.5" y="181.5" width="241" height="56.9" rx="14.8" />
+          </svg>
+        </div>
         <h1>Bible</h1>
         <p class="stag">14 editions · offline</p>
-        <ul>
-          <li lang="en"><span>English</span><small>KJV</small></li>
-          <li lang="ja"><span>日本語</span><small>文語訳</small></li>
-          <li lang="ja"><span>日本語</span><small>口語訳</small></li>
-          <li lang="fr"><span>Français</span><small>KJF</small></li>
-          <li lang="zh-Hant"><span>繁體中文</span><small>和合本</small></li>
-          <li lang="zh-Hans"><span>简体中文</span><small>和合本</small></li>
-          <li lang="pt"><span>Português</span><small>Almeida</small></li>
-          <li lang="es"><span>Español</span><small>RV1909</small></li>
-          <li lang="ar" dir="rtl"><span>العربية</span><small>فان دايك</small></li>
-          <li lang="tl"><span>Tagalog</span><small>ADB 1905</small></li>
-          <li lang="grc"><span>Ἑλληνική</span><small>TR · NT</small></li>
-          <li lang="hbo" dir="rtl"><span>עברית</span><small>WLC · OT</small></li>
-          <li lang="eo"><span>Esperanto</span><small>Londona Biblio</small></li>
-          <li lang="la"><span>Latine</span><small>Vulgata Clementina</small></li>
-        </ul>
         <p class="sload"><span class="sdot"></span> Loading…</p>
       </div>
     </div>

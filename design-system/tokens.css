@@ -60,7 +60,11 @@
   --f-scripture: ui-serif, Georgia, 'Times New Roman', 'Yu Mincho', 'Hiragino Mincho ProN', serif;
   --f-ui: system-ui, -apple-system, sans-serif;
   --fs-scripture: 19px;
-  --lh-scripture: 1.85;
+  /* 1.65, not 1.85. At 19px the taller value put ~16px between two lines *inside*
+     a verse against the 2px between two verses, so a chapter read as one slab and
+     the only boundary cue was a 10.5px superscript. The rhythm now runs the other
+     way: tighter lines within a verse, a real gap between verses (see `.verse`). */
+  --lh-scripture: 1.65;
   --fs-chapter: 27px;
   --fs-row: 15px;
   --fs-row-sub: 12px;

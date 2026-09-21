@@ -51,37 +51,39 @@ const strip = (lang: Lang, t: string) => {
   return m === 'kjv' ? plainKjv(t) : m === 'ruby' ? plainRuby(t) : t
 }
 
-const built = new Map<Lang, Entry[]>()
-const building = new Map<Lang, Promise<Entry[]>>()
+/**
+ * One book of one edition, indexed. Keyed `<lang>/<slug>`.
+ *
+ * Per book, not per edition. Indexing a whole edition meant the first query — any
+ * query — fetched 66 book files for every visible edition, 198 of them with three
+ * on and 924 with all fourteen, and took 5.5 seconds to its first result whatever
+ * was typed. Per book, the search can start with the book the reader has open and
+ * widen from there, and scoping a query to one book costs one fetch an edition.
+ */
+const built = new Map<string, Entry[]>()
+const building = new Map<string, Promise<Entry[]>>()
 
-function indexEdition(lang: Lang): Promise<Entry[]> {
-  const done = built.get(lang)
+function indexBook(lang: Lang, slug: string): Promise<Entry[]> {
+  const key = `${lang}/${slug}`
+  const done = built.get(key)
   if (done) return Promise.resolve(done)
-  const inFlight = building.get(lang)
+  const inFlight = building.get(key)
   if (inFlight) return inFlight
-  const p = (async () => {
-    const index: IndexItem[] = await fetch(`${BASE}data/index.json`).then((r) => r.json())
-    const books = await Promise.all(
-      index.map((b) =>
-        fetch(`${BASE}data/${lang}/${b.slug}.json`)
-          .then((r) => (r.ok ? r.json() : { chapters: [] }))
-          .catch(() => ({ chapters: [] }) as EditionBook),
-      ),
-    )
-    const out: Entry[] = []
-    books.forEach((book: EditionBook, i) => {
-      const slug = index[i].slug
+  const p = fetch(`${BASE}data/${lang}/${slug}.json`)
+    .then((r) => (r.ok ? (r.json() as Promise<EditionBook>) : ({ chapters: [] } as EditionBook)))
+    .catch(() => ({ chapters: [] }) as EditionBook)
+    .then((book) => {
+      const out: Entry[] = []
       for (const c of book.chapters)
         for (const vv of c.verses) {
           const text = strip(lang, vv.t)
           out.push({ slug, ch: c.n, v: vv.v, text, fold: foldText(text) })
         }
+      built.set(key, out)
+      building.delete(key)
+      return out
     })
-    built.set(lang, out)
-    building.delete(lang)
-    return out
-  })()
-  building.set(lang, p)
+  building.set(key, p)
   return p
 }
 
@@ -212,39 +214,116 @@ function collectRanges(fold: string, terms: Term[]): Range[] {
   return out
 }
 
-/** Search across the given editions, in the order supplied.
- *  A verse matches when it contains *every* term; order and distance are free. */
-export async function search(langs: Lang[], q: string, limit = 150): Promise<Hit[]> {
+/** What a search found: the page of results, and how many verses matched in all. */
+export interface SearchResult {
+  hits: Hit[]
+  /** Every verse that matched, not just the ones that fitted the cap. */
+  total: number
+  /** False while more books are still being indexed. */
+  done: boolean
+}
+
+export interface SearchOptions {
+  /** Books to search, in the order to index them. Put the open book first and the
+   *  first partial result arrives in one fetch an edition instead of sixty-six. */
+  slugs: string[]
+  /** Canonical position per slug, so results come back in canon order however the
+   *  books were indexed. */
+  order: Map<string, number>
+  /** Results kept. A list longer than this is no more useful than this one — but
+   *  `total` still counts them all, so the panel can say a cap was reached. */
+  limit?: number
+  /** Set `cancelled` to abandon a query whose keystroke has been superseded. */
+  signal?: { cancelled: boolean }
+  /** Called after each book with everything found so far, so a whole-Bible query
+   *  fills in as it goes rather than showing nothing for five seconds. */
+  onPartial?: (r: SearchResult) => void
+}
+
+interface Match {
+  at: number
+  ch: number
+  v: number
+  k: number
+  e: Entry
+}
+
+/**
+ * Search the given books across the given editions.
+ *
+ * A verse matches when it contains *every* term; order and distance are free.
+ *
+ * Two things changed here. Books are indexed one at a time, in the order the caller
+ * asks for, so the open book can be searched first and the rest can fill in behind
+ * it — the whole-edition index cost 198 fetches and 5.5 seconds before the first
+ * result appeared, whatever had been typed. And the cap is applied to a canon-sorted
+ * shortlist rather than by stopping the scan: the scan now always runs to the end,
+ * which is what lets the panel say "547 verses match, showing the first 150" instead
+ * of silently handing back a slice of Genesis.
+ *
+ * The shortlist is bounded at `limit`, so counting 28 021 matches for `the` costs
+ * one comparison each rather than 28 021 records.
+ */
+export async function search(langs: Lang[], q: string, opts: SearchOptions): Promise<SearchResult> {
   const query = q.trim()
+  const empty: SearchResult = { hits: [], total: 0, done: true }
   // Gate on the whole query, not per term, so `I am` still searches: either term
   // alone is below the latin minimum, together they are a real query.
-  if (query.length < minQueryLen(query)) return []
+  if (query.length < minQueryLen(query)) return empty
   const terms = parseQuery(query).map(foldText).filter(Boolean).map(asTerm)
-  if (!terms.length) return []
-  const indexes = await Promise.all(langs.map(indexEdition))
-  const hits: Hit[] = []
-  // Walk verse-major so results interleave editions by location rather than
-  // returning every English hit before the first French one.
-  const longest = Math.max(0, ...indexes.map((e) => e.length))
-  for (let i = 0; i < longest && hits.length < limit; i++) {
-    for (let k = 0; k < indexes.length && hits.length < limit; k++) {
-      const e = indexes[k][i]
-      if (!e) continue
-      // Cheap reject first: most verses fail on the rarest term, and scanning
-      // for positions before knowing the verse qualifies is wasted work.
-      let all = true
-      for (const term of terms)
-        if (findFrom(e.fold, term, 0) < 0) {
-          all = false
-          break
-        }
-      if (!all) continue
-      const ranges = collectRanges(e.fold, terms)
-      if (ranges.length)
-        hits.push({ slug: e.slug, ch: e.ch, v: e.v, lang: langs[k], text: e.text, ranges })
-    }
+  if (!terms.length) return empty
+
+  const limit = opts.limit ?? 150
+  // Canon position, then chapter, then verse, then the edition's place in `langs` —
+  // so the editions interleave by location rather than every English hit landing
+  // before the first French one.
+  const cmp = (a: Match, b: Match) => a.at - b.at || a.ch - b.ch || a.v - b.v || a.k - b.k
+  const keep: Match[] = []
+  const offer = (m: Match) => {
+    if (keep.length >= limit && cmp(m, keep[keep.length - 1]) >= 0) return
+    let i = keep.length
+    while (i > 0 && cmp(keep[i - 1], m) > 0) i--
+    keep.splice(i, 0, m)
+    if (keep.length > limit) keep.pop()
   }
-  return hits
+  // Ranges are built only for the verses that survive the cap: `and` occurs some
+  // 1200 times in a single chapter and nothing reads the positions of the rest.
+  const render = (): Hit[] =>
+    keep.map((m) => ({
+      slug: m.e.slug,
+      ch: m.e.ch,
+      v: m.e.v,
+      lang: langs[m.k],
+      text: m.e.text,
+      ranges: collectRanges(m.e.fold, terms),
+    }))
+
+  let total = 0
+  for (const slug of opts.slugs) {
+    const books = await Promise.all(langs.map((l) => indexBook(l, slug)))
+    if (opts.signal?.cancelled) return { hits: render(), total, done: false }
+    const at = opts.order.get(slug) ?? 0
+    const longest = Math.max(0, ...books.map((e) => e.length))
+    for (let i = 0; i < longest; i++) {
+      for (let k = 0; k < books.length; k++) {
+        const e = books[k][i]
+        if (!e) continue
+        // Cheap reject first: most verses fail on the rarest term, and scanning
+        // for positions before knowing the verse qualifies is wasted work.
+        let all = true
+        for (const term of terms)
+          if (findFrom(e.fold, term, 0) < 0) {
+            all = false
+            break
+          }
+        if (!all) continue
+        total++
+        offer({ at, ch: e.ch, v: e.v, k, e })
+      }
+    }
+    opts.onPartial?.({ hits: render(), total, done: false })
+  }
+  return { hits: render(), total, done: true }
 }
 
 /* -------------------------- reference parsing -------------------------- */
@@ -272,6 +351,20 @@ const ALIAS: Record<string, string> = {
   ez2: 'ezekiel', mateo: 'matthew', mateus: 'matthew', marcos: 'mark', lucas: 'luke', juan: 'john',
   joao: 'john', hechos: 'acts', atos: 'acts', romanos: 'romans', apocalipsis: 'revelation',
   apocalipse: 'revelation',
+  // Short forms of *John*, the one name the substring fallback below gets wrong.
+  // That fallback picks the shortest official name containing the query, which is
+  // right for Arabic (إنجيل يوحنا is shorter than رسالة يوحنا الأولى) and inverts
+  // here: ヨハネの黙示録 ("Apocalypse", 7) is shorter than ヨハネによる福音書
+  // ("Gospel according to", 9), so a reader typing the placeholder's own example
+  // ヨハネ3:16 landed in Revelation. 約翰 / 约翰 tie at four characters and resolve
+  // to nothing; Johano (Esperanto) matches no official name at all. The fallback
+  // itself is sound — every one of the 831 full names resolves correctly — so this
+  // is four aliases rather than a new heuristic. scripts/check-references.mjs
+  // replays the whole table.
+  johano: 'john',
+  'ヨハネ': 'john',
+  '約翰': 'john',
+  '约翰': 'john',
 }
 
 /**

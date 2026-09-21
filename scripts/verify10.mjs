@@ -504,7 +504,7 @@ console.log('\nVerse row is the tap target')
   check('tapping empty space in the row opens the action bar', true)
   await page.locator('#v-en-35 .vbtn.study').click()
   await page.waitForSelector('.verse-sheet')
-  check('and Study opens that verse', /11:35/.test(await page.locator('.verse-sheet .sheet-head b').innerText()))
+  check('and Study opens that verse', /11:35/.test(await page.locator('.verse-sheet .sheet-title').innerText()))
   await page.keyboard.press('Escape')
   await page.waitForTimeout(250)
 

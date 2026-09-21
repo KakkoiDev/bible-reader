@@ -137,9 +137,10 @@ console.log('\nSheet anatomy')
     Math.abs(geo.foot.bottom - (geo.sheet.bottom - geo.safe)) <= 1,
     `foot ${Math.round(geo.foot.bottom)} vs sheet ${Math.round(geo.sheet.bottom)} less ${geo.safe}`)
   check('body sits between them', geo.body.top >= geo.head.bottom - 1 && geo.body.bottom <= geo.foot.top + 1)
-  // The footer play reads on into the following verses, so a bare "Play" would say
-  // the same thing as the per-edition play in the body, which reads one verse.
-  check('the footer play says it continues', geo.playLabel === 'Listen from here', geo.playLabel)
+  // The footer holds Share and one primary now. Listen from here is gone from it:
+  // the sheet already had two play affordances (this verse, and the Hebrew or Greek
+  // behind it) and a third that meant a third thing was one too many.
+  check('the footer leads with Share', geo.playLabel === 'Share', geo.playLabel)
 
   // Scroll the body to the bottom. Head and footer must not have moved a pixel.
   const after = await page.evaluate(() => {
@@ -260,9 +261,14 @@ console.log('\nVerse action bar')
   check('six controls', await cells.count() === 6, `${await cells.count()}`)
   const labels = await cells.evaluateAll((els) =>
     els.map((e) => e.getAttribute('aria-label') || e.textContent.trim()))
-  check('highlight, share, bookmark, note, listen, Study',
-    JSON.stringify(labels) === JSON.stringify(['Highlight', 'Share', 'Bookmark', 'Add note', 'Listen from here', 'Study']),
+  // Every cell carries its label in the row now, not only in a tooltip, and the two
+  // everyday actions sit next to each other instead of three cells apart.
+  check('highlight, note, bookmark, share, listen, Study',
+    JSON.stringify(labels) === JSON.stringify(['Highlight', 'Note', 'Bookmark', 'Share', 'Listen', 'Study']),
     labels.join(' | '))
+  const widths = new Set(await cells.evaluateAll((els) =>
+    els.map((e) => Math.round(e.getBoundingClientRect().width))))
+  check('and the six cells are equal', widths.size === 1, [...widths].join(','))
 
   const boxes = await cells.evaluateAll((els) => els.map((e) => {
     const r = e.getBoundingClientRect()
@@ -303,7 +309,7 @@ console.log('\nBar actions')
   check('and it removes the tint', await page.locator('#v-en-16 .hl').count() === 0)
 
   // Bookmark completes on the tap: no sheet, and it survives a reload.
-  await page.locator('#v-en-16 .vbar .vbtn').nth(2).click()
+  await page.locator('#v-en-16 .vbar .vbtn', { hasText: 'Bookmark' }).click()
   await page.waitForTimeout(200)
   check('bookmark opens nothing', await page.locator('.sheet').count() === 0)
   check('the bar stays open', await page.locator('#v-en-16 .vbar').count() === 1)
@@ -317,7 +323,7 @@ console.log('\nBar actions')
 
   // Share holds three things and opens no sheet of its own.
   await page.locator('#v-en-16').click()
-  await page.locator('#v-en-16 .vbar .vbtn').nth(1).click()
+  await page.locator('#v-en-16 .vbar .vbtn', { hasText: 'Share' }).click()
   await page.waitForTimeout(150)
   check('share swaps the row too', await page.locator('.sheet').count() === 0)
   check('back plus three actions', await page.locator('#v-en-16 .vbar .vbtn').count() === 4)

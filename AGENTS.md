@@ -26,12 +26,25 @@ empty, which reads exactly like a stale script.
 the previous bundle, so any run against a rebuilt tree measures the old code until the
 server is restarted. Restart it after every build.
 
-Green as of 2026-09-06: `verify.mjs`, `verify12`, `verify13`, `verify14`, `verify15`,
-`verify18`, `verify19` (no browser), `verify16`, `verify17`. `verify2` through `verify11` fail on UI the scripts
-still expect and the app no longer renders; the failures reproduce identically on older
-commits, so treat them as stale scripts, not as regressions, and re-check against the
-base commit before believing otherwise. What each script covers, and which of their
-checks are known to fail, is owned by the Verify section of `README.md`.
+Green as of 2026-09-21: `verify.mjs`, `verify12`, `verify13`, `verify14`, `verify15`,
+`verify16`, `verify17`, `verify18`, `verify19` (the last three need no browser), and
+`check-references.mjs`. `verify2` through `verify11` fail on UI the scripts still expect
+and the app no longer renders; the failures reproduce identically on older commits, so
+treat them as stale scripts, not as regressions, and re-check against the base commit
+before believing otherwise — `git worktree add /tmp/base <sha>`, symlink `node_modules`
+into it, build, and run the script against both. What each script covers, and which of
+their checks are known to fail, is owned by the Verify section of `README.md`.
+
+`measure-breakpoints.mjs`, `measure-a11y.mjs` and `design-audit.mjs` print measurements
+rather than pass/fail; they are how the layout, semantics and 44px claims in the docs
+are kept honest. `golden-cross.mjs` and `rasterise-icons.mjs` regenerate the app mark
+and are the only scripts that write into the repo.
+
+Playwright's bundled Chromium may not be the revision the installed `playwright`
+expects. Every script here accepts `CHROMIUM=<path to chrome>`; the ones that do not
+(`verify*.mjs`) need the expected revision present under `PLAYWRIGHT_BROWSERS_PATH`.
+Do not run `npx playwright install` in a sandbox — point `CHROMIUM` at the binary, or
+symlink the revision directory.
 
 ## Sharp edges
 
@@ -47,6 +60,17 @@ that needs a field in its head is excluded by selector instead.
 Real touch drags need CDP `Input.dispatchTouchEvent`. Playwright's `page.touchscreen`
 taps but does not drag, and a mouse drag exercises neither `touch-action` nor the race
 against a scroller. `scripts/verify17.mjs` has the helper.
+
+`touch-action` is the touch half; `user-select` is the pointer half, and a drag handle
+needs both. A pointer that goes down on the handle and travels over text starts a text
+selection, and the *next* press then lands on that selection and begins a native
+drag-and-drop instead — so the symptom is that the second dismissal in a row springs
+back while the first worked. `.sheet-grab` and `.sheet-head` carry `user-select: none`
+for this; a field inside a head opts back in by selector, as with `touch-action`.
+
+Widening an element that sits under a drag path is enough to introduce it: promoting the
+sheet titles from `<b>` to a `flex: 1` `<h2>` is what first put text under the pointer at
+the middle of the head.
 
 ## Maintaining this file
 

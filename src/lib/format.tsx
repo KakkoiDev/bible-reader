@@ -18,6 +18,21 @@ export interface HL {
 const RUBY = /\{\{([^|}]*)\|([^}]+)\}\}/g
 const KJV_ITALIC = /\{([^}]+)\}/g
 
+/**
+ * A verse's stored text with its markup taken off: the KJV's supplied-word braces
+ * and the Japanese editions' furigana readings. What is left is exactly the string
+ * the reader sees, so positions in it match the ones a highlight stores.
+ *
+ * Used wherever verse text leaves the reader — the clipboard, and the excerpt the
+ * saved panel shows under a highlight.
+ */
+export const plainText = (text: string, lang: Lang): string => {
+  const markup = BY_ID[lang].markup
+  if (markup === 'kjv') return text.replace(/[{}]/g, '')
+  if (markup === 'ruby') return text.replace(RUBY, '$1')
+  return text
+}
+
 function tokenize(text: string, lang: Lang): Token[] {
   const out: Token[] = []
   const markup = BY_ID[lang].markup

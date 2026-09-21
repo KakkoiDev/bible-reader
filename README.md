@@ -40,17 +40,37 @@ Every attribution is reproduced verbatim in the app under **Texts & licences**.
 
 ## Reading UX
 
-- **Wide screens:** every enabled edition side by side, with **verse alignment** on
-  by default so each verse begins at the same height in all columns (CSS subgrid;
-  toggleable in Settings).
+- **The column count follows the room.** One edition below 840px, two from 840, three
+  from 1260, with **verse alignment** on by default so each verse begins at the same
+  height in all columns (CSS subgrid; toggleable in Settings). The single column is
+  capped at a 66-character measure and centred, and the chapter title and chapter-end
+  row line up with it. The steps are the widths at which their columns reach a
+  45-character measure; `scripts/measure-breakpoints.mjs` prints the result at fourteen
+  widths, and every one from 480px up lands inside the comfortable 45-75 band.
+- **More editions than columns page rather than scroll.** Three at a time is as many
+  as fit a readable measure, so a counter and two paddles beside the chapter title say
+  which slice is on screen — `1-3 of 14` — and move it. Only the window is fetched, so
+  fourteen enabled editions do not cost fourteen round trips a chapter.
 - **Phone:** one edition at a time. Tap the tabs, or enable **swipe** to cycle them.
-  Arrow keys ←/→ move between chapters, ↑/↓ between editions.
+  Arrow keys ←/→ move between chapters, ↑/↓ between editions. Past four editions the
+  tab strip scrolls, so it carries the same counter underneath.
+- **Verse rhythm.** Lines inside a verse are set tighter than the gap between two
+  verses, so a chapter reads as verses rather than as a slab. Japanese keeps the taller
+  leading its ruby needs, and the aligned desktop view takes its rhythm from the
+  subgrid rows instead.
 - **Justified text** is on by default, with hyphenation enabled alongside it so narrow
   columns don't open rivers of whitespace. Toggleable in Settings.
 - **Flowing mode** drops verse numbers and renders a whole book as continuous
   paragraphs, with inline chapter markers so chapter navigation still lands visibly.
   A run of chapters the edition's source omits gets one seam saying so, rather than
-  running 129 straight into 140.
+  running 129 straight into 140. A 3px rule at the head of the book says how far in
+  you are, which is the one cue continuous prose has no other way to give — Genesis
+  is 184,000px of scroll.
+- **A plan always has something to read.** Day one is anchored to the first day whose
+  slice is not empty, so a plan that reads under a chapter a day still opens on the day
+  it is created; the preview floors the way the scheduler floors, saying *about one
+  chapter every 3 days* rather than rounding it to `1.0`. A day that is genuinely empty
+  names the next one and offers to read it now.
 - **The passage closes on a chapter-end row**: a rule naming what you just finished,
   then a full-width row naming what comes next. At the end of a book that is the next
   book, which is the only place the reader names it.
@@ -63,7 +83,16 @@ Every attribution is reproduced verbatim in the app under **Texts & licences**.
   languages, including right-to-left layout for Arabic and Hebrew.
 - **Search** matches text in the enabled editions, and resolves references in *any*
   edition's language — `John 3:16`, `Mateo 15:3`, `マタイ15:3`, `馬太福音15:3`,
-  `إنجيل يوحنا 3:16`, `תהלים 23` all work.
+  `إنجيل يوحنا 3:16`, `תהלים 23` all work. It says how many verses matched and how many
+  of them it is showing, so a capped list can be told from a complete one, and scope
+  chips narrow it to the Old Testament, the New, or the book you have open — which is
+  what puts John 3:16 on screen for a query as common as `love`. Books are indexed one
+  at a time starting with the open one, so results begin filling in after one fetch an
+  edition rather than sixty-six. Enter goes to the resolved reference, or to the first
+  result when there is none.
+- **The book picker filters as you type**, in any edition's language and by the short
+  forms the reference parser knows: `ヨハネ` narrows sixty-six books to five, `jn 3`
+  resolves outright and Enter opens it.
 - **Older words** on the KJV: open a verse and any word whose meaning has moved since
   1611 is listed with its modern equivalent, so *charity → love* and *prevent → go
   before*. Tap for the note, or the arrow to hear either the old word or the new one.
@@ -78,7 +107,10 @@ Every attribution is reproduced verbatim in the app under **Texts & licences**.
   verse in every visible edition, which is the next best help it can give.
 - **Notes & highlights** with tags, sorting (book / created / updated / hand-arranged),
   a this-book filter, timestamps, JSON export/import, and a TSV export Anki imports
-  natively. Notes and reading plans export as separate files, since one is what you
+  natively. A highlight saves the words it covers, so the saved panel can show them —
+  a reference, a date and a coloured dot are not recall, and the text cannot be
+  recovered later without refetching the book in the edition it was made in.
+  Highlights saved before this show as they always did. Notes and reading plans export as separate files, since one is what you
   wrote and the other is a schedule. Import is one code path either way: the payload
   names its own kind, so the button you pick does not decide what is read.
 - **Audio** reads a chapter aloud with word-level highlighting (EN/FR), optionally
@@ -533,9 +565,11 @@ the flick threshold: velocity is measured between the last `pointermove` and the
 release always reads as zero. That one is by hand.
 
 For the bar: a verse tap opens it and does **not** open the sheet, its six controls
-are each 44pt and fit one row at 390px, highlight and share swap the row in place,
-Study is the only control that opens a sheet, and a bookmark with nothing else
-attached to it survives a reload and reaches the Saved drawer's filter.
+are each 44pt, equal in width and fit one row at 390px, each carries its label in the
+row (the suite reads the labels, so reordering the cells fails it rather than silently
+clicking the wrong one), highlight and share swap the row in place, Study is the only
+control that opens a sheet, and a bookmark with nothing else attached to it survives a
+reload and reaches the Saved drawer's filter.
 
 ```bash
 npx vite preview --port 4182 --strictPort
@@ -648,6 +682,38 @@ change (`no toggle to press` is contradicted, the definitions warm-up no longer
 fires, `.strongs .cspeak` now matches the original-verse play button before the word
 rows). Repairing that is its own piece of work, so the abort is left in place rather
 than half-fixed.
+
+```bash
+npx vite preview --port 4999 --strictPort
+node scripts/measure-breakpoints.mjs   # chars/line and column count at 14 widths
+node scripts/measure-a11y.mjs          # contrast, hit targets, tab order, sheet semantics
+node scripts/check-references.mjs      # the reference resolver, no server, no browser
+```
+
+These three print measurements rather than assertions, and they are how the numbers
+in this file are kept honest. `measure-breakpoints.mjs` computes the measure in-page
+from the rendered font metrics — a hidden span of known length laid out in the verse's
+exact font gives an average advance, and the column width is divided by it — so the
+comfortable 45-75 band can be checked rather than assumed. Every width from 480 up
+should land inside it; 320 and 390 are device-bound and report 33 and 41.
+`measure-a11y.mjs` sweeps contrast, effective hit areas, the first twelve tab stops
+and each sheet's dialog semantics. `check-references.mjs` replays the resolver over all
+831 official book names in eleven languages plus the short forms a reader types; it
+reads the shipped `ALIAS` table out of `src/lib/search.ts` rather than keeping a copy,
+so adding a short form there is tested here without touching the script. It is the one
+of the three that exits non-zero.
+
+```bash
+node scripts/golden-cross.mjs        # regenerates favicon.svg + the splash mark from φ
+node scripts/rasterise-icons.mjs     # SVG -> the PNG icon set
+```
+
+The only two scripts that write into the repo. The mark's geometry comes from two
+decisions — a `W:H = 1:φ` bounding box, and a crossbar dividing the stem
+`head:foot = 1:φ` — from which `arm:thickness = φ` and `foot = bar width` fall out.
+`golden-cross.mjs` also rewrites the inline `<svg class="smark">` in `index.html`,
+which is what keeps the launcher icon and the splash from drifting apart, so change
+the geometry there and re-run both rather than editing the SVG by hand.
 
 ```bash
 node scripts/design-audit.mjs http://localhost:4178 /tmp/shots after

@@ -55,12 +55,38 @@ export const elapsedDays = (block: PlanBlock, today: number): number =>
   Math.round((startOfDay(today) - startOfDay(block.startedAt)) / DAY)
 
 /** Which day of a pass today is, or null when the plan has not started yet or has
- *  finished and does not repeat. */
-export function dayIndex(block: PlanBlock, today: number): number | null {
-  const n = elapsedDays(block, today)
+ *  finished and does not repeat.
+ *
+ *  `offset` shifts which day of the pass the start date lands on — see
+ *  `firstReadingDay`, the only thing that passes it. Zero for every plan that reads
+ *  at least a chapter a day, which is every plan the arithmetic used to be tested on. */
+export function dayIndex(block: PlanBlock, today: number, offset = 0): number | null {
+  const n = elapsedDays(block, today) + offset
   if (n < 0) return null
   if (n < block.days) return n
   return block.repeat ? n % block.days : null
+}
+
+/**
+ * The first day of a pass whose slice is not empty.
+ *
+ * `daySlice` gives day `i` the chapters from ⌊i·n/d⌋ to ⌊(i+1)·n/d⌋, so day 0 is
+ * empty whenever a plan reads under one chapter a day — which is five of the twenty
+ * preset combinations. The New Testament in a year, the Gospels in 90 days and one
+ * book in 90 days all delivered *nothing* on the day they were created: the card
+ * said "Nothing today." with no Read button, no next date and no explanation, on the
+ * day the reader set the plan up.
+ *
+ * Anchoring the start to this index is what makes "starts today" true. It does not
+ * touch `daySlice`: the remainder-spreading there is correct, and days further in
+ * are still legitimately empty when there is less than a chapter a day to give —
+ * those the planner answers with the next date and a read-ahead instead.
+ *
+ * ⌊(i+1)·n/d⌋ > ⌊i·n/d⌋ first holds at i = ⌈d/n⌉ - 1.
+ */
+export function firstReadingDay(total: number, days: number): number {
+  if (total <= 0 || days < 1) return 0
+  return Math.min(days - 1, Math.ceil(days / total) - 1)
 }
 
 /** Every chapter a scope covers, in reading order. */
@@ -101,15 +127,51 @@ export function daySlice<T>(all: T[], days: number, i: number): T[] {
 /** What this block asks for today. Empty before the start date and after the end of a
  *  non-repeating pass. */
 export function todaysReading(block: PlanBlock, index: IndexItem[], today: number): Ref[] {
-  const i = dayIndex(block, today)
-  if (i === null) return []
-  return daySlice(scopeChapters(block.scope, index), block.days, i)
+  return planToday(block, index, today).refs
 }
 
-/** Days a whole pass has left, counting today. null once a non-repeating pass is over. */
-export function daysLeft(block: PlanBlock, today: number): number | null {
-  const i = dayIndex(block, today)
-  return i === null ? null : block.days - i
+/** Local midnight `k` days from `t`, through Date so a clock change costs nothing. */
+const addDays = (t: number, k: number): number => {
+  const d = new Date(startOfDay(t))
+  d.setDate(d.getDate() + k)
+  return d.getTime()
+}
+
+/** Everything the planner draws for one block today, computed together so the day
+ *  index, the chapters and the countdown cannot disagree about which day it is. */
+export interface PlanDay {
+  /** Day of the pass, or null before the start date and after a finished pass. */
+  day: number | null
+  /** Today's chapters. Empty when the pass is not running, or on a day a plan
+   *  reading under a chapter a day has nothing to give. */
+  refs: Ref[]
+  /** Days of the pass left, counting today. */
+  left: number | null
+  /** Local midnight of the next day that has something, when today has not. */
+  nextOn: number | null
+  /** What that day will ask for, so an empty day can offer to read it now rather
+   *  than being a full stop. */
+  nextRefs: Ref[]
+}
+
+export function planToday(block: PlanBlock, index: IndexItem[], today: number): PlanDay {
+  const none: PlanDay = { day: null, refs: [], left: null, nextOn: null, nextRefs: [] }
+  const all = scopeChapters(block.scope, index)
+  const day = dayIndex(block, today, firstReadingDay(all.length, block.days))
+  if (day === null) return none
+  const refs = daySlice(all, block.days, day)
+  const left = block.days - day
+  if (refs.length) return { day, refs, left, nextOn: null, nextRefs: [] }
+  // Nothing today. Walk forward for the next day that has something — one whole pass
+  // at most, so a scope with no chapters in it terminates instead of spinning.
+  for (let k = 1; k <= block.days; k++) {
+    const at = day + k
+    const wrapped = at < block.days ? at : block.repeat ? at % block.days : -1
+    if (wrapped < 0) break
+    const next = daySlice(all, block.days, wrapped)
+    if (next.length) return { day, refs, left, nextOn: addDays(today, k), nextRefs: next }
+  }
+  return { day, refs, left, nextOn: null, nextRefs: [] }
 }
 
 export const refKey = (r: Ref) => `${r.slug}.${r.ch}`

@@ -173,6 +173,11 @@ for (const dark of [false, true]) {
       for (const el of document.querySelectorAll('button, a, input, select, textarea, [tabindex]')) {
         const own = el.getBoundingClientRect()
         if (!own.width || !own.height) continue
+        // Visually hidden until focused — the skip link, a sheet's hidden title.
+        // There is no target to measure while it is hidden, and the one it takes
+        // when it is focused is a real 44.
+        if (own.width <= 14 && own.height <= 14) continue
+        if (own.left < -1000 || own.top < -1000) continue
         const label = el.closest('label')
         const t = label && label !== el ? target(label) : target(el)
         if (t.w >= 44 && t.h >= 44) continue
