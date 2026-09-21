@@ -39,9 +39,11 @@ Three states, one element — there is never a second bar.
 
 ## Verse interaction
 
-Tap a verse → inline bar (highlight · share · bookmark · note · listen · Study).
-Only **Study** opens the sheet. The bar is full at six controls on a 390pt
-screen; a seventh needs a redesign, not a squeeze.
+Tap a verse → inline bar (highlight · note · bookmark · share · listen · Study),
+six equal cells with a label under each glyph. Only **Study** opens the sheet. The
+bar is full at six controls on a 390pt screen; a seventh needs a redesign, not a
+squeeze. Highlight and note are adjacent because they are the two everyday actions,
+and they carry the two glyphs most easily confused — see *Departures*.
 
 ## Type
 
@@ -81,19 +83,25 @@ Recorded here so the document and the code do not tell different stories.
   the buttons, fields, icon buttons, swatches, grid cells and list rows.
 - **A segmented cell is 38.** That is the 44 track minus its own 3px padding,
   which is the geometry drawn above. The track is the target.
-- **The verse number stays at ~30.** Per-verse play is gone, as this document
-  asks, so the collision that used to cap the number is gone with it. It still
-  does not grow to 44: verse rows sit about 34px apart, so a 44-tall hit area
-  would overlap the numbers of the verses above and below, which is a worse
-  defect than a small target.
-- **The verse action bar sits in the flow and may wrap.** The document draws it
-  as a flex row with `margin-top: 8px` under the tapped verse, and says the row
-  is full at six controls on a 390pt screen. Two departures follow from putting
-  it in a real reader: Study takes 14px of padding rather than 16, because five
-  46px cells, five 6px gaps and a 16-padded Study measure 355 while the reader's
-  own 18px margins leave 354 of a 390pt screen; and the row is `flex-wrap: wrap`,
-  because the multi-edition layout gives a column narrower than a phone and a
-  second row there is better than a 34px control.
+- **The verse number is a label, not a control.** It could not grow to a 44pt
+  target — verse rows sit about 34px apart, so a 44-tall hit area would overlap
+  the numbers above and below — and as a 24x29 copy-link button beside a row that
+  opens the action bar it put two different outcomes across a 24px boundary,
+  thirty-one times a chapter. It also put every verse of Psalm 119 in the tab
+  order, multiplied by every visible edition, ahead of the chapter-end row. The
+  row is the target now and copy link is a labelled entry in the bar's share view,
+  which is where the day's reading has always drawn its numbers.
+- **The verse action bar is six equal labelled cells, and never wraps.** The
+  document draws it as a flex row of five icons and one labelled button under the
+  tapped verse, and says the row is full at six controls on a 390pt screen. Sized
+  that way it measured 355 against the 354 the reader's 18px margins leave, so at
+  exactly 390 it wrapped and stranded Study on a line of its own — and five of the
+  six controls said nothing, with `highlight` and `note` reading as the same mark
+  three cells apart. The cells are `flex: 1 1 0` now, each with its label under its
+  glyph at 9px, and the row cannot wrap: its height is then the same in a 300px
+  column as on a phone, so opening the bar always moves the text below it by the
+  same amount. An edition with no voice keeps its Listen cell, disabled, rather
+  than closing the gap and moving the other five.
 - **Highlight and share swap the row in place.** The document says share holds
   three things and highlight applies a colour, but draws neither sub-row. Both
   replace the row's contents with a back control and their own actions, so
@@ -143,6 +151,53 @@ Recorded here so the document and the code do not tell different stories.
   numbers are inert labels rather than the reader's link buttons. Everything the request called
   advanced is inside a closed `<details>`, so the common path is four taps and
   answers no question it can answer itself.
+
+- **`highlight` and `note` are redrawn, the 41st and the second pair pulled apart.**
+  The set's `highlight` is a nib on a baseline and its `note` is a pencil: two
+  diagonal quadrilaterals with a point, indistinguishable at 19px, and they are the
+  two actions a reader reaches for every day. `highlight` is now a chisel marker —
+  a slanted barrel with the nib cut off it — over the solid bar it leaves, and
+  `note` is a page with a folded corner and two written lines. The page is also the
+  truer glyph for the marker beside an annotated verse, which means *there is
+  something written here* rather than *write something*.
+- **Every sheet is a dialog, named by its own `<h2>`.** The document draws the
+  sheet anatomy but says nothing about its semantics, and none of the five had any:
+  no `role`, no `aria-modal`, no heading, and six Tab presses from an open sheet
+  walked out onto the header icons and the edition tabs behind the backdrop. The
+  shell in `src/components/Sheet.tsx` now sets `role="dialog"`, `aria-modal`, and
+  `aria-labelledby` at a real `<h2>` title, holds Tab inside itself, moves focus in
+  on open unless something inside has already claimed it, and hands focus back to
+  the opener on the way out. The search sheet, whose head is a field, is named by a
+  visually-hidden heading instead.
+- **Two sheet detents, not five ad-hoc heights.** The five sheets measured 13%, 31%,
+  58%, 83% and 92% of the viewport. They are sized to their content between a 45%
+  floor and the document's 92% ceiling, which mainly stops the search sheet growing
+  to most of the screen on the first keystroke and shrinking back on the last
+  backspace, moving the field under the thumb each time. Confirm is exempt: a
+  two-line question does not need half a screen.
+- **A settings section heading is a real `<h2>`, and it sticks.** Settings scrolls
+  about 1,970px past forty controls inside a 667px window, and the group labels were
+  styled `div`s — nothing for a screen reader to move between, and nothing on screen
+  saying which section you were in once the label had passed. `.sheet-body` is the
+  sheet's only scroller, so `position: sticky; top: 0` pins each heading as you pass
+  it. The planner's two form labels are `<h3>` and stay put: they sit inside a card
+  that scrolls with the sheet.
+- **A skip link, and it is a button.** A chapter is hundreds of lines of text and,
+  in the parallel view, that many again per edition. The link is off-screen until
+  focused and jumps to the chapter-end row. It is a `<button>` rather than an
+  `<a href="#chapend">` because the app routes on `location.hash`, so a fragment
+  link would navigate the reader somewhere else on its way.
+- **The reader widens to 1320 for three columns.** The document assumes one measure;
+  three tracks inside the 1200px reader can only ever be 39 characters, against the
+  comfortable 45. The ladder asks for three columns at 1260 and up, and `.reader`
+  widens to match. One and two columns stay at 1200, and the single column is capped
+  at 66ch and centred with the chapter title and chapter-end row aligned to it.
+- **More editions than columns page, they do not scroll.** Fourteen editions made a
+  3698px track inside a 1164px window: scrollable, with no scrollbar, no edge fade
+  and no counter, and the sixth column sliced mid-glyph at 28 characters. Tracks now
+  have a 300px floor that the ladder guarantees always fits, and the editions past
+  the window are reached with a counter and two paddles beside the chapter title.
+  The phone's tab strip, which does scroll, carries the same counter underneath.
 
 ## Data this design assumes
 

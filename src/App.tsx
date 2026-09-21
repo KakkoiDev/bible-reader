@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Chapter, EditionBook, IndexItem } from './lib/types'
 import { bookName } from './lib/types'
 import { BY_ID, DEFAULT_COLUMNS, VERSION_IDS, coversBook, isLang, type Lang } from './lib/versions'
-import { VerseText, type HL } from './lib/format'
+import { VerseText, plainText, type HL } from './lib/format'
 import { useAnnotations, vref, parseRef, countTagged, type HColor } from './lib/annotations'
 import { selectionContext, setWordHighlight, clearWordHighlight } from './lib/highlight'
 import {
@@ -41,6 +41,32 @@ import { Icon } from './components/Icon'
 
 const BASE = import.meta.env.BASE_URL
 const SWIPE_MIN = 45
+/**
+ * How many editions stand side by side, by viewport width.
+ *
+ * There used to be one switch, at 900px, and one width query in the stylesheet, at
+ * 640. Between them nothing changed: a single column ran the full width, reaching
+ * 100 characters a line at 899px, and crossing one pixel to 900 dropped it to 31
+ * across three columns. Comfortable measure is 45-75 and both sides were outside
+ * it. A ladder puts the count where the room is, and the single column is capped at
+ * 66ch in the stylesheet so the 640-899 band has a measure of its own.
+ *
+ * Each step is the width at which its columns reach a 45-character measure, given
+ * the reader's 18px margins and the 26px gap: 840 for two, 1260 for three (which is
+ * also why `.reader` widens to 1320 for three columns — at 1200 a third track can
+ * only ever be 39 characters). Measured, not chosen: `scripts/measure-breakpoints.mjs`
+ * prints the resulting chars/line at fourteen widths.
+ *
+ * It stops at three because a fourth track would take the measure back under 40 at
+ * any width a browser window actually gets. Editions past the third are reached with
+ * the paddles beside the chapter title, which page this window over `prefs.columns`.
+ */
+const COLUMN_STEPS = [
+  { min: 1260, columns: 3 },
+  { min: 840, columns: 2 },
+] as const
+const fitColumns = () =>
+  COLUMN_STEPS.find((s) => matchMedia(`(min-width: ${s.min}px)`).matches)?.columns ?? 1
 /** A verse row in the patchwork reader, where a chapter number is not unique. */
 const patchVerseId = (slug: string, ch: number, v: number) => `pv-${slug}-${ch}-${v}`
 /** How long a verse has to stay on screen before scrolling past it counts as reading
@@ -154,7 +180,12 @@ export default function App() {
   )
   const [flashVerse, setFlashVerse] = useState<number | null>(initHash.loc?.verse ?? initLast?.verse ?? null)
   const [prefs, setPrefs] = useState<Prefs>(loadPrefs)
-  const [wide, setWide] = useState(() => matchMedia('(min-width: 900px)').matches)
+  const [fit, setFit] = useState(fitColumns)
+  /** True for the parallel layout, whatever its column count. Every place that used
+   *  to ask "is this the wide layout" still means exactly this. */
+  const wide = fit > 1
+  /** First edition of the window the parallel view is showing, indexing `prefs.columns`. */
+  const [colStart, setColStart] = useState(0)
   const [loading, setLoading] = useState(false)
   // An action turns the toast into an undo affordance — used by invite links, which
   // apply immediately rather than asking first.
@@ -254,10 +285,10 @@ export default function App() {
 
   // responsive
   useEffect(() => {
-    const mq = matchMedia('(min-width: 900px)')
-    const on = () => setWide(mq.matches)
-    mq.addEventListener('change', on)
-    return () => mq.removeEventListener('change', on)
+    const queries = COLUMN_STEPS.map((s) => matchMedia(`(min-width: ${s.min}px)`))
+    const on = () => setFit(fitColumns())
+    queries.forEach((q) => q.addEventListener('change', on))
+    return () => queries.forEach((q) => q.removeEventListener('change', on))
   }, [])
 
   const flow = prefs.flow
@@ -282,14 +313,38 @@ export default function App() {
   const bookIdx = useMemo(() => index.findIndex((b) => b.slug === pos.slug), [index, pos.slug])
   const chapterCount = book?.chapters.length ?? 0
 
-  // Editions to download: the visible columns plus whatever is being read. On a
-  // phone only one column shows at a time, but the ring can reach any of them.
-  // Editions that don't cover this half of the canon are skipped — asking for
-  // data/el/genesis.json would only ever be a wasted round trip.
+  /* ---- which editions are on screen ----
+   *
+   * The parallel view shows a window over the enabled editions rather than all of
+   * them: fourteen columns at 1440px made a 3698px track inside a 1164px window,
+   * which did scroll but said so nowhere — no scrollbar, no fade, no counter — and
+   * sliced the sixth column mid-glyph at 28 characters a line. The window is as
+   * wide as the viewport has room for and the paddles beside the chapter title move
+   * it. On a phone and in flow mode the reader reads one edition and the language
+   * ring is what moves between them. */
+  const columnCount = Math.min(fit, Math.max(1, prefs.columns.length))
+  const maxColStart = Math.max(0, prefs.columns.length - columnCount)
+  // Hiding an edition, or a narrower window, can leave the start past the end.
+  useEffect(() => {
+    setColStart((s) => Math.min(s, maxColStart))
+  }, [maxColStart])
+  const colStartClamped = Math.min(colStart, maxColStart)
+  const langsToShow: Lang[] =
+    flow || !wide ? [pos.lang] : prefs.columns.slice(colStartClamped, colStartClamped + columnCount)
+  const showKey = langsToShow.join(',')
+
+  // Editions to download: whatever one tap can reach, plus whatever is being read.
+  // In the single-column layouts that is the whole ring — only one column shows, but
+  // the ring reaches any of them and a fetch on every tap would be felt. In the
+  // parallel layout it is the window; the paddles fetch the next one when they move,
+  // which is what keeps fourteen enabled editions from costing fourteen round trips
+  // per chapter. Editions that don't cover this half of the canon are skipped —
+  // asking for data/el/genesis.json would only ever be a wasted round trip.
   const needed = useMemo(() => {
-    const all = [...new Set([...prefs.columns, pos.lang])]
+    const reachable = flow || !wide ? prefs.columns : (showKey ? (showKey.split(',') as Lang[]) : [])
+    const all = [...new Set([...reachable, pos.lang])]
     return bookIdx < 0 ? all : all.filter((l) => coversBook(l, bookIdx))
-  }, [prefs.columns, pos.lang, bookIdx])
+  }, [prefs.columns, flow, wide, showKey, pos.lang, bookIdx])
   const neededKey = needed.join(',')
 
   // ---- per-edition book loading ----
@@ -402,8 +457,33 @@ export default function App() {
     else if (pos.chapter < 1) navigate({ chapter: 1 })
   }, [chapterCount, pos.chapter, navigate])
 
-  const langsToShow: Lang[] = flow || !wide ? [pos.lang] : prefs.columns
-  const showKey = langsToShow.join(',')
+  /**
+   * Reject a book slug that is not in the index.
+   *
+   * `parseHash` checks that the chapter parses as a number and nothing else, so
+   * `#/nowhere/999/1` used to propagate all the way into the header pill and the
+   * chapter heading as a book called "999" — and survive the next navigation,
+   * because every later `navigate` carries the same bad slug forward.
+   *
+   * The check cannot live in `parseHash`: the index is fetched, so at parse time
+   * there is nothing to check against. It lives here, and runs on the first render
+   * after the index lands. The fallback is the last place the reader actually was
+   * — the alternative, always dumping them in Genesis, throws away a position the
+   * app already knows. `loadLastRead` is re-read rather than captured at mount,
+   * since a session can have moved on since.
+   */
+  useEffect(() => {
+    if (!index.length || index.some((b) => b.slug === pos.slug)) return
+    const last = loadLastRead()
+    const good = last && index.some((b) => b.slug === last.slug) && isLang(last.lang)
+    setPatch(null)
+    say(t('bad_link'))
+    navigate(
+      good
+        ? { slug: last!.slug, chapter: last!.chapter, lang: last!.lang, verse: last!.verse }
+        : { slug: index[0].slug, chapter: 1 },
+    )
+  }, [index, pos.slug, navigate, say, t])
 
   /** Rows of the open chapter, one per verse number in the canonical union, less the
    *  numbers no shown edition uses. Psalm 3 has nine rows in the union because the
@@ -930,13 +1010,7 @@ export default function App() {
   )
   const copyVerseText = useCallback(
     async (lang: Lang, ch: number, v: number, text: string) => {
-      const markup = BY_ID[lang].markup
-      const plain =
-        markup === 'kjv'
-          ? text.replace(/[{}]/g, '')
-          : markup === 'ruby'
-            ? text.replace(/\{\{([^|}]*)\|[^}]+\}\}/g, '$1')
-            : text
+      const plain = plainText(text, lang)
       // Cite in the verse's own language, not the UI's.
       const name = bookName(book, lang)
       try {
@@ -1214,6 +1288,12 @@ export default function App() {
     navOpen || searchOpen || licencesOpen || verseSheet !== null || inviteFor !== null ||
     confirmDelete !== null || confirmTag !== null || noteRef !== null || drawerOpen || settingsOpen ||
     plannerOpen
+  // The bar belongs to the page, so it has no business sitting behind a sheet: it
+  // used to stay open under the backdrop and be waiting there, still pointing at a
+  // verse the reader has since left, when the sheet closed.
+  useEffect(() => {
+    if (anySheetOpen) setBarAt(null)
+  }, [anySheetOpen])
   useEffect(() => {
     if (!anySheetOpen) return
     const { body, documentElement: html } = document
@@ -1234,11 +1314,14 @@ export default function App() {
       if (tag === 'TEXTAREA' || tag === 'INPUT' || tag === 'SELECT') return
       if (e.key === 'ArrowRight') goChapter(1)
       else if (e.key === 'ArrowLeft') goChapter(-1)
-      else if (!wide && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) cycleLang(e.key === 'ArrowUp' ? -1 : 1)
+      // The same condition the language ring is drawn under: in flowing mode the
+      // ring is on screen at every width, and the keys that move it were not.
+      else if ((!wide || flow) && (e.key === 'ArrowUp' || e.key === 'ArrowDown'))
+        cycleLang(e.key === 'ArrowUp' ? -1 : 1)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [goChapter, cycleLang, wide])
+  }, [goChapter, cycleLang, wide, flow])
 
   // swipe → language ring
   const touch = useRef<{ x: number; y: number } | null>(null)
@@ -1246,7 +1329,7 @@ export default function App() {
     touch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
   }
   const onTouchEnd = (e: React.TouchEvent) => {
-    if (!touch.current || wide || !prefs.swipe) return
+    if (!touch.current || (wide && !flow) || !prefs.swipe) return
     if (!window.getSelection()?.isCollapsed) return // don't swipe while selecting text
     const dx = e.changedTouches[0].clientX - touch.current.x
     const dy = e.changedTouches[0].clientY - touch.current.y
@@ -1262,7 +1345,13 @@ export default function App() {
     setSel(null)
   }
   const doColor = (c: HColor) => {
-    if (sel && selRef) addHighlight(selRef, { lang: sel.lang, start: sel.start, end: sel.end, color: c })
+    if (sel && selRef) {
+      // Taken from the live selection, before `clearSelection` drops it: the saved
+      // panel has no other way to show what was highlighted, and reconstructing it
+      // later would mean fetching the book in the edition it was made in.
+      const text = window.getSelection()?.toString().replace(/\s+/g, ' ').trim() || undefined
+      addHighlight(selRef, { lang: sel.lang, start: sel.start, end: sel.end, color: c, text })
+    }
     clearSelection()
   }
 
@@ -1417,6 +1506,10 @@ export default function App() {
           slug: p.slug,
           label: labelFor(ref),
           note: a.note,
+          // What was highlighted, for a row that has no note. Recall is the panel's
+          // whole purpose and a reference, a date and a coloured dot are not recall.
+          // Absent on highlights saved before the text was stored with them.
+          excerpt: (a.highlights || []).map((h) => h.text).find(Boolean),
           tags: a.tags ?? [],
           colors: [...new Set((a.highlights || []).map((h) => h.color))],
           bookmarked: !!a.bookmarked,
@@ -1499,14 +1592,23 @@ export default function App() {
   // Subgrid needs a literal row count, so it's computed here rather than in CSS.
   const aligned = prefs.align && !flow && wide && langsToShow.length > 1
   // Column tracks are set here, not in CSS: there were only rules for one, two and
-  // three columns, so a fourth edition made the whole set stack vertically. Past
-  // three, tracks get a readable floor and the row scrolls sideways instead of
-  // squeezing every edition into an unreadable ribbon.
-  const many = langsToShow.length > 3
+  // three columns, so a fourth edition made the whole set stack vertically.
+  //
+  // The 300px floor is what stops a column dropping below a readable measure. It
+  // used to be 240 with `overflow-x: auto` behind it, which is how fourteen editions
+  // became a 3698px track in a 1164px window — scrollable, but with no scrollbar, no
+  // edge fade and no counter to say so, and the sixth column sliced mid-glyph. The
+  // window above means the floor is now a guarantee rather than an overflow: three
+  // 300px tracks and their gaps fit inside the narrowest viewport that asks for
+  // three, so the row never scrolls sideways and the paddles are the way past it.
   const colsStyle: React.CSSProperties = {
-    gridTemplateColumns: `repeat(${langsToShow.length}, minmax(${many ? '240px' : '0'}, 1fr))`,
+    gridTemplateColumns: `repeat(${langsToShow.length}, minmax(${wide ? '300px' : '0'}, 1fr))`,
     ...(aligned ? { gridTemplateRows: `auto repeat(${verseCount}, auto)` } : {}),
   }
+  // Where the window sits, for the counter and the paddles beside the chapter title.
+  const pagedColumns = wide && !flow && !patch && prefs.columns.length > columnCount
+  const movePage = (d: 1 | -1) =>
+    setColStart((s) => Math.min(maxColStart, Math.max(0, s + d * columnCount)))
 
   return (
     <div className="app">
@@ -1542,24 +1644,44 @@ export default function App() {
       </header>
 
       {(!wide || flow) && prefs.columns.length > 1 && (
-        <div className="langring" role="tablist" aria-label={t('language')}>
-          {prefs.columns.map((l) => (
-            <button
-              key={l}
-              role="tab"
-              aria-selected={l === pos.lang}
-              className={`ringtab ${l === pos.lang ? 'active' : ''}`}
-              onClick={() => go({ lang: l, verse: flashVerse ?? undefined })}
-            >
-              <span lang={BY_ID[l].htmlLang} dir={BY_ID[l].dir}>{BY_ID[l].label}</span>
-              <small>{BY_ID[l].edition}</small>
-            </button>
-          ))}
-        </div>
+        <>
+          <div className="langring" role="tablist" aria-label={t('language')}>
+            {prefs.columns.map((l) => (
+              <button
+                key={l}
+                role="tab"
+                aria-selected={l === pos.lang}
+                className={`ringtab ${l === pos.lang ? 'active' : ''}`}
+                onClick={() => go({ lang: l, verse: flashVerse ?? undefined })}
+              >
+                <span lang={BY_ID[l].htmlLang} dir={BY_ID[l].dir}>{BY_ID[l].label}</span>
+                <small>{BY_ID[l].edition}</small>
+              </button>
+            ))}
+          </div>
+          {/* The strip scrolls, and with fourteen editions on it is 1284px of tabs
+              inside 390 — the fifth is cut off and nothing says there are nine more.
+              Four tabs is about what a phone shows, so past that the strip is told
+              how long it is. Two of the tabs also read 日本語 (文語訳 and 口語訳),
+              which is the other reason the position, not just the name, has to be
+              on screen. */}
+          {prefs.columns.length > 4 && (
+            <p className="ringcount" aria-live="polite">
+              {t('cols_at', {
+                n: Math.max(1, prefs.columns.indexOf(pos.lang) + 1),
+                total: prefs.columns.length,
+              })}
+            </p>
+          )}
+        </>
       )}
 
       <main
-        className="reader"
+        // `single` is the one-column reading layout — a phone, a narrow window, or
+        // one enabled edition. The passage is capped at a 66ch measure there, and
+        // this is what lets the chapter title and the end-of-chapter row line up
+        // with it instead of running the full width of a 900px window.
+        className={`reader ${!flow && !patch && langsToShow.length === 1 ? 'single' : ''}`}
         ref={readerRef}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
@@ -1581,17 +1703,67 @@ export default function App() {
             furigana={prefs.furigana}
           />
         )}
-        <h1 className="ref">
-          {patch ? (
-            t('plan_reading')
-          ) : wide && !flow ? (
-            <>{title} {pos.chapter}</>
-          ) : (
-            <span lang={BY_ID[pos.lang].htmlLang} dir={BY_ID[pos.lang].dir}>
-              {readingTitle} {pos.chapter}
-            </span>
+        <div className="refrow">
+          <h1 className="ref">
+            {patch ? (
+              t('plan_reading')
+            ) : wide && !flow ? (
+              <>{title} {pos.chapter}</>
+            ) : (
+              <span lang={BY_ID[pos.lang].htmlLang} dir={BY_ID[pos.lang].dir}>
+                {readingTitle} {pos.chapter}
+              </span>
+            )}
+          </h1>
+          {/* Which slice of the enabled editions is on screen, and the way to the
+              rest. Drawn only when there is a rest: with three or fewer editions on,
+              every one of them is already a column. */}
+          {pagedColumns && (
+            <div className="colpage">
+              <button
+                className="mini"
+                disabled={colStartClamped === 0}
+                onClick={() => movePage(-1)}
+                aria-label={t('cols_prev')}
+              >
+                <Icon name="prev" size={16} flip />
+              </button>
+              <span className="colcount" aria-live="polite">
+                {t('cols_range', {
+                  from: colStartClamped + 1,
+                  to: colStartClamped + langsToShow.length,
+                  total: prefs.columns.length,
+                })}
+              </span>
+              <button
+                className="mini"
+                disabled={colStartClamped >= maxColStart}
+                onClick={() => movePage(1)}
+                aria-label={t('cols_next')}
+              >
+                <Icon name="next" size={16} flip />
+              </button>
+            </div>
           )}
-        </h1>
+        </div>
+
+        {/* Visible only while focused. A chapter is hundreds of lines of text and,
+            in the parallel view, that many again per edition; without this the only
+            way to a keyboard user's next control is through all of it. Not an <a
+            href="#chapend">: the app routes on `location.hash`, so a fragment link
+            would navigate the reader somewhere else on its way. */}
+        {!patch && (
+          <button
+            className="skiplink"
+            onClick={() => {
+              const el = document.getElementById('chapend')
+              el?.scrollIntoView({ block: 'start' })
+              el?.focus()
+            }}
+          >
+            {t('skip_to_end')}
+          </button>
+        )}
 
         {patch ? (
           <div className="patch" lang={BY_ID[pos.lang].htmlLang} dir={BY_ID[pos.lang].dir}>
@@ -1626,8 +1798,8 @@ export default function App() {
                           <ol className="verses">
                             {c.verses.map((v) => (
                               <li key={v.v} id={patchVerseId(c.slug, c.ch, v.v)} className={`verse pverse ${spoken(v.v)}`}>
-                                {/* A label, not the reader's link button: the day carries no
-                                    per-verse action in either mode. */}
+                                {/* The day carries no per-verse action in either mode; the
+                                    number is the same label the reader draws. */}
                                 <span className="vn">{v.v}</span>
                                 <span className="vt">
                                   <VerseText text={v.text} lang={pos.lang} showFurigana={prefs.furigana} highlights={v.hl} />
@@ -1656,6 +1828,31 @@ export default function App() {
           <p className="status">…</p>
         ) : flow ? (
           <div className="flow" lang={BY_ID[pos.lang].htmlLang} dir={BY_ID[pos.lang].dir}>
+            {/* Where you are in the book. Flowing mode drops the verse numbers and
+                the chapter boundaries, which is the point of it, but it also drops
+                every cue about how far in you are: Genesis as continuous prose is
+                183 938px of scroll over 490 paragraphs with fifty chapter markers
+                and nothing saying whether that is a tenth or a half. The scroll
+                observer already keeps `pos.chapter` in step, so the proportion is
+                free; the label beside it is the honest unit, because a chapter is
+                what the reader can name. */}
+            {chapterCount > 1 && (
+              <div
+                className="flowprog"
+                lang={BY_ID[prefs.ui].htmlLang}
+                dir={BY_ID[prefs.ui].dir}
+                role="progressbar"
+                aria-valuemin={1}
+                aria-valuemax={chapterCount}
+                aria-valuenow={pos.chapter}
+                aria-label={t('chapter_nav')}
+              >
+                <span className="flowtrack">
+                  <span className="flowfill" style={{ width: `${(pos.chapter / chapterCount) * 100}%` }} />
+                </span>
+                <small>{t('chapter_at', { n: pos.chapter, total: chapterCount })}</small>
+              </div>
+            )}
             {/* Half a canon is not a run of omitted chapters, and saying so would blame
                 the Greek New Testament's source for not carrying Genesis. */}
             {bookIdx >= 0 && !coversBook(pos.lang, bookIdx) ? (
@@ -1690,7 +1887,7 @@ export default function App() {
           </div>
         ) : (
           <div
-            className={`cols cols-${langsToShow.length} ${aligned ? 'aligned' : ''} ${many ? 'many' : ''}`}
+            className={`cols cols-${langsToShow.length} ${aligned ? 'aligned' : ''}`}
             style={colsStyle}
           >
             {langsToShow.map((l) => {
@@ -1757,11 +1954,17 @@ export default function App() {
                             )
                           }}
                         >
-                          {/* The number is the verse's identity, so tapping it copies a
-                              link to it. The rest of the row opens the actions. */}
-                          <button className="vn" title={t('copy_link')} onClick={() => copyVerseLink(l, v.v)}>
-                            {v.v}
-                          </button>
+                          {/* A label, not a button.
+                              It used to copy a link to the verse, which put two
+                              different outcomes on either side of a 24px boundary —
+                              the number copied, a few pixels right opened the action
+                              bar — thirty-one times a chapter. It also put every
+                              verse of Psalm 119 in the tab order, times every visible
+                              edition, ahead of the chapter-end row. Copy link now
+                              lives only where it is labelled: the bar's share view
+                              and the Study sheet. The day's reading has always drawn
+                              its numbers this way. */}
+                          <span className="vn">{v.v}</span>
                           {ann?.bookmarked && (
                             <span className="mk bm" title={t('bookmark')}>
                               <Icon name="bookmarked" size={12} />
@@ -1806,7 +2009,14 @@ export default function App() {
                                 // different colour would leave the previous range stored
                                 // under the new one.
                                 clearHighlightsIn(ref, l, 0, Number.MAX_SAFE_INTEGER)
-                                addHighlight(ref, { lang: l, start: 0, end: Number.MAX_SAFE_INTEGER, color: c })
+                                addHighlight(ref, {
+                                  lang: l,
+                                  start: 0,
+                                  end: Number.MAX_SAFE_INTEGER,
+                                  color: c,
+                                  // The whole verse, so the saved panel can show it.
+                                  text: text ? plainText(text, l) : undefined,
+                                })
                               }}
                               onClearHL={() => clearHighlightsIn(ref, l, 0, Number.MAX_SAFE_INTEGER)}
                               onBookmark={() => toggleBookmark(ref)}
@@ -1838,7 +2048,7 @@ export default function App() {
             A day's reading ends with its own row, and "end of Jude 1" would be a lie
             about what just ended when the day ran on into Revelation. */}
         {!patch && (
-        <nav className="chapend">
+        <nav className="chapend" id="chapend" tabIndex={-1} aria-label={t('chapter_nav')}>
           <p className="chapend-rule"><span className="chaplabel">{t('end_of', { ref: `${title} ${pos.chapter}` })}</span></p>
           {nextRef && (
             <button className="chapend-go" onClick={() => goChapter(1)}>
@@ -2005,6 +2215,7 @@ export default function App() {
         open={searchOpen}
         index={index}
         columns={prefs.columns}
+        currentSlug={pos.slug}
         ui={prefs.ui}
         t={t}
         onNavigate={(slug, ch, v, lang) => {
@@ -2037,10 +2248,6 @@ export default function App() {
         onSpeakWord={speakWord}
         onSpeakVerse={speakSheetVerse}
         sheetPlaying={sheetPlay}
-        onPlay={() => {
-          if (verseSheet) playFrom(verseSheet.lang, verseSheet.ch, verseSheet.v)
-          setVerseSheet(null)
-        }}
         onNote={() => {
           if (verseSheet) setNoteRef(vref(verseSheet.slug, verseSheet.ch, verseSheet.v))
           setVerseSheet(null)

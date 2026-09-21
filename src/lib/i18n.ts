@@ -214,6 +214,34 @@ const en = {
   plan_chapters_n: '{n} chapters',
   /** Header of the patchwork reader, where a day's chapters run on as one passage. */
   plan_reading: "Today's reading",
+
+  // ---- added with the 2026 design pass ----
+  /** A hash naming a book that is not in the index. */
+  bad_link: 'That link does not name a book in this Bible. Opened your last place instead.',
+  chapter_nav: 'Chapter navigation',
+  skip_to_end: 'Skip the passage',
+  /** The window of editions the parallel view is showing, and the way past it. */
+  cols_range: '{from}\u2013{to} of {total}',
+  cols_prev: 'Earlier versions',
+  cols_next: 'Later versions',
+  /** Where the phone's tab strip is in a list longer than the screen. */
+  cols_at: 'Version {n} of {total}',
+  listen: 'Listen',
+  search_scope: 'Search in',
+  search_keep_typing: 'Keep typing\u2026',
+  search_count: '{n} verses match',
+  /** The cap is not silent any more: 150 results and 28,021 looked identical. */
+  search_capped: '{total} verses match \u00b7 showing the first {n}',
+  plan_pace_day: '{n} a day',
+  plan_pace_range: '{low}\u2013{high} a day',
+  /** Said instead of a per-day count when a plan reads under a chapter a day. */
+  plan_pace_every: 'about one chapter every {n} days',
+  plan_next_on: 'Next reading: {date}',
+  plan_read_ahead: 'Read it now',
+  /** The book picker's type-ahead: sixty-six books is three and a half screens. */
+  filter_books: 'Filter books, or type a reference',
+  /** Where you are in a book read as continuous prose, which has no other cue. */
+  chapter_at: 'Chapter {n} of {total}',
 }
 
 export type StringKey = keyof typeof en
@@ -274,6 +302,17 @@ const ja: Dict = {
   plan_start_field: '開始日', plan_add: 'この計画を追加', plan_delete: 'この計画を削除',
   plan_mark_read: '読了にする', plan_mark_unread: '未読に戻す', plan_chapters_n: '{n}章',
   plan_reading: '今日の通読',
+
+  bad_link: 'そのリンクは本書にない書を指しています。前回の続きを開きました。',
+  chapter_nav: '章の移動', skip_to_end: '本文を飛ばす',
+  cols_range: '{total}件中{from}\u2013{to}', cols_prev: '前の版', cols_next: '次の版',
+  cols_at: '{total}件中{n}番目の版', listen: '聴く',
+  search_scope: '検索範囲', search_keep_typing: '続けて入力してください\u2026',
+  search_count: '{n}節が一致', search_capped: '{total}節が一致 \u00b7 先頭{n}件を表示',
+  plan_pace_day: '1日{n}章', plan_pace_range: '1日{low}\u2013{high}章',
+  plan_pace_every: 'およそ{n}日に1章', plan_next_on: '次の通読：{date}', plan_read_ahead: '先に読む',
+  filter_books: '書名で絞り込む、または箇所を入力',
+  chapter_at: '{total}章中{n}章',
 }
 
 const fr: Dict = {
@@ -336,6 +375,19 @@ const fr: Dict = {
   plan_start_field: 'Débute le', plan_add: 'Ajouter ce plan', plan_delete: 'Supprimer ce plan',
   plan_mark_read: 'Marquer comme lu', plan_mark_unread: 'Marquer comme non lu',
   plan_chapters_n: '{n} chapitres', plan_reading: 'Lecture du jour',
+
+  bad_link: 'Ce lien ne nomme aucun livre de cette Bible. Reprise à votre dernière lecture.',
+  chapter_nav: 'Navigation par chapitre', skip_to_end: 'Passer le texte',
+  cols_range: '{from}\u2013{to} sur {total}', cols_prev: 'Versions précédentes', cols_next: 'Versions suivantes',
+  cols_at: 'Version {n} sur {total}', listen: 'Écouter',
+  search_scope: 'Chercher dans', search_keep_typing: 'Continuez à taper\u2026',
+  search_count: '{n} versets correspondent',
+  search_capped: '{total} versets correspondent \u00b7 les {n} premiers sont affichés',
+  plan_pace_day: '{n} par jour', plan_pace_range: '{low}\u2013{high} par jour',
+  plan_pace_every: 'environ un chapitre tous les {n} jours',
+  plan_next_on: 'Prochaine lecture : {date}', plan_read_ahead: 'La lire maintenant',
+  filter_books: 'Filtrer les livres, ou saisir une référence',
+  chapter_at: 'Chapitre {n} sur {total}',
 }
 
 const zht: Dict = {
@@ -384,6 +436,17 @@ const zht: Dict = {
   plan_start_field: '開始日期', plan_add: '加入這個計劃', plan_delete: '刪除這個計劃',
   plan_mark_read: '標為已讀', plan_mark_unread: '標為未讀', plan_chapters_n: '{n} 章',
   plan_reading: '今天的讀經',
+
+  bad_link: '該連結所指的書卷不在本聖經中，已開啟您上次的閱讀處。',
+  chapter_nav: '章節導覽', skip_to_end: '略過經文',
+  cols_range: '第 {from}\u2013{to} 個，共 {total} 個', cols_prev: '前幾個譯本', cols_next: '後幾個譯本',
+  cols_at: '第 {n} 個譯本，共 {total} 個', listen: '聆聽',
+  search_scope: '搜尋範圍', search_keep_typing: '請繼續輸入\u2026',
+  search_count: '{n} 節符合', search_capped: '{total} 節符合 \u00b7 顯示前 {n} 節',
+  plan_pace_day: '每天 {n} 章', plan_pace_range: '每天 {low}\u2013{high} 章',
+  plan_pace_every: '約每 {n} 天一章', plan_next_on: '下次閱讀：{date}', plan_read_ahead: '現在就讀',
+  filter_books: '篩選書卷，或輸入經文出處',
+  chapter_at: '第 {n} 章，共 {total} 章',
 }
 
 const zhs: Dict = {
@@ -432,6 +495,17 @@ const zhs: Dict = {
   plan_start_field: '开始日期', plan_add: '加入这个计划', plan_delete: '删除这个计划',
   plan_mark_read: '标为已读', plan_mark_unread: '标为未读', plan_chapters_n: '{n} 章',
   plan_reading: '今天的读经',
+
+  bad_link: '该链接所指的书卷不在本圣经中，已打开您上次的阅读处。',
+  chapter_nav: '章节导航', skip_to_end: '跳过经文',
+  cols_range: '第 {from}\u2013{to} 个，共 {total} 个', cols_prev: '前几个译本', cols_next: '后几个译本',
+  cols_at: '第 {n} 个译本，共 {total} 个', listen: '聆听',
+  search_scope: '搜索范围', search_keep_typing: '请继续输入\u2026',
+  search_count: '{n} 节匹配', search_capped: '{total} 节匹配 \u00b7 显示前 {n} 节',
+  plan_pace_day: '每天 {n} 章', plan_pace_range: '每天 {low}\u2013{high} 章',
+  plan_pace_every: '约每 {n} 天一章', plan_next_on: '下次阅读：{date}', plan_read_ahead: '现在就读',
+  filter_books: '筛选书卷，或输入经文出处',
+  chapter_at: '第 {n} 章，共 {total} 章',
 }
 
 const pt: Dict = {
@@ -487,6 +561,19 @@ const pt: Dict = {
   plan_start_field: 'Começa em', plan_add: 'Adicionar este plano', plan_delete: 'Apagar este plano',
   plan_mark_read: 'Marcar como lido', plan_mark_unread: 'Marcar como não lido',
   plan_chapters_n: '{n} capítulos', plan_reading: 'Leitura de hoje',
+
+  bad_link: 'Esse link não indica um livro desta Bíblia. Abrimos a sua última leitura.',
+  chapter_nav: 'Navegação por capítulo', skip_to_end: 'Saltar o texto',
+  cols_range: '{from}\u2013{to} de {total}', cols_prev: 'Versões anteriores', cols_next: 'Versões seguintes',
+  cols_at: 'Versão {n} de {total}', listen: 'Ouvir',
+  search_scope: 'Procurar em', search_keep_typing: 'Continue a escrever\u2026',
+  search_count: '{n} versículos correspondem',
+  search_capped: '{total} versículos correspondem \u00b7 a mostrar os primeiros {n}',
+  plan_pace_day: '{n} por dia', plan_pace_range: '{low}\u2013{high} por dia',
+  plan_pace_every: 'cerca de um capítulo a cada {n} dias',
+  plan_next_on: 'Próxima leitura: {date}', plan_read_ahead: 'Ler agora',
+  filter_books: 'Filtrar livros, ou escrever uma referência',
+  chapter_at: 'Capítulo {n} de {total}',
 }
 
 const es: Dict = {
@@ -543,6 +630,19 @@ const es: Dict = {
   plan_start_field: 'Empieza el', plan_add: 'Añadir este plan', plan_delete: 'Borrar este plan',
   plan_mark_read: 'Marcar como leído', plan_mark_unread: 'Marcar como no leído',
   plan_chapters_n: '{n} capítulos', plan_reading: 'Lectura de hoy',
+
+  bad_link: 'Ese enlace no nombra ningún libro de esta Biblia. Se abrió tu última lectura.',
+  chapter_nav: 'Navegación por capítulos', skip_to_end: 'Saltar el texto',
+  cols_range: '{from}\u2013{to} de {total}', cols_prev: 'Versiones anteriores', cols_next: 'Versiones siguientes',
+  cols_at: 'Versión {n} de {total}', listen: 'Escuchar',
+  search_scope: 'Buscar en', search_keep_typing: 'Sigue escribiendo\u2026',
+  search_count: '{n} versículos coinciden',
+  search_capped: '{total} versículos coinciden \u00b7 se muestran los primeros {n}',
+  plan_pace_day: '{n} al día', plan_pace_range: '{low}\u2013{high} al día',
+  plan_pace_every: 'aproximadamente un capítulo cada {n} días',
+  plan_next_on: 'Próxima lectura: {date}', plan_read_ahead: 'Leerlo ahora',
+  filter_books: 'Filtrar libros, o escribir una referencia',
+  chapter_at: 'Capítulo {n} de {total}',
 }
 
 const ar: Dict = {
@@ -597,6 +697,18 @@ const ar: Dict = {
   plan_start_field: 'تبدأ في', plan_add: 'أضف هذه الخطة', plan_delete: 'احذف هذه الخطة',
   plan_mark_read: 'علّم كمقروء', plan_mark_unread: 'علّم كغير مقروء',
   plan_chapters_n: '{n} إصحاحات', plan_reading: 'قراءة اليوم',
+
+  bad_link: 'هذا الرابط لا يشير إلى سفر في هذا الكتاب. فُتح آخر موضع كنت تقرأ فيه.',
+  chapter_nav: 'التنقل بين الأصحاحات', skip_to_end: 'تخطّي النص',
+  cols_range: '{from}\u2013{to} من {total}', cols_prev: 'الترجمات السابقة', cols_next: 'الترجمات التالية',
+  cols_at: 'الترجمة {n} من {total}', listen: 'استماع',
+  search_scope: 'البحث في', search_keep_typing: 'تابع الكتابة\u2026',
+  search_count: '{n} آية مطابقة', search_capped: '{total} آية مطابقة \u00b7 تُعرض أول {n}',
+  plan_pace_day: '{n} في اليوم', plan_pace_range: '{low}\u2013{high} في اليوم',
+  plan_pace_every: 'نحو أصحاح واحد كل {n} يوم',
+  plan_next_on: 'القراءة التالية: {date}', plan_read_ahead: 'اقرأها الآن',
+  filter_books: 'تصفية الأسفار، أو اكتب شاهدًا',
+  chapter_at: 'الأصحاح {n} من {total}',
 }
 
 const tl: Dict = {
@@ -654,6 +766,19 @@ const tl: Dict = {
   plan_add: 'Idagdag ang planong ito', plan_delete: 'Burahin ang planong ito',
   plan_mark_read: 'Markahan bilang nabasa', plan_mark_unread: 'Markahan bilang hindi pa nabasa',
   plan_chapters_n: '{n} kabanata', plan_reading: 'Babasahin ngayon',
+
+  bad_link: 'Walang aklat sa Bibliyang ito ang tinutukoy ng link na iyon. Binuksan ang huli mong binasa.',
+  chapter_nav: 'Paggalaw sa kabanata', skip_to_end: 'Laktawan ang teksto',
+  cols_range: '{from}\u2013{to} ng {total}', cols_prev: 'Nakaraang mga bersyon', cols_next: 'Susunod na mga bersyon',
+  cols_at: 'Bersyon {n} ng {total}', listen: 'Makinig',
+  search_scope: 'Hanapin sa', search_keep_typing: 'Magpatuloy sa pag-type\u2026',
+  search_count: '{n} talata ang tumugma',
+  search_capped: '{total} talata ang tumugma \u00b7 ipinapakita ang unang {n}',
+  plan_pace_day: '{n} bawat araw', plan_pace_range: '{low}\u2013{high} bawat araw',
+  plan_pace_every: 'humigit-kumulang isang kabanata kada {n} araw',
+  plan_next_on: 'Susunod na pagbasa: {date}', plan_read_ahead: 'Basahin na ngayon',
+  filter_books: 'Salain ang mga aklat, o mag-type ng sanggunian',
+  chapter_at: 'Kabanata {n} ng {total}',
 }
 
 // Modern Greek chrome; the text itself stays Koine.
@@ -715,6 +840,19 @@ const el: Dict = {
   plan_delete: 'Διάγραψε αυτό το πρόγραμμα', plan_mark_read: 'Σήμανση ως διαβασμένο',
   plan_mark_unread: 'Σήμανση ως αδιάβαστο', plan_chapters_n: '{n} κεφάλαια',
   plan_reading: 'Η σημερινή ανάγνωση',
+
+  bad_link: 'Ο σύνδεσμος δεν αντιστοιχεί σε βιβλίο αυτής της Βίβλου. Άνοιξε η τελευταία σας θέση.',
+  chapter_nav: 'Πλοήγηση κεφαλαίων', skip_to_end: 'Παράλειψη του κειμένου',
+  cols_range: '{from}\u2013{to} από {total}', cols_prev: 'Προηγούμενες εκδόσεις', cols_next: 'Επόμενες εκδόσεις',
+  cols_at: 'Έκδοση {n} από {total}', listen: 'Ακρόαση',
+  search_scope: 'Αναζήτηση σε', search_keep_typing: 'Συνεχίστε να πληκτρολογείτε\u2026',
+  search_count: '{n} εδάφια ταιριάζουν',
+  search_capped: '{total} εδάφια ταιριάζουν \u00b7 εμφανίζονται τα πρώτα {n}',
+  plan_pace_day: '{n} την ημέρα', plan_pace_range: '{low}\u2013{high} την ημέρα',
+  plan_pace_every: 'περίπου ένα κεφάλαιο κάθε {n} ημέρες',
+  plan_next_on: 'Επόμενη ανάγνωση: {date}', plan_read_ahead: 'Διαβάστε το τώρα',
+  filter_books: 'Φιλτράρισμα βιβλίων, ή πληκτρολογήστε παραπομπή',
+  chapter_at: 'Κεφάλαιο {n} από {total}',
 }
 
 // Modern Hebrew chrome; the text itself stays the Masoretic consonantal tradition.
@@ -770,6 +908,18 @@ const he: Dict = {
   plan_start_field: 'מתחילה ב־', plan_add: 'הוסף תוכנית זו', plan_delete: 'מחק תוכנית זו',
   plan_mark_read: 'סמן כנקרא', plan_mark_unread: 'סמן כלא נקרא',
   plan_chapters_n: '{n} פרקים', plan_reading: 'הקריאה של היום',
+
+  bad_link: 'הקישור אינו מצביע על ספר שקיים כאן. נפתח המקום האחרון שקראת בו.',
+  chapter_nav: 'ניווט בין פרקים', skip_to_end: 'דילוג על הטקסט',
+  cols_range: '{from}\u2013{to} מתוך {total}', cols_prev: 'תרגומים קודמים', cols_next: 'תרגומים הבאים',
+  cols_at: 'תרגום {n} מתוך {total}', listen: 'האזנה',
+  search_scope: 'חיפוש ב', search_keep_typing: 'המשיכו להקליד\u2026',
+  search_count: '{n} פסוקים מתאימים', search_capped: '{total} פסוקים מתאימים \u00b7 מוצגים {n} הראשונים',
+  plan_pace_day: '{n} ליום', plan_pace_range: '{low}\u2013{high} ליום',
+  plan_pace_every: 'בערך פרק אחד כל {n} ימים',
+  plan_next_on: 'הקריאה הבאה: {date}', plan_read_ahead: 'לקרוא עכשיו',
+  filter_books: 'סינון ספרים, או הקלידו מראה מקום',
+  chapter_at: 'פרק {n} מתוך {total}',
 }
 
 // jako is a Japanese edition, so its UI strings are the Japanese ones.

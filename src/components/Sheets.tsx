@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { IndexItem } from '../lib/types'
 import { bookName } from '../lib/types'
 import { BY_ID, VERSIONS, type Lang } from '../lib/versions'
 import { VerseText, type HL } from '../lib/format'
-import { search, parseReference, bookLookup, minQueryLen, type Hit } from '../lib/search'
+import { search, parseReference, bookLookup, minQueryLen, type Hit, type SearchResult } from '../lib/search'
 import { verseWords, wordDef, cardReady, prefetchDefs, type StrongWord, type StrongDef } from '../lib/strongs'
 import { verseGloss, type GlossWord, type GlossKind } from '../lib/glossary'
 import type { T, StringKey } from '../lib/i18n'
@@ -12,10 +12,14 @@ import { Icon } from './Icon'
 import { Sheet } from './Sheet'
 
 /* ------------------------------- Search ------------------------------- */
+/** Which books a query runs over. `book` is whatever passage is open behind the sheet. */
+type Scope = 'all' | 'ot' | 'nt' | 'book'
+
 export function SearchSheet({
   open,
   index,
   columns,
+  currentSlug,
   ui,
   t,
   onNavigate,
@@ -25,53 +29,86 @@ export function SearchSheet({
   index: IndexItem[]
   /** Editions to search — the visible ones, so the index stays proportional. */
   columns: Lang[]
+  /** The book open behind the sheet: it names the fourth scope chip, and it is
+   *  indexed first whatever the scope, so the first results arrive in one fetch an
+   *  edition rather than sixty-six. */
+  currentSlug: string
   ui: Lang
   t: T
   onNavigate: (slug: string, ch: number, v?: number, lang?: Lang) => void
   onClose: () => void
 }) {
   const [q, setQ] = useState('')
-  const [hits, setHits] = useState<Hit[]>([])
+  const [scope, setScope] = useState<Scope>('all')
+  const [res, setRes] = useState<SearchResult | null>(null)
   const [loading, setLoading] = useState(false)
   const bySlug = useMemo(() => new Map(index.map((b) => [b.slug, bookName(b, ui)])), [index, ui])
   // Book names in every edition's language, so a reference resolves whatever the
   // reader types — 馬太福音15:3 and Mateo 15:3 both land on Matthew 15:3.
   const lookup = useMemo(() => bookLookup(index), [index])
-  const gen = useRef(0)
+  const order = useMemo(() => new Map(index.map((b, i) => [b.slug, i])), [index])
+  // The books this scope covers, open book first.
+  const slugs = useMemo(() => {
+    const pool =
+      scope === 'ot' ? index.slice(0, 39)
+      : scope === 'nt' ? index.slice(39)
+      : scope === 'book' ? index.filter((b) => b.slug === currentSlug)
+      : index
+    const here = pool.filter((b) => b.slug === currentSlug).map((b) => b.slug)
+    return [...here, ...pool.filter((b) => b.slug !== currentSlug).map((b) => b.slug)]
+  }, [index, scope, currentSlug])
 
   useEffect(() => {
     if (!open) {
       setQ('')
-      setHits([])
+      setRes(null)
+      setScope('all')
     }
   }, [open])
   useEffect(() => {
     const query = q.trim()
     if (query.length < minQueryLen(query)) {
-      setHits([])
+      setRes(null)
       setLoading(false)
       return
     }
-    const id = ++gen.current
+    // One flag both the debounce and the in-flight scan read, so a superseded
+    // keystroke stops the scan instead of racing it to setState.
+    const signal = { cancelled: false }
     setLoading(true)
-    const timer = setTimeout(async () => {
-      const found = await search(columns, query)
-      if (id !== gen.current) return
-      setHits(found)
-      setLoading(false)
+    const timer = setTimeout(() => {
+      void search(columns, query, {
+        slugs,
+        order,
+        signal,
+        // Results fill in book by book: a whole-Bible query used to show nothing at
+        // all until every book of every visible edition had been fetched.
+        onPartial: (r) => {
+          if (!signal.cancelled) setRes(r)
+        },
+      }).then((r) => {
+        if (signal.cancelled) return
+        setRes(r)
+        setLoading(false)
+      })
     }, 200)
-    return () => clearTimeout(timer)
-  }, [q, columns])
+    return () => {
+      signal.cancelled = true
+      clearTimeout(timer)
+    }
+  }, [q, columns, slugs, order])
 
   if (!open) return null
   const jump = parseReference(q, index, lookup)
   const query = q.trim()
   const longEnough = query.length >= minQueryLen(query)
-  const showNoResults = !loading && longEnough && hits.length === 0 && !jump
-  // Nothing to show means no results container at all: an empty one still carried
-  // the head's bottom margin, so the sheet had 29px under the field against 17
-  // above it.
-  const hasResults = !!jump || loading || hits.length > 0 || showNoResults
+  const hits = res?.hits ?? []
+  const settled = !loading && longEnough
+  const showNoResults = settled && hits.length === 0 && !jump
+  // A single letter used to render a blank panel: not "No results", not "keep
+  // typing", nothing at all, which reads as a search that has broken.
+  const showHint = !!query && !longEnough
+  const hasResults = !!jump || loading || hits.length > 0 || showNoResults || showHint
   // Matched terms can sit anywhere in the verse, so the snippet is a window over
   // the text with every match inside it marked, rather than one match plus fixed
   // context. The window is centred on the span covering the matches so a query
@@ -108,11 +145,31 @@ export function SearchSheet({
     if (cur < to) parts.push({ s: h.text.slice(cur, to), hit: false })
     return { parts, lead: from > 0, tail: to < h.text.length }
   }
+  /** Enter went nowhere: the Go-to row and the first result both had to be reached
+   *  with a pointer or a Tab, which on a phone means the keyboard's own return key
+   *  did nothing at all. */
+  const onEnter = (e: React.KeyboardEvent) => {
+    if (e.key !== 'Enter') return
+    e.preventDefault()
+    if (jump) return onNavigate(jump.slug, jump.ch, jump.v)
+    const first = hits[0]
+    if (first) onNavigate(first.slug, first.ch, first.v, first.lang)
+  }
+  const chips: [Scope, string][] = [
+    ['all', t('plan_scope_bible')],
+    ['ot', t('old_testament')],
+    ['nt', t('new_testament')],
+    ['book', bySlug.get(currentSlug) ?? t('this_book')],
+  ]
   return (
     <Sheet
       variant="search"
       onClose={onClose}
       closeLabel={t('close')}
+      // The one sheet whose head is a control rather than a title, so its name is a
+      // visually-hidden heading instead — the field's own placeholder is a hint, not
+      // a name for the dialog.
+      label={t('search')}
       title={
         <input
           className="searchin"
@@ -120,9 +177,21 @@ export function SearchSheet({
           placeholder={t('search_placeholder')}
           value={q}
           onChange={(e) => setQ(e.target.value)}
+          onKeyDown={onEnter}
         />
       }
     >
+      {/* Scoping is what puts John 3:16 on screen for `love`: 547 verses match in
+          the KJV, the first 150 of them run out in Ecclesiastes, and no list of 547
+          would have been more useful. Scoped to the New Testament it is the fourth
+          result. */}
+      <div className="chips scopechips" role="group" aria-label={t('search_scope')}>
+        {chips.map(([s, label]) => (
+          <button key={s} className={`chip ${scope === s ? 'on' : ''}`} onClick={() => setScope(s)}>
+            {label}
+          </button>
+        ))}
+      </div>
       {hasResults && (
         <div className="results">
           {jump && (
@@ -133,19 +202,33 @@ export function SearchSheet({
               </span>
             </button>
           )}
-          {loading && <p className="empty">{t('searching')}</p>}
-          {showNoResults && <p className="empty">{t('no_results')}</p>}
+          {showHint && <p className="empty">{t('search_keep_typing')}</p>}
+          {/* How many matched, and whether the list is all of them. The cap was
+              silent: a reader had no way to tell 150 results from 150 of 28 021. */}
+          {res && longEnough && (res.total > 0 || settled) && (
+            <p className="empty resultcount">
+              {loading && <span className="spin" aria-hidden="true" />}
+              {res.total > hits.length
+                ? t('search_capped', { total: String(res.total), n: String(hits.length) })
+                : t('search_count', { n: String(res.total) })}
+            </p>
+          )}
+          {loading && !res && <p className="empty loadrow"><span className="spin" aria-hidden="true" />{t('searching')}</p>}
+          {showNoResults && res?.total === 0 && <p className="empty">{t('no_results')}</p>}
           <ul className="dlist">
             {hits.map((h, i) => {
               const sn = snippet(h)
               const m = BY_ID[h.lang]
               return (
-                <li key={i}>
+                <li key={`${h.lang}-${h.slug}-${h.ch}-${h.v}-${i}`}>
                   <button className="dref" onClick={() => onNavigate(h.slug, h.ch, h.v, h.lang)}>
                     <span className="dlabel">
                       {bySlug.get(h.slug)} {h.ch}:{h.v} <small className="badge">{m.edition}</small>
                     </span>
-                    <span className="dnote" lang={m.htmlLang} dir={m.dir}>
+                    {/* The scripture serif, not the interface sans: the same words are
+                        serif in the reader, and a result that does not look like the
+                        text it points at reads as a different kind of thing. */}
+                    <span className="dnote scripture" lang={m.htmlLang} dir={m.dir}>
                       {sn.lead && '…'}
                       {sn.parts.map((p, j) => (p.hit ? <mark key={j}>{p.s}</mark> : p.s))}
                       {sn.tail && '…'}
@@ -180,9 +263,42 @@ export function Navigator({
   onClose: () => void
 }) {
   const [book, setBook] = useState(current)
+  const [filter, setFilter] = useState('')
+  const lookup = useMemo(() => bookLookup(index), [index])
   useEffect(() => {
-    if (open) setBook(current)
+    if (open) {
+      setBook(current)
+      setFilter('')
+    }
   }, [open, current])
+  /**
+   * Type-ahead over the book list.
+   *
+   * Sixty-six books in two columns is about three and a half screens to Revelation,
+   * and the app already had a resolver that knows every book's name in eleven
+   * languages plus the short forms readers type — it was just not wired in here. A
+   * bare name narrows the grid; a full reference ("jn 3", "ヨハネ3:16") resolves to
+   * one book and Enter opens it.
+   */
+  const trimmed = filter.trim()
+  const ref = trimmed ? parseReference(trimmed, index, lookup) : null
+  const matches = useMemo(() => {
+    if (!trimmed) return null
+    if (ref) return index.filter((b) => b.slug === ref.slug)
+    // Substring over every edition's name for the book, so a reader filtering in a
+    // language the interface is not set to still finds it.
+    const q = trimmed.toLowerCase()
+    const hit = index.filter((b) =>
+      Object.values(b.names).some((n) => n && n.toLowerCase().includes(q)),
+    )
+    // A short form the resolver knows but no name contains — "gen", "jn", "約翰".
+    const alias = lookup.get(
+      trimmed.toLowerCase().normalize('NFD').replace(/[^\p{L}\p{N}]+/gu, ''),
+    )
+    if (!hit.length && alias) return index.filter((b) => b.slug === alias)
+    return hit
+  }, [trimmed, ref, index, lookup])
+
   if (!open) return null
   const sel = book ? index.find((b) => b.slug === book) : undefined
   const grid = (books: IndexItem[]) => (
@@ -194,14 +310,32 @@ export function Navigator({
       ))}
     </div>
   )
+  /** Enter opens a resolved reference outright, or the only book still showing. */
+  const onEnter = (e: React.KeyboardEvent) => {
+    if (e.key !== 'Enter') return
+    e.preventDefault()
+    if (ref) return onNavigate(ref.slug, ref.ch)
+    if (matches?.length === 1) setBook(matches[0].slug)
+  }
   return (
     <Sheet
       variant="nav"
       onClose={onClose}
       closeLabel={t('close')}
-      title={<b>{sel ? bookName(sel, ui) : t('choose_book')}</b>}
+      title={sel ? bookName(sel, ui) : t('choose_book')}
     >
-      {sel ? (
+      {/* Always here, above whichever grid is showing: the picker opens on the current
+          book's chapters, and a type-ahead one tap further in is a type-ahead nobody
+          finds. Typing anything switches to the book list. */}
+      <input
+        className="searchin bookfilter"
+        autoFocus
+        placeholder={t('filter_books')}
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+        onKeyDown={onEnter}
+      />
+      {sel && !matches ? (
         <>
           <button className="mini back" onClick={() => setBook('')}>
             <Icon name="prev" size={15} flip /> {t('all_books')}
@@ -216,10 +350,29 @@ export function Navigator({
         </>
       ) : (
         <>
-          <div className="bgtitle">{t('old_testament')}</div>
-          {grid(index.slice(0, 39))}
-          <div className="bgtitle">{t('new_testament')}</div>
-          {grid(index.slice(39))}
+          {ref && (
+            <button className="dref go" onClick={() => onNavigate(ref.slug, ref.ch)}>
+              <span className="dlabel">
+                <Icon name="next" size={15} flip /> {t('go_to')} {bookName(index.find((b) => b.slug === ref.slug), ui)}{' '}
+                {ref.ch}
+                {ref.v ? `:${ref.v}` : ''}
+              </span>
+            </button>
+          )}
+          {matches ? (
+            matches.length ? (
+              grid(matches)
+            ) : (
+              <p className="empty">{t('no_results')}</p>
+            )
+          ) : (
+            <>
+              <h3 className="bgtitle">{t('old_testament')}</h3>
+              {grid(index.slice(0, 39))}
+              <h3 className="bgtitle">{t('new_testament')}</h3>
+              {grid(index.slice(39))}
+            </>
+          )}
         </>
       )}
     </Sheet>
@@ -497,8 +650,11 @@ function Concordance({
   if (Array.isArray(words) && words.length === 0) return null
 
   return (
-    // Collapsed by default; the play button in the title speaks the original verse.
-    <details className="conc strongs worddrop">
+    // Open, not collapsed. It is the reason the sheet exists: a reader who pressed
+    // Study wants the words, and a closed panel made the sheet's own subject one more
+    // tap away. The glossary above it stays collapsed — that one is reading help a
+    // verse mostly does not need, and a grey marker in the text opens it on demand.
+    <details className="conc strongs worddrop" open>
       <summary>
         <span className="dropcaret"><Icon name="expand" size={13} /></span>
         <b>{t('concordance')}</b>
@@ -506,8 +662,8 @@ function Concordance({
         {orig && canSpeak(orig.lang) && (
           <button
             className={`cspeak cvspeak ${sheetPlaying === orig.lang ? 'on' : ''}`}
-            title={sheetPlaying === orig.lang ? t('stop') : t('play_verse')}
-            aria-label={sheetPlaying === orig.lang ? t('stop') : t('play_verse')}
+            title={sheetPlaying === orig.lang ? t('stop') : `${t('play_verse')}: ${BY_ID[orig.lang].label}`}
+            aria-label={sheetPlaying === orig.lang ? t('stop') : `${t('play_verse')}: ${BY_ID[orig.lang].label}`}
             // preventDefault so playing the verse does not also toggle the disclosure.
             onClick={(e) => {
               e.preventDefault()
@@ -631,7 +787,6 @@ export function VerseSheet({
   onCopyText,
   onCopyLink,
   onCopyInvite,
-  onPlay,
   onNote,
   onClearHighlight,
   canSpeak,
@@ -651,7 +806,6 @@ export function VerseSheet({
   onCopyText: () => void
   onCopyLink: () => void
   onCopyInvite: () => void
-  onPlay: () => void
   onNote: () => void
   /** Clear the shown verse's saved highlights for this edition. */
   onClearHighlight: () => void
@@ -669,10 +823,13 @@ export function VerseSheet({
   const [openGloss, setOpenGloss] = useState<string | null>(null)
   const [vocabOpen, setVocabOpen] = useState(false)
   const [spiritualOpen, setSpiritualOpen] = useState(false)
+  /** The footer's share sub-row, the same swap-in-place the verse bar does. */
+  const [share, setShare] = useState(false)
   useEffect(() => {
     setOpenGloss(null)
     setVocabOpen(false)
     setSpiritualOpen(false)
+    setShare(false)
     if (!data || data.lang !== 'en') {
       setGlossWords([])
       return
@@ -716,21 +873,54 @@ export function VerseSheet({
       variant="verse-sheet"
       onClose={onClose}
       closeLabel={t('close')}
-      title={<b>{data.label}</b>}
-      footer={
+      /* The reference names the verse, the eyebrow names the surface: you pressed
+         Study and this is what Study is, which is what stopped the filled button
+         below having to say it. */
+      title={
         <>
-          {/* Not "Play": this one reads on into the verses that follow and closes the
-              sheet, which is a different thing from the per-edition play in the title
-              row above. The bar in the reader calls the same action the same name. */}
-          <button className="mini" onClick={onPlay}>
-            <Icon name="play" size={15} /> {t('listen_from_here')}
-          </button>
-          <button className="mini" onClick={onCopyText}>{t('copy_text')}</button>
-          <button className="mini" onClick={onCopyLink}>{t('copy_link')}</button>
-          <button className="mini" onClick={onCopyInvite}>{t('copy_invite')}</button>
-          <span className="spacer" />
-          <button className="primary" onClick={onNote}>{t('note')}</button>
+          <span className="sheet-eyebrow">{t('study')}</span>
+          {data.label}
         </>
+      }
+      footer={
+        /* Was five buttons wrapping 2-2-1, three of them the verse bar's actions
+           under other names, plus a third play affordance beside the two the sheet
+           already has.
+           The three copy actions are now the bar's Share, swapping the row in place
+           exactly as the bar does — one idea in the app instead of two, and one row
+           instead of three. They stay here rather than going altogether because in
+           flowing mode there is no verse bar and this sheet is the only route to
+           them. Listen from here is gone: the title row below plays this verse and
+           the bar reads on from it.
+           The primary is Note because saving what you found is what a reader does
+           after studying. The eyebrow in the title says the sheet is Study, so the
+           filled button no longer has to carry a name that is not its job. */
+        share ? (
+          <>
+            <button className="mini" onClick={() => setShare(false)} aria-label={t('back')}>
+              <Icon name="prev" size={16} flip />
+            </button>
+            <button className="mini" onClick={onCopyText}>
+              <Icon name="copy" size={15} /> {t('copy_text')}
+            </button>
+            <button className="mini" onClick={onCopyLink}>
+              <Icon name="link" size={15} /> {t('copy_link')}
+            </button>
+            <button className="mini" onClick={onCopyInvite}>
+              <Icon name="invite" size={15} /> {t('copy_invite')}
+            </button>
+          </>
+        ) : (
+          <>
+            <button className="mini" onClick={() => setShare(true)}>
+              <Icon name="share" size={15} /> {t('share')}
+            </button>
+            <span className="spacer" />
+            <button className="primary" onClick={onNote}>
+              <Icon name="note" size={16} /> {t('add_note')}
+            </button>
+          </>
+        )
       }
     >
       {/* Only the edition you opened is shown, so it is unambiguous which single verse
@@ -760,8 +950,12 @@ export function VerseSheet({
                 {text && canSpeak(l) && (
                   <button
                     className={`cspeak vspeak ${sheetPlaying === l ? 'on' : ''}`}
-                    title={sheetPlaying === l ? t('stop') : `${t('pronounce')}: ${m.label}`}
-                    aria-label={sheetPlaying === l ? t('stop') : t('pronounce')}
+                    /* "Play verse", not "Pronounce": this reads the whole verse, and
+                       the concordance below uses Pronounce for a single word. Named
+                       with its edition so the two play buttons in the sheet say which
+                       text each one speaks. */
+                    title={sheetPlaying === l ? t('stop') : `${t('play_verse')}: ${m.label}`}
+                    aria-label={sheetPlaying === l ? t('stop') : `${t('play_verse')}: ${m.label}`}
                     onClick={() => onSpeakVerse(text, l)}
                   >
                     <Icon name={sheetPlaying === l ? 'stop' : 'play'} size={16} />
@@ -873,7 +1067,7 @@ export function InviteBuilder({
       variant="invite"
       onClose={onClose}
       closeLabel={t('close')}
-      title={<b>{t('invite_build_title')}</b>}
+      title={t('invite_build_title')}
       footer={
         <>
           <span className="spacer" />

@@ -117,8 +117,39 @@ console.log('\nWhich day of the pass today is')
   check('and the reader is on the same day whatever time of day they open it',
     P.dayIndex(b, new Date(2026, 2, 15, 0, 1).getTime()) === P.dayIndex(b, new Date(2026, 2, 15, 23, 59).getTime()))
 
-  check('days left counts today', P.daysLeft(b, day(2026, 3, 1)) === 30)
-  check('and runs out', P.daysLeft(b, day(2026, 3, 31)) === null)
+  check('days left counts today', P.planToday(b, index, day(2026, 3, 1)).left === 30)
+  check('and runs out', P.planToday(b, index, day(2026, 3, 31)).left === null)
+}
+
+console.log('\nA plan that reads under a chapter a day still starts today')
+{
+  // Five of the twenty preset pairs read under a chapter a day, and every one of
+  // them used to deliver nothing on the day it was created.
+  check('a plan with at least a chapter a day starts on day 0', P.firstReadingDay(1190, 365) === 0)
+  check('the Gospels over 90 days start on day 1', P.firstReadingDay(89, 90) === 1)
+  check('one 31-chapter book over 90 days starts on day 2', P.firstReadingDay(31, 90) === 2)
+  check('an empty scope asks for day 0 rather than dividing by zero', P.firstReadingDay(0, 90) === 0)
+
+  const gospels = { ...block({ startedAt: day(2026, 3, 1) }), days: 90,
+    scope: { kind: 'books', slugs: ['matthew', 'mark', 'luke', 'john'] } }
+  const first = P.planToday(gospels, index, day(2026, 3, 1))
+  check('so the day it is created has something to read',
+    first.refs.length === 1 && first.refs[0].slug === 'matthew' && first.refs[0].ch === 1,
+    first.refs.map((r) => `${r.slug}.${r.ch}`).join(' '))
+
+  const proverbs = { ...block({ startedAt: day(2026, 3, 1) }), days: 90 }
+  const p0 = P.planToday(proverbs, index, day(2026, 3, 1))
+  check('one book over 90 days opens at its first chapter too',
+    p0.refs.length === 1 && p0.refs[0].ch === 1, p0.refs.map((r) => r.ch).join(','))
+
+  // Days further into such a plan are still legitimately empty: a chapter is never
+  // split. Those get a date and something to read ahead instead of a full stop.
+  const empty = [0, 1, 2, 3, 4, 5].map((k) => P.planToday(proverbs, index, day(2026, 3, 1 + k)))
+  const blank = empty.find((d) => d.refs.length === 0)
+  check('a later empty day still happens', !!blank)
+  check('and it names the next day that has something', !!blank && blank.nextOn !== null)
+  check('and what that day will ask for', !!blank && blank.nextRefs.length > 0,
+    blank ? blank.nextRefs.map((r) => r.ch).join(',') : '')
 }
 
 console.log("\nA missed day changes nothing about today's reading")

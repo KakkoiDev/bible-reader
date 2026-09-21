@@ -5,12 +5,10 @@ import { bookName, type IndexItem, type Lang } from '../lib/types'
 import { BY_ID } from '../lib/versions'
 import type { translator } from '../lib/i18n'
 import {
-  dayIndex,
   dayProgress,
-  daysLeft,
+  planToday,
   scopeChapters,
   startOfDay,
-  todaysReading,
   type PlanBlock,
   type Progress,
   type Ref,
@@ -115,6 +113,19 @@ export function Planner({
   const draftSize = scopeChapters(draftScope, index).length
   const draftName = name.trim() || scopeLabel(draftScope, index, ui, t)
 
+  // The pace the scheduler will actually keep. The remainder spreads rather than
+  // landing in a lump, so most plans give two adjacent counts and the preview names
+  // both; under a chapter a day there is no per-day count to name at all.
+  const perDay = Math.max(1, Math.round(days))
+  const low = Math.floor(draftSize / perDay)
+  const high = Math.ceil(draftSize / perDay)
+  const pace =
+    low < 1
+      ? t('plan_pace_every', { n: String(Math.ceil(perDay / Math.max(1, draftSize))) })
+      : low === high
+        ? t('plan_pace_day', { n: String(low) })
+        : t('plan_pace_range', { low: String(low), high: String(high) })
+
   const submit = () => {
     onAdd({
       name: draftName,
@@ -128,14 +139,12 @@ export function Planner({
   }
 
   return (
-    <Sheet onClose={onClose} closeLabel={t('close')} title={<b>{t('planner')}</b>}>
+    <Sheet onClose={onClose} closeLabel={t('close')} title={t('planner')}>
       {sorted.length === 0 && <p className="empty">{t('planner_empty')}</p>}
 
       {sorted.map((b) => {
-        const refs = todaysReading(b, index, today)
+        const { day: i, refs, left, nextOn, nextRefs } = planToday(b, index, today)
         const { done, total } = dayProgress(progress, refs)
-        const left = daysLeft(b, today)
-        const i = dayIndex(b, today)
         const all = scopeChapters(b.scope, index)
         return (
           <section className="pblock" key={b.id}>
@@ -193,6 +202,25 @@ export function Planner({
                 </div>
               </>
             )}
+
+            {/* A plan reading under a chapter a day has days with nothing on them —
+                a chapter is never split. The day it was created is no longer one of
+                them, but the days between still are, and "Nothing today." on its own
+                was a full stop: no date, no button, no way to tell a plan that is
+                working from one that is broken. */}
+            {refs.length === 0 && i !== null && nextOn !== null && (
+              <>
+                <p className="pmeta">
+                  {t('plan_next_on', { date: new Date(nextOn).toLocaleDateString(BY_ID[ui].htmlLang) })}
+                </p>
+                <div className="pactions">
+                  <button className="mini pahead" onClick={() => onRead(nextRefs)}>
+                    <Icon name="next" size={16} flip /> {t('plan_read_ahead')}
+                    <span className="pref" dir={dir}>{formatRefs(nextRefs, index, ui)}</span>
+                  </button>
+                </div>
+              </>
+            )}
           </section>
         )
       })}
@@ -203,7 +231,7 @@ export function Planner({
         </button>
       ) : (
         <section className="pform">
-          <div className="sgroup">{t('plan_covers')}</div>
+          <h3 className="sgroup">{t('plan_covers')}</h3>
           <div className="chips">
             {([['bible', t('plan_scope_bible')], ['ot', t('old_testament')], ['nt', t('new_testament')],
                ['gospels', t('plan_scope_gospels')], ['book', t('plan_scope_book')]] as [Preset, string][])
@@ -221,7 +249,7 @@ export function Planner({
             </select>
           )}
 
-          <div className="sgroup">{t('plan_length')}</div>
+          <h3 className="sgroup">{t('plan_length')}</h3>
           <div className="chips">
             {([[7, t('plan_len_week')], [30, t('plan_len_month')], [90, t('plan_len_quarter')],
                [365, t('plan_len_year')]] as [number, string][]).map(([n, label]) => (
@@ -230,10 +258,14 @@ export function Planner({
               </button>
             ))}
           </div>
-          {/* What will actually land on a day, before anything is committed. */}
+          {/* What will actually land on a day, before anything is committed.
+              It used to be a plain average to one decimal, which is not what the
+              scheduler does: `daySlice` floors, so the Gospels over 90 days previewed
+              "1.0 / today" and delivered 0. The preview now floors too, and when
+              that leaves under a chapter a day it says how often a day has something
+              rather than rounding the answer into a lie. */}
           <p className="pmeta">
-            {t('plan_chapters_n', { n: String(draftSize) })} ·{' '}
-            {(draftSize / Math.max(1, days)).toFixed(1)} / {t('plan_today').toLowerCase()}
+            {t('plan_chapters_n', { n: String(draftSize) })} · {pace}
           </p>
 
           <details className="padv">

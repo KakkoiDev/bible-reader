@@ -216,8 +216,8 @@ export function Settings({
   }
 
   return (
-    <Sheet onClose={onClose} closeLabel={t('close')} title={<b>{t('settings')}</b>}>
-        <div className="sgroup">{t('group_reading')}</div>
+    <Sheet onClose={onClose} closeLabel={t('close')} title={t('settings')}>
+        <h2 className="sgroup">{t('group_reading')}</h2>
         <div className="srow">
           <span>{t('theme')}</span>
           <div className="seg">
@@ -247,7 +247,7 @@ export function Settings({
           <input type="checkbox" checked={justify} onChange={(e) => onJustify(e.target.checked)} />
         </label>
 
-        <div className="sgroup">{t('group_data')}</div>
+        <h2 className="sgroup">{t('group_data')}</h2>
         <div className="srow">
           <span>{t('notes_data')}</span>
           <div className="databtns">
@@ -273,7 +273,7 @@ export function Settings({
 
         {ttsOn && (
           <>
-            <div className="sgroup">{t('group_audio')}</div>
+            <h2 className="sgroup">{t('group_audio')}</h2>
             <label className="srow">
               <span>{t('stop_chapter_end')}</span>
               <input type="checkbox" checked={stopAtChapterEnd} onChange={(e) => onStopAtChapterEnd(e.target.checked)} />
@@ -306,7 +306,7 @@ export function Settings({
             The UI language, which editions are shown and in what order,
             cross-edition alignment, and the two per-language reading aids
             (furigana, swipe-to-switch). */}
-        <div className="sgroup">{t('group_languages')}</div>
+        <h2 className="sgroup">{t('group_languages')}</h2>
         <div className="srow">
           <span>{t('ui_language')}</span>
           <select className="sel" value={ui} onChange={(e) => onUi(e.target.value as Lang)}>
@@ -380,7 +380,7 @@ export function LicencesSheet({
 }) {
   if (!open) return null
   return (
-    <Sheet variant="licences" onClose={onClose} closeLabel={t('close')} title={<b>{t('licences')}</b>}>
+    <Sheet variant="licences" onClose={onClose} closeLabel={t('close')} title={t('licences')}>
         <p className="empty">{t('licences_intro')}</p>
         <ul className="liclist">
           {VERSIONS.map((v) => (
@@ -426,7 +426,7 @@ export function ConfirmSheet({
       onClose={onClose}
       closeLabel={t('cancel')}
       noClose
-      title={<b>{title}</b>}
+      title={title}
       footer={
         <>
           <button className="ghost" onClick={onClose}>{t('cancel')}</button>
@@ -448,6 +448,8 @@ export interface DrawerItem {
   slug: string
   label: string
   note?: string
+  /** The highlighted words, for a row whose only content is a highlight. */
+  excerpt?: string
   tags: string[]
   colors: HColor[]
   bookmarked: boolean
@@ -514,7 +516,7 @@ export function Drawer({
   if (!open) return null
   const modes: SortMode[] = ['book', 'created', 'updated', 'custom']
   return (
-    <Sheet variant="saved" onClose={onClose} closeLabel={t('close')} title={<b>{t('saved')}</b>}>
+    <Sheet variant="saved" onClose={onClose} closeLabel={t('close')} title={t('saved')}>
         <div className="dfilters">
           <div className="dfrow">
             <span className="dflabel">{t('sort')}</span>
@@ -635,7 +637,12 @@ export function Drawer({
                     ))}
                     {it.note && <span className="dtag"><Icon name="note" size={12} /></span>}
                   </span>
-                  {it.note && <span className="dnote">{it.note}</span>}
+                  {/* A note if there is one, otherwise the words that were
+                      highlighted: a row used to be a reference, a date and a
+                      coloured dot, which says nothing about what was saved. */}
+                  {(it.note || it.excerpt) && (
+                    <span className={`dnote ${it.note ? '' : 'scripture'}`}>{it.note || it.excerpt}</span>
+                  )}
                   {it.tags.length > 0 && (
                     <span className="chips small">
                       {it.tags.map((tag) => (
@@ -705,7 +712,7 @@ export function NoteEditor({
       variant="note"
       onClose={onClose}
       closeLabel={t('close')}
-      title={<b>{label}</b>}
+      title={label}
       footer={
         <>
           <button className="ghost" onClick={onDelete}>{t('delete')}</button>

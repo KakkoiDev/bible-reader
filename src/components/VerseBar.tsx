@@ -1,14 +1,23 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { COLORS, type HColor } from '../lib/annotations'
 import type { T } from '../lib/i18n'
 import { Icon } from './Icon'
 
 /**
- * The row that opens under a tapped verse: highlight, share, bookmark, note,
- * listen, Study. Five icon actions and one labelled, which is the full width of a
- * 390pt screen. Only Study opens a sheet.
+ * The row that opens under a tapped verse: highlight, note, bookmark, share,
+ * listen, Study.
  *
- * Highlight and share swap the row's contents in place rather than opening
+ * Six equal cells that cannot wrap, each with its label under its glyph.
+ *
+ * It used to be five icons and one labelled button sized so the row *just* fitted a
+ * 390pt screen — and at exactly 390 it wrapped anyway, stranding Study alone on a
+ * second line. Worse, five of the six said nothing: Highlight was a pen nib and Add
+ * note a pencil, two near-identical marks three cells apart, and they are the two
+ * everyday actions. Equal cells mean the row's height is the same whatever is in it
+ * and whatever the column width, so opening the bar shifts the text below by a
+ * constant instead of by one, two or three rows' worth.
+ *
+ * Highlight and share still swap the row's contents in place rather than opening
  * anything, so highlighting three verses in a row is three taps.
  */
 
@@ -36,6 +45,14 @@ export function VerseBar({
   onCopyText, onCopyLink, onInvite,
 }: VerseBarProps) {
   const [view, setView] = useState<'main' | 'highlight' | 'share'>('main')
+  const el = useRef<HTMLDivElement>(null)
+
+  // Tapping the last verse on screen used to open the bar below the fold, so the
+  // tap looked like it had done nothing. `nearest` moves the page only when the row
+  // is actually outside it.
+  useEffect(() => {
+    el.current?.scrollIntoView({ block: 'nearest' })
+  }, [view])
 
   const back = (
     <button className="vbtn" onClick={() => setView('main')} aria-label={t('back')}>
@@ -45,7 +62,7 @@ export function VerseBar({
 
   if (view === 'highlight') {
     return (
-      <div className="vbar" onClick={(e) => e.stopPropagation()}>
+      <div className="vbar swatches" ref={el} onClick={(e) => e.stopPropagation()}>
         {back}
         {/* The same swatch atom the selection toolbar uses, so a colour is one thing
             in this app and not two. */}
@@ -78,9 +95,10 @@ export function VerseBar({
 
   if (view === 'share') {
     // Three things under one button, because each is too rare to hold a slot of its
-    // own on the main row and they are all the same intent.
+    // own on the main row and they are all the same intent. The Study sheet's own
+    // footer swaps the same way, under the same names.
     return (
-      <div className="vbar" onClick={(e) => e.stopPropagation()}>
+      <div className="vbar" ref={el} onClick={(e) => e.stopPropagation()}>
         {back}
         <button className="vbtn wide" onClick={onCopyText}>
           <Icon name="copy" size={17} /> {t('copy_text')}
@@ -96,12 +114,14 @@ export function VerseBar({
   }
 
   return (
-    <div className="vbar" onClick={(e) => e.stopPropagation()}>
-      <button className="vbtn" onClick={() => setView('highlight')} aria-label={t('highlight')}>
+    <div className="vbar cells" ref={el} onClick={(e) => e.stopPropagation()}>
+      <button className="vbtn" onClick={() => setView('highlight')}>
         <Icon name="highlight" size={19} />
+        <span className="vlabel">{t('highlight')}</span>
       </button>
-      <button className="vbtn" onClick={() => setView('share')} aria-label={t('share')}>
-        <Icon name="share" size={18} />
+      <button className="vbtn" onClick={onNote}>
+        <Icon name="note" size={18} />
+        <span className="vlabel">{t('note')}</span>
       </button>
       {/* The one action that finishes on the tap: no sheet, no keyboard. The row
           stays open and the glyph fills, so the tap is visibly what saved it. */}
@@ -109,22 +129,26 @@ export function VerseBar({
         className={`vbtn ${bookmarked ? 'on' : ''}`}
         onClick={onBookmark}
         aria-pressed={bookmarked}
-        aria-label={bookmarked ? t('remove_bookmark') : t('bookmark')}
       >
         <Icon name={bookmarked ? 'bookmarked' : 'bookmark'} size={18} />
+        <span className="vlabel">{t('bookmark')}</span>
       </button>
-      <button className="vbtn" onClick={onNote} aria-label={t('add_note')}>
-        <Icon name="note" size={18} />
+      <button className="vbtn" onClick={() => setView('share')}>
+        <Icon name="share" size={18} />
+        <span className="vlabel">{t('share')}</span>
       </button>
-      {canListen && (
-        <button className="vbtn" onClick={onListen} aria-label={t('listen_from_here')}>
-          <Icon name="play" size={15} />
-        </button>
-      )}
-      {/* Pushed right by its own margin rather than by a spacer element: a spacer is
-          a flex item, and its gap is 6px the row does not have at 390pt. */}
+      {/* An edition with no installed voice keeps its cell rather than closing the
+          gap, so the six actions stay in the same place from verse to verse and
+          from edition to edition. */}
+      <button className="vbtn" onClick={onListen} disabled={!canListen}>
+        <Icon name="play" size={15} />
+        <span className="vlabel">{t('listen')}</span>
+      </button>
+      {/* Study is the only action here that opens a sheet, so it is the only filled
+          one. It is a cell like the others now, not a wider button pushed right. */}
       <button className="vbtn study" onClick={onStudy}>
-        <Icon name="study" size={16} /> {t('study')}
+        <Icon name="study" size={16} />
+        <span className="vlabel">{t('study')}</span>
       </button>
     </div>
   )

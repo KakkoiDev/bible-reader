@@ -32,10 +32,38 @@ const ICONS = {
   noColour: { d: <><circle cx="12" cy="12" r="8.5" /><path d="M6 18 18 6" /></>, sw: 1.4 },
   search: { d: <><circle cx="11" cy="11" r="7" /><path d="m20 20-3.6-3.6" /></>, sw: 1.8 },
   menu: { d: <><path d="M4 7h16M4 12h16M4 17h10" /></>, sw: 1.9 },
-  highlight: { d: <><path d="M14 4 20 10 11 19H5v-6z" /><path d="M4 21h16" /></>, sw: 1.7 },
+  /* The 41st, and the third redrawn rather than harvested. The document's `highlight`
+     is a nib on a baseline and its `note` is a pencil: two diagonal quadrilaterals
+     with a point, three cells apart in the verse bar, and they are the two actions a
+     reader reaches for every day. Neither could be told from the other at 19px.
+     This one is a chisel marker — a slanted barrel with the nib cut off it — over a
+     solid bar, which is the mark it leaves. `note` below is now a page. */
+  highlight: {
+    d: (
+      <>
+        <path d="M16.2 4.6 19.4 7.8 8.5 18.7l-3.2-3.2z" />
+        <path d="m9.2 11.6 3.2 3.2" />
+        <rect x="4" y="20" width="16" height="2.4" rx="1.2" fill="currentColor" stroke="none" />
+      </>
+    ),
+    sw: 1.7,
+  },
   bookmark: { d: <><path d="M7 4h10a1 1 0 0 1 1 1v15l-6-4-6 4V5a1 1 0 0 1 1-1z" /></>, sw: 1.7 },
   bookmarked: { d: <><path d="M7 4h10a1 1 0 0 1 1 1v15l-6-4-6 4V5a1 1 0 0 1 1-1z" /></>, sw: 1.7, fill: true },
-  note: { d: <><path d="M4 20h4l10-10-4-4L4 16z" /><path d="M14 6l4 4" /></>, sw: 1.7 },
+  /* A page with a folded corner and two written lines, not the document's pencil —
+     see `highlight` above for why the pair had to be pulled apart. A page is also
+     what the marker beside an annotated verse means: there is something written
+     here, rather than an invitation to write. */
+  note: {
+    d: (
+      <>
+        <path d="M5.5 4h8.2L18.5 8.8V20H5.5z" />
+        <path d="M13.5 4v5h5" />
+        <path d="M8.5 12.5h6.5M8.5 16h4.5" />
+      </>
+    ),
+    sw: 1.7,
+  },
   share: { d: <><path d="M12 15V4" /><path d="m8 7.5 4-3.5 4 3.5" /><path d="M5 13v6a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 19v-6" /></>, sw: 1.7 },
   copy: { d: <><rect x="9" y="9" width="11" height="11" rx="2.5" /><path d="M15 5.5A1.5 1.5 0 0 0 13.5 4H6a2 2 0 0 0-2 2v7.5A1.5 1.5 0 0 0 5.5 15" /></>, sw: 1.7 },
   link: { d: <><path d="M10.5 13.5a4 4 0 0 0 5.7 0l2.6-2.6a4 4 0 0 0-5.7-5.7L11.8 6.5" /><path d="M13.5 10.5a4 4 0 0 0-5.7 0l-2.6 2.6a4 4 0 0 0 5.7 5.7l1.3-1.3" /></>, sw: 1.7 },

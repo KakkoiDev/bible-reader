@@ -178,6 +178,11 @@ body {
   padding: 8px 18px calc(env(safe-area-inset-bottom) + 40px);
   touch-action: pan-y;
 }
+/* Three columns need more than 1200 to reach a readable measure: at 1200 a third
+   track is 371px, about 39 characters against the comfortable 45. The ladder in
+   App.tsx only asks for three at 1260 and up, so this is the width that makes that
+   step worth taking. Nothing else grows — one and two columns stay at 1200. */
+.reader:has(.cols-3) { max-width: 1320px; }
 .print-passage { display: none; }
 
 @media print {
@@ -214,7 +219,11 @@ body {
   .patchchap { break-inside: auto; }
   .patchbook, .patchref, .patchsum { break-after: avoid; }
 }
+/* The title and, when there are more editions than columns, the window counter. */
+.refrow { display: flex; align-items: center; gap: 12px; }
 .ref {
+  flex: 1;
+  min-width: 0;
   font-size: var(--fs-chapter);
   line-height: 1.15;
   font-weight: 600;
@@ -222,10 +231,45 @@ body {
 }
 .status { color: var(--muted); }
 
+/* ---------- which editions are on screen ---------- */
+.colpage { display: flex; align-items: center; gap: 4px; flex: none; }
+.colpage .mini { padding: 0 8px; min-width: 38px; }
+.colpage .mini:disabled { opacity: 0.35; cursor: default; }
+.colcount {
+  font-family: var(--f-ui);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+  padding: 0 2px;
+  font-variant-numeric: tabular-nums;
+}
+/* The same fact under the phone tab strip, where the strip itself is what scrolls. */
+.ringcount {
+  margin: -2px 0 0;
+  padding: 0 14px;
+  font-family: var(--f-ui);
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
 .cols { display: grid; gap: 26px; }
 /* Track counts are set inline in App.tsx so any number of editions works; there
    used to be rules only for 1-3, and a fourth column made the set stack. */
-.cols.many { overflow-x: auto; padding-bottom: 6px; }
+/* One column is the 640-899px band's whole problem: a full-width measure reached
+   100 characters a line at 899. Capped and centred, it reads at about 70 there and
+   is unchanged on a phone, which never gets near the cap. `ch` rather than px so
+   the cap follows the reader's own font size. */
+.cols-1 > .col { max-width: 66ch; margin-inline: auto; }
+/* The chrome follows the measure, so the title, the chapter-end row and the footer
+   sit over the column rather than running the full width of the window around it.
+   `em` rather than `ch` here because these are set in the UI sans, where `ch` is a
+   different width — 33em matches 66ch of the scripture serif closely enough that
+   the edges line up. */
+.reader.single > .refrow,
+.reader.single > .chapend,
+.reader.single > .attrib { max-width: 33em; margin-inline: auto; }
 .colhead {
   font-family: var(--f-ui);
   font-size: var(--fs-eyebrow);
@@ -241,9 +285,15 @@ body {
 .verse {
   line-height: var(--lh-scripture);
   font-size: var(--fs-scripture);
-  margin: 0 0 2px;
+  /* The gap between two verses has to beat the gap between two lines inside one,
+     or the chapter has no structure to read. With --lh-scripture at 1.65 the line
+     gap is ~12px at 19px text, so this sits above it. The aligned desktop view
+     zeroes it again further down: there subgrid supplies the row separation, and a
+     margin here would break verse-to-verse alignment across columns. */
+  margin: 0 0 14px;
   text-indent: 0;
 }
+/* Japanese keeps the taller leading: ruby needs the clearance above the line. */
 .col:lang(ja) .verse { line-height: 2.1; }
 .supplied { font-style: italic; }
 .missing { color: var(--muted); }
@@ -345,8 +395,14 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: var(--f-ui); }
 :root[data-size='lg'] { --verse-size: 22px; }
 .verse { font-size: var(--verse-size); }
 
-/* ---------- verse number as a link button + markers + flash ---------- */
+/* ---------- verse number (a label) + markers + flash ---------- */
+/* Not a control any more. Tapping the number used to copy a link while tapping a
+   few pixels to its right opened the action bar — two outcomes across a 24px
+   boundary, thirty-one times a chapter — and it put every verse in the tab order
+   ahead of the chapter-end row. The whole row opens the actions now, and copy link
+   is a labelled entry in the bar's share view. */
 .vn {
+  display: inline-block;
   color: var(--accent);
   font-family: var(--f-ui);
   font-size: var(--fs-verse-no);
@@ -354,31 +410,51 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: var(--f-ui); }
   vertical-align: super;
   margin-inline-end: 4px;
   user-select: none;
-  background: none;
-  border: 0;
-  padding: 0;
-  cursor: pointer;
-  /* Verses 1-9 were only 6px wide, leaving the target under 22px even with the
-     overlay. A floor also lines up where the text starts across single and double
-     digit verses. */
+  /* A floor so the text starts at the same place across single and double digits. */
   min-width: 14px;
   text-align: center;
 }
-.vn:hover { text-decoration: underline; }
-/* The verse number renders at 13x13. The glyph stays that size; an absolutely
-   positioned overlay grows the touch target instead, so nothing in the text
-   reflows. */
-.vn, .mk { position: relative; }
-/* Grow the target into the space the line already has, so the visible gaps stay
-   tight: widening the margin instead made the row look spaced-out and drew the eye
-   to the control rather than the text. */
-.vn::after, .mk::after {
+/* The note marker is still a control, so it still needs a target bigger than its
+   12px glyph: the glyph stays put and an absolutely positioned overlay grows the
+   hit area into space the line already has. */
+.mk { position: relative; }
+.mk::after {
   content: '';
   position: absolute;
   inset-block: -9px;
+  inset-inline: -2px -7px;
 }
-.vn::after { inset-inline: -9px -2px; }
-.mk::after { inset-inline: -2px -7px; }
+
+/* ---------- skip link ---------- */
+/* Off-screen until focused, then a real control at the top of the passage. */
+.skiplink {
+  position: absolute;
+  inset-inline-start: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  font-family: var(--f-ui);
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  background: var(--accent);
+  border: 0;
+  border-radius: var(--r-button);
+  cursor: pointer;
+}
+.skiplink:focus {
+  position: static;
+  width: auto;
+  height: auto;
+  min-height: var(--touch);
+  padding: 0 16px;
+  margin-bottom: 10px;
+  overflow: visible;
+}
+/* The chapter-end row takes focus from the skip link; it is a landmark, not a
+   control, so it shows where it landed without pretending to be tabbable. */
+.chapend:focus { outline: none; }
+.chapend:focus-visible { outline: 2px solid var(--accent); outline-offset: 6px; }
 /* Latin digits inside Arabic/Hebrew verses would otherwise be reordered by the
    bidi algorithm and drift away from the verse they label. */
 .vn, .fchap { unicode-bidi: isolate; }
@@ -393,26 +469,34 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: var(--f-ui); }
 }
 
 /* ---------- verse action bar ---------- */
-/* Sits in the flow under the verse it acts on, which is where the design system
-   draws it: five icon actions and one labelled, full at 390pt. It wraps rather than
-   squeezes, because a column narrower than a phone is the multi-edition case and a
-   34px control there would be worse than a second row. */
+/* Sits in the flow under the verse it acts on. Six equal cells that never wrap,
+   each labelled: the row used to be sized so that five 46px icon cells, five 6px
+   gaps and a 16-padded Study button measured 355 against the 354 a 390pt screen
+   leaves, so at exactly 390 it wrapped and stranded Study on a line of its own —
+   and five of the six controls said nothing at all.
+   Equal fractions instead of measured widths: the row is then the same height in a
+   240px column as on a phone, so the text below a tapped verse always moves by the
+   same amount. `min-width: 0` is what lets a cell shrink past its label. */
 .vbar {
   display: flex;
-  align-items: center;
-  flex-wrap: wrap;
+  align-items: stretch;
   gap: 6px;
   margin-top: 8px;
   font-family: var(--f-ui);
 }
+.vbar.cells > .vbtn { flex: 1 1 0; min-width: 0; }
+/* The two sub-rows keep the old shape: a back control and their own actions, which
+   are few enough and wide enough that equal cells would only stretch them. */
+.vbar:not(.cells) { flex-wrap: wrap; align-items: center; }
 .vbtn {
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 7px;
+  gap: 3px;
   min-width: 46px;
-  height: var(--touch);
-  padding: 0;
+  min-height: 54px;
+  padding: 4px 1px;
   font: inherit;
   font-size: 13.5px;
   font-weight: 600;
@@ -422,20 +506,38 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: var(--f-ui); }
   border-radius: var(--r-button);
   cursor: pointer;
 }
+/* The sub-rows read as a row of labelled buttons, not as a cell grid. */
+.vbar:not(.cells) .vbtn { flex-direction: row; gap: 7px; min-height: var(--touch); }
 .vbtn.wide { padding: 0 12px; }
 .vbtn.on { color: var(--accent); background: var(--accent-bg); border-color: var(--accent); }
-/* Study is the only action here that leaves the page, so it is the only filled one.
-   14px of padding rather than the document's 16: five 46px cells, five 6px gaps and
-   a 16-padded Study measure 355, and the reader's 18px margins leave 354 of a 390pt
-   screen. One pixel is the whole difference between one row and two. */
+/* No voice for this edition, or no text in this verse. The cell stays so the six
+   actions never move; it just says it cannot do anything. */
+.vbtn:disabled { opacity: 0.4; cursor: default; }
+/* The label is the point of the cell. It truncates rather than wrapping, because a
+   second line of label would put the bar's height back at the mercy of the longest
+   translated word. */
+.vlabel {
+  max-width: 100%;
+  /* 9.5, not the row's 13.5: six labels have to fit six equal cells across a 390pt
+     screen, and "Highlight" and "Bookmark" are the longest of them in English. The
+     ellipsis below is the backstop for a language where they are longer still. */
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Study is the only action here that opens a sheet, so it is the only filled one. */
 .vbtn.study {
-  margin-inline-start: auto;
-  padding: 0 14px;
   color: #fff;
   background: var(--accent);
   border-color: var(--accent);
 }
 .vbtn.study:hover { background: var(--accent-press); }
+/* The colour row is swatches, which are circles of a fixed size. */
+.vbar.swatches { flex-wrap: wrap; align-items: center; }
 
 /* ---------- per-language chapter play button (column header) ---------- */
 .colhead { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
@@ -629,7 +731,11 @@ html.modal-open { overflow: hidden; }
 /* The grab handle is a real element, not a pseudo: the drag has to be able to tell
    whether the pointer went down on it. Hidden on wide, where the sheet is a
    centred card and there is no edge to drag it back to. */
-.sheet-grab { display: none; }
+/* Never selectable, at any width. A pointer that goes down on the handle and
+   travels down the sheet used to start a text selection; the next press then landed
+   on that selection and the browser began a native drag instead of a sheet drag, so
+   the second dismissal in a row sprang back. The handle is a grip, not content. */
+.sheet-grab { display: none; user-select: none; -webkit-user-select: none; }
 .sheet.note { width: min(520px, 94vw); }
 /* The saved panel used to be a right-edge drawer, the only panel that wasn't a
    centered sheet. It shares the sheet shell now, which also means it no longer
@@ -650,8 +756,56 @@ html.modal-open { overflow: hidden; }
   font-family: var(--f-ui);
   font-size: var(--fs-sheet-title);
   background: var(--card);
+  /* The head is chrome, and the drag to dismiss starts on it. A pointer that goes
+     down on the handle and travels down the sheet crosses the title, and without
+     this the browser reads that as a text selection and sends `pointercancel`
+     mid-drag — so the sheet springs back instead of dismissing. There is nothing
+     in a sheet title worth selecting; the field in the search sheet's head is the
+     exception and keeps its own behaviour. */
+  user-select: none;
+  -webkit-user-select: none;
 }
+.sheet-head input,
+.sheet-head textarea { user-select: text; -webkit-user-select: text; }
 .sheet-head .icon { flex: none; }
+/* The sheet's name is a real <h2> — the app had no h2 or h3 anywhere outside the
+   plan day view. It is styled to the weight the title always had, so nothing on
+   screen moves; what changed is that a screen reader can now find it, and
+   `aria-labelledby` on the dialog points at it. */
+.sheet-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font: inherit;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* The Study sheet's title is the verse reference; the eyebrow above it names the
+   surface, which is what the button that opened it is called. */
+.sheet-eyebrow {
+  display: block;
+  font-size: var(--fs-eyebrow);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+/* Named for a screen reader, drawn for nobody: the search sheet's head is its
+   query field. Not `display: none`, which would take it out of the accessibility
+   tree along with the name it carries. */
+.vhidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
 /* The whole row is the label, so the row carries the target and the checkbox inside
    it stays the size the platform draws one at. */
 .srow { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: var(--touch); padding: 8px 0; font-family: var(--f-ui); font-size: var(--fs-row); border-top: 1px solid var(--line); }
@@ -724,10 +878,22 @@ html.modal-open { overflow: hidden; }
   border-radius: var(--r-button);
 }
 .searchin::placeholder { color: var(--muted); }
-/* The search field is the whole head, so the gap below it belongs to the results
-   block and disappears with it. */
+/* The search field is the whole head, so the gap below it belongs to what follows
+   and disappears with it. */
 .sheet.search .sheet-head { padding-bottom: 0; }
+/* Which books the query runs over. Always drawn, even before anything is typed:
+   the scope is part of what the query means, so it cannot appear only once there
+   are results to reinterpret. */
+.scopechips { margin: 14px 0 0; }
 .results { margin-top: 14px; }
+/* How many verses matched, and whether the list is all of them. */
+.resultcount {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-size: 12px;
+}
 .results .dref.go {
   background: var(--accent-bg);
   border-color: color-mix(in srgb, var(--accent) 32%, transparent);
@@ -735,12 +901,29 @@ html.modal-open { overflow: hidden; }
 }
 .results .dref.go .dlabel { display: flex; align-items: center; gap: 6px; }
 .results .dnote { white-space: normal; }
+/* The scripture serif, at the reading size. A result set in the interface sans was
+   the one place in the app where the text of a verse was not typeset as the text of
+   a verse, so a snippet read as a database row rather than as the passage it points
+   at. The script stacks below key off :lang, which the row already carries. */
+.dnote.scripture {
+  font-family: var(--f-scripture);
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--fg);
+}
+.dnote.scripture:lang(ja) { font-family: 'Hiragino Mincho ProN', 'Yu Mincho', YuMincho, 'Noto Serif JP', serif; }
+.dnote.scripture:lang(zh-Hant) { font-family: 'Songti TC', 'Source Han Serif TC', 'Noto Serif TC', PMingLiU, serif; }
+.dnote.scripture:lang(zh-Hans) { font-family: 'Songti SC', 'Source Han Serif SC', 'Noto Serif SC', SimSun, serif; }
+.dnote.scripture:lang(ar) { font-family: 'Al Bayan', 'Geeza Pro', 'Traditional Arabic', 'Noto Naskh Arabic', 'Times New Roman', serif; line-height: 1.9; }
+.dnote.scripture:lang(hbo) { font-family: 'Frank Ruehl CLM', FrankRuehl, 'Times New Roman', 'Noto Serif Hebrew', serif; line-height: 1.9; }
 .badge { font-family: var(--f-ui); font-size: 10px; color: var(--muted); border: 1px solid var(--line); border-radius: 5px; padding: 2px 6px; }
 /* The document is explicit that a search match is tinted in the same highlight
    yellow a reader paints with, so the meaning of the colour stays one thing. */
 .results mark { background: var(--hl-yellow); color: inherit; border-radius: 2px; }
 
-.bgtitle { font-family: var(--f-ui); font-size: var(--fs-eyebrow); text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin: 12px 0 6px; }
+/* An <h3>: the two halves of the canon are the book picker's sections, and the
+   heading level is what lets a screen reader move between them. */
+.bgtitle { font-family: var(--f-ui); font-size: var(--fs-eyebrow); font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin: 12px 0 6px; }
 .bookgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 6px; }
 .bkbtn {
   font-family: var(--f-ui);
@@ -766,6 +949,14 @@ html.modal-open { overflow: hidden; }
 
 /* ---------- flow / reading mode ---------- */
 .flow { max-width: 720px; margin: 0 auto; }
+/* How far into the book this is. A hairline, not a widget: reading mode exists to
+   take the furniture away, so the one cue it puts back is 3px tall. */
+.flowprog { display: flex; align-items: center; gap: 10px; margin: 0 0 22px; font-family: var(--f-ui); }
+.flowtrack { flex: 1; height: 3px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.flowfill { display: block; height: 100%; background: var(--accent); }
+.flowprog small { flex: none; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+/* The book filter is a field in the sheet body, not in the head. */
+.searchin.bookfilter { display: block; width: 100%; margin: 4px 0 12px; }
 .fpar { font-size: var(--verse-size); line-height: 1.95; margin: 0 0 1.05em; }
 :lang(ja) .fpar { line-height: 2.15; }
 /* A seam in the flow, not a paragraph: hairlines above and below so the eye reads it
@@ -912,7 +1103,17 @@ html.modal-open { overflow: hidden; }
 }
 
 /* ---------- settings: grouped sections ---------- */
+/* A real <h2> (an <h3> in the planner's form), not a styled div: settings scrolls
+   ~1970px past forty controls inside a 667px window, and until this there was no
+   heading in the document for a screen reader to jump between — nor anything on
+   screen saying which section you were in once the label had scrolled away.
+   `position: sticky` fixes the second half: `.sheet-body` is the only scroller in
+   the sheet, so the heading pins to its top edge as you pass it. It needs an opaque
+   background of its own for the rows to pass underneath. */
 .sgroup {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   font-family: var(--f-ui);
   font-size: var(--fs-eyebrow);
   font-weight: 600;
@@ -921,8 +1122,12 @@ html.modal-open { overflow: hidden; }
   color: var(--muted);
   margin: 26px 0 0;
   padding: 12px 0 4px;
+  background: var(--card);
   border-top: 2px solid var(--line);
 }
+/* The planner's two form labels sit inside a card that scrolls with the sheet, so
+   pinning them would park them over the block above. */
+.pform .sgroup { position: static; background: none; }
 .sgroup:first-of-type { margin-top: 6px; }
 /* The heading is itself the divider for the group, so the first row underneath must
    not draw a second rule: two hairlines 13px apart with the label wedged between
@@ -1270,6 +1475,14 @@ html.modal-open { overflow: hidden; }
   .sheet-backdrop > .sheet {
     width: 100%;
     margin: 0;
+    /* Two detents rather than a height per sheet. Sized to its content between a
+       floor and a ceiling: the five sheets measured 13%, 31%, 58%, 83% and 92% of
+       the viewport, and the 13% one was search — a strip that grew to most of the
+       screen on the first keystroke and shrank back on the last backspace, moving
+       the field under the thumb each time. The floor holds the field still; the
+       ceiling keeps a strip of the passage visible behind every sheet.
+       Confirm is exempt below: a two-line question does not need half a screen. */
+    min-height: 45dvh;
     max-height: 92dvh;
     border: 1px solid var(--line);
     border-bottom: 0;
@@ -1296,6 +1509,7 @@ html.modal-open { overflow: hidden; }
     background: linear-gradient(var(--line-strong), var(--line-strong)) center 12px / 42px 4px no-repeat;
   }
   .sheet-grab + .sheet-head { padding-top: 4px; }
+  .sheet-backdrop > .sheet.confirm { min-height: 0; }
 }
 
 /* ============================================================================
@@ -1332,9 +1546,9 @@ html.modal-open { overflow: hidden; }
 .flow:lang(ar), .flow:lang(hbo) { line-height: 2.3; }
 .ctext:lang(ar), .ctext:lang(hbo) { line-height: 2.2; }
 /* Dense diacritics need the verses themselves held further apart, not just the
-   lines inside them. */
+   lines inside them — so this stays above the 14px `.verse` carries. */
 .col:lang(ar) .verse, .col:lang(hbo) .verse,
-.col:lang(zh-Hant) .verse, .col:lang(zh-Hans) .verse { margin-bottom: 10px; }
+.col:lang(zh-Hant) .verse, .col:lang(zh-Hans) .verse { margin-bottom: 18px; }
 .col:lang(zh-Hant) .verse, .col:lang(zh-Hans) .verse { line-height: 2.05; }
 
 /* ---------- an edition with nothing to show for this book or chapter ---------- */
@@ -1367,7 +1581,6 @@ html.modal-open { overflow: hidden; }
   outline-offset: 3px;
   border-radius: 6px;
 }
-.verses .vn:focus-visible { outline-offset: 1px; }
 .swatch:focus-visible { outline-offset: 3px; }
 
 /* ---------- reduced motion ---------- */
@@ -1420,7 +1633,7 @@ html.modal-open { overflow: hidden; }
 /* ---------- saved panel: create-tag field appears in edit mode ---------- */
 .dfrow.tagrow .taginput { flex-basis: 100%; font-size: 12px; padding: 6px 9px; }
 
-/* ---------- justified text (off by default) ---------- */
+/* ---------- justified text (on by default; Settings > Reading turns it off) ---------- */
 /* Scoped to the verse and flow bodies, never the chrome. Hyphenation is enabled with
    it: justifying without it opens rivers of whitespace in narrow columns, which is
    the usual reason justified text reads worse than ragged-right on screens. */
@@ -1458,6 +1671,9 @@ html.modal-open { overflow: hidden; }
   color: var(--muted);
 }
 .pref { font-size: 16px; font-weight: 600; }
+/* Read ahead names the passage it would open, so it is a two-line button. */
+.pahead { flex-wrap: wrap; justify-content: flex-start; padding: 6px 12px; text-align: start; }
+.pahead .pref { flex-basis: 100%; font-size: 13px; color: var(--muted); }
 .pstate { font-size: 15px; color: var(--muted); }
 .pmeta { margin: 6px 0 0; font-family: var(--f-ui); font-size: 12.5px; color: var(--muted); }
 .pactions { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
@@ -1528,11 +1744,6 @@ html.modal-open { overflow: hidden; }
 .patchchap.read .verses { opacity: 0.55; }
 /* Verse mode has no running paragraph for the chapter badge to sit at the head of. */
 .patchchapno { margin: 0 0 6px; }
-/* The day carries no per-verse action in either mode, so its numbers are labels. The
-   reader's number is a link button and must not be imitated by something inert. */
-.patch .vn { cursor: default; }
-.patch .vn:hover { text-decoration: none; }
-.patch .vn::after { content: none; }
 .ptick {
   display: inline-flex;
   align-items: center;

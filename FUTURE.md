@@ -63,10 +63,17 @@ any order; a quoted run is an exact phrase. Terms match from the start of a word
 Hebrew/Arabic opt out of that anchoring, the first for having no word boundaries, the
 second because they attach particles to the front of a word.
 
+**Lazy, per-book indexing shipped too**, with scope chips. The index is built one
+book at a time, starting with the book the reader has open, so results begin filling
+in after one fetch an edition rather than sixty-six — the whole-edition index took
+5.5 seconds to its first result whatever was typed. The panel reports the total
+against the cap (`547 verses match · showing the first 150`), and chips scope a query
+to the Old Testament, the New, or the open book.
+
 Still open:
 
-- A **prebuilt** index shipped with the data, which would remove the first-search
-  delay on large enabled sets.
+- A **prebuilt** index shipped with the data, which would remove what is left of the
+  first-search delay on a whole-Bible query over a large enabled set.
 - **Arabic and Hebrew full-text search is weak** against those vocalised editions,
   because readers type unvocalised. `collapse` strips the diacritics for book-name
   lookup, but `foldText` cannot: it has to be length-preserving so `Hit.ranges` can
@@ -305,3 +312,35 @@ unlike the Greek and Hebrew caveats in the README.
 For the 文語訳 the reading is already known from the furigana chunks, so its panel can
 speak the kana rather than depending on a voice guessing at classical kanji, which is
 the same trick `speechText` already uses for chapter playback.
+
+## 12. Importing a version — *designed, not built*
+
+Asked for in the 2026 UI/UX review and deliberately left out of that pass: the UI is
+small and the registry rewrite underneath it is not, and mixing the two would have put
+a schema change inside a design change.
+
+**The UI.** A dashed *Add a version…* row at the foot of **Available** in the editions
+manager, then a sheet that reads the file, reports what it found (books, chapters,
+verses) and requires an attribution line before saving.
+
+**The blocker is the registry, not the parser.**
+
+1. `src/lib/versions.ts` — `Lang` is a closed union of fourteen string literals, and
+   `BY_ID`, `VERSION_IDS` and `isLang` all derive from the static `VERSIONS` array. An
+   imported id cannot exist in that type. The registry has to become built-ins merged
+   with what is on the device, and `isLang` a runtime check.
+2. **Ids are load-bearing in three places at once** — URL segments, annotation keys in
+   `localStorage`, and data directory names (the file's own header comment says so).
+   Imported ids need a reserved prefix (`x-`) so a future built-in can never collide,
+   or a shared link and a saved highlight will bind to different text.
+3. **Two sources for verse text.** Loading is `fetch(data/<id>/<slug>.json)` in both
+   the reader and `indexBook` in `src/lib/search.ts`. Both need one switch: shipped
+   from the network, imported from IndexedDB. A full edition is 4-8MB, past what
+   `localStorage` holds.
+4. **Offline gains a second mechanism.** The service worker precaches `data/{en,ja,fr}`;
+   imported text is never in that cache. It is offline anyway via IndexedDB, but "works
+   offline" becomes two systems and the editions list should say which each uses.
+
+**Cheapest first version:** accept only the app's own per-book JSON, the shape
+`scripts/build-data.mjs` already emits. That makes release one about the registry
+change, which is the part that is actually hard, and defers USFM/OSIS readers.

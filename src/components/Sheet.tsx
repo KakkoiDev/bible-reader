@@ -1,4 +1,4 @@
-import { useRef, type ReactNode } from 'react'
+import { useEffect, useId, useRef, type ReactNode } from 'react'
 import { Icon } from './Icon'
 
 /**
@@ -21,6 +21,12 @@ import { Icon } from './Icon'
  * the one sheet whose title is a text field, and a field cannot keep the touch
  * behaviour a field needs under an ancestor that has given it away. A touch drag
  * on its head is claimed by the browser, so search drags by its handle alone.
+ *
+ * It is also the dialog. Every sheet is `role="dialog" aria-modal="true"`, named by
+ * its own `<h2>`, holds Tab inside itself while open, and hands focus back to
+ * whatever opened it on the way out. None of that was true before: a screen reader
+ * announced no boundary, and six Tab presses from an open sheet walked out onto the
+ * header icons, the edition tabs and a verse number, all of them behind the backdrop.
  */
 
 const DISMISS_FRACTION = 0.25
@@ -28,13 +34,23 @@ const DISMISS_FRACTION = 0.25
 const DISMISS_VELOCITY = 0.5
 const EXIT_MS = 180
 
+/** Everything a Tab press can reach, in document order. `:not([tabindex='-1'])`
+ *  keeps the sheet root and the chapter-end landmark out of the cycle. */
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]),' +
+  " textarea:not([disabled]), summary, [tabindex]:not([tabindex='-1'])"
+
 export interface SheetProps {
   /** Extra classes on `.sheet`: the width variants (`nav`, `saved`, `confirm`). */
   variant?: string
   /** Extra classes on the backdrop. */
   backdropClass?: string
-  /** Head content, left of the close button. */
+  /** Head content, left of the close button. Wrapped in the sheet's `<h2>` unless
+   *  `label` is given, in which case it is rendered as-is. */
   title: ReactNode
+  /** The sheet's accessible name when `title` is not text — the search sheet, whose
+   *  head is the query field. Rendered as a visually-hidden heading. */
+  label?: string
   onClose: () => void
   closeLabel: string
   /** Confirm has no close button: its two actions are the only ways out. */
@@ -48,6 +64,7 @@ export function Sheet({
   variant = '',
   backdropClass = '',
   title,
+  label,
   onClose,
   closeLabel,
   noClose,
@@ -58,6 +75,61 @@ export function Sheet({
   const sheet = useRef<HTMLDivElement>(null)
   const body = useRef<HTMLDivElement>(null)
   const drag = useRef<{ id: number; y0: number; y: number; t: number; on: boolean; inBody: boolean } | null>(null)
+  const titleId = useId()
+
+  /**
+   * Focus in on the way up, and back to the opener on the way down.
+   *
+   * A sheet that opens without moving focus leaves the reader's place behind the
+   * backdrop: the book/chapter, saved, plan and settings sheets all did. Focus goes
+   * to the first control inside, or to the sheet itself when it has none, unless
+   * something in there has already claimed it — the search field and the note editor
+   * both `autoFocus`, and stealing that back would close the phone keyboard.
+   *
+   * Restoring is explicit rather than left to the browser. Dropping the sheet out of
+   * the DOM sends focus to `<body>`, which loses the reader's place just as surely,
+   * and the check keeps it from yanking focus off something that has since moved on.
+   */
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null
+    const el = sheet.current
+    const raf = requestAnimationFrame(() => {
+      if (!el || el.contains(document.activeElement)) return
+      const first = el.querySelector<HTMLElement>(FOCUSABLE)
+      ;(first ?? el).focus()
+    })
+    return () => {
+      cancelAnimationFrame(raf)
+      if (opener?.isConnected && document.activeElement === document.body) opener.focus()
+    }
+  }, [])
+
+  /** Hold Tab inside the sheet. Escape is the App's business: it unwinds the whole
+   *  stack of overlays innermost-first, which no single sheet can see. */
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key !== 'Tab') return
+    const el = sheet.current
+    if (!el) return
+    const stops = [...el.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(
+      (x) => x.offsetParent !== null || x === document.activeElement,
+    )
+    if (!stops.length) {
+      e.preventDefault()
+      return el.focus()
+    }
+    const first = stops[0]
+    const last = stops[stops.length - 1]
+    const on = document.activeElement
+    // The sheet root itself is a stop that Tab must leave, so treat it as "before
+    // the first" in either direction.
+    if (!e.shiftKey && (on === last || on === el)) {
+      e.preventDefault()
+      first.focus()
+    } else if (e.shiftKey && (on === first || on === el)) {
+      e.preventDefault()
+      last.focus()
+    }
+  }
 
   const docked = () => window.matchMedia('(max-width: 640px)').matches
   const calm = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -144,7 +216,12 @@ export function Sheet({
       <div
         ref={sheet}
         className={`sheet ${variant}`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
+        onKeyDown={onKeyDown}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
@@ -152,7 +229,14 @@ export function Sheet({
       >
         <div className="sheet-grab" aria-hidden="true" />
         <div className="sheet-head">
-          {title}
+          {label ? (
+            <>
+              <h2 className="sheet-title vhidden" id={titleId}>{label}</h2>
+              {title}
+            </>
+          ) : (
+            <h2 className="sheet-title" id={titleId}>{title}</h2>
+          )}
           {!noClose && (
             <button className="icon" onClick={onClose} aria-label={closeLabel}>
               <Icon name="close" />
