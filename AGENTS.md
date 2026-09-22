@@ -67,11 +67,21 @@ the single switch between the network and IndexedDB; add a new read of verse tex
 there, never with a fresh `fetch`.
 
 No deuterocanonical text ships. The sources that have it are unreachable from a
-sandbox — `ebible.org` and `api.getbible.net` are refused by the network policy — and
-`data-src/*.md` is the 66-book cut. The model, the codes and the Vulgate's un-truncated
-fetch are all in place, so `npm run fetch && npm run data` on a machine with network
-brings the Latin apocrypha through with no code change. `FUTURE.md` §13 is the
-standing note; do not "fix" the absence by borrowing another translation's apocrypha.
+sandbox — `ebible.org` and `api.getbible.net` answer 403 through the proxy — and
+`data-src/*.md` is the 66-book cut. `npm run fetch -- la --from-dir=DIR` reads a
+locally supplied `latVUC_usfm.zip` instead of downloading, which is how the pipeline
+was proved end to end: fetch reports `OT / deutero / NT`, `check-data` reports the
+deuterocanon rather than failing on it, and the reader shows Tobit under its own
+heading with the KJV column saying the book is not part of that edition. `FUTURE.md`
+§13 is the standing note; do not "fix" the absence by borrowing another translation's
+apocrypha.
+
+`check-data.mjs` validates every edition against the KJV spine, so it is the thing
+that will reject an enlarged canon if the rules are not kept in step: a
+deuterocanonical book has no spine at all, and Esther and Daniel legitimately run past
+the KJV's last chapter in an edition that carries the Greek continuations. Both are
+reported, never failed. Adding a book to `DEUTERO_BOOKS` is enough; adding a
+continuation to a book the KJV *does* have means adding it to `CONTINUED` too.
 
 ## Sharp edges
 

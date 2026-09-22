@@ -100,6 +100,11 @@ const KNOWN_ABSENT = new Set([
   'he/Malachi/4',
 ])
 
+// Books the deuterocanon continues rather than adds: the Greek Esther and Daniel run
+// past where the KJV's stop, so chapters beyond the spine's last are expected in an
+// edition that carries them.
+const CONTINUED = new Set(['Esther', 'Daniel'])
+
 // Chapters an edition has past the KJV's last, because its tradition divides the book
 // differently. Not defects either, so also silent.
 const KNOWN_EXTRA = new Set([
@@ -123,6 +128,9 @@ const SOURCE_OMITS = new Set([
 const fails = []
 const warns = []
 const omits = []
+/** Deuterocanonical books and continuations an edition carries. Reported so the
+ *  enlarged canon is visible in the build output, never failed. */
+const deutero = []
 let omitted = 0
 const editions = []
 
@@ -234,13 +242,28 @@ for (const ed of editions) {
 for (const ed of editions) {
   if (ed.id === 'en') continue
   for (const [book, chapters] of ed.books) {
+    // A deuterocanonical book has no KJV spine and never will: the KJV's own canon
+    // here is the 66, so "the spine does not have it" is the definition of the book
+    // rather than a defect in the edition. Counted and reported, not failed.
+    if (sectionOf(book) === 'deutero') {
+      deutero.push(`${ed.id} ${book} (${chapters.size} chapters)`)
+      continue
+    }
     const sp = spine.books.get(book)
     if (!sp) {
       fails.push(`${ed.id} ${book}: not a book the KJV spine has`)
       continue
     }
+    // The deuterocanonical continuations — Esther 11-16, Daniel 13-14 — run past the
+    // KJV's last chapter of a book the KJV does have. Same reasoning: an edition
+    // whose canon includes them is not wrong to carry them.
     const last = Math.max(...sp.keys())
-    const extra = [...chapters.keys()].filter((ch) => ch > last && !KNOWN_EXTRA.has(`${ed.id}/${book}/${ch}`))
+    const beyond = [...chapters.keys()].filter((ch) => ch > last)
+    if (beyond.length && CONTINUED.has(book)) {
+      deutero.push(`${ed.id} ${book} ${beyond.join(', ')} (continuation past the KJV's ${last})`)
+      continue
+    }
+    const extra = beyond.filter((ch) => !KNOWN_EXTRA.has(`${ed.id}/${book}/${ch}`))
     if (extra.length) fails.push(`${ed.id} ${book}: chapter ${extra.join(', ')} beyond the KJV's ${last}`)
   }
 }
@@ -259,6 +282,11 @@ const tag = (arr) => arr.map((m) => `  ${m}`).join('\n')
 if (omits.length) {
   console.log(`\n${omitted} chapter(s) the source omits, declared and shown in the reader:`)
   console.log(tag(omits))
+}
+
+if (deutero.length) {
+  console.log(`\n${deutero.length} deuterocanonical book(s) and continuation(s), carried by editions whose canon has them:`)
+  console.log(tag(deutero))
 }
 
 if (warns.length) {

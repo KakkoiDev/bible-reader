@@ -304,10 +304,18 @@ export function Navigator({
 
   if (!open) return null
   const sel = book ? index.find((b) => b.slug === book) : undefined
+  /** Choosing a book clears the filter as well as setting it. The filtered list is
+   *  what is on screen while a filter is live, so without this a reader who typed
+   *  "Tobit" and tapped it would see nothing happen: the book is chosen, and the
+   *  chapter grid stays hidden behind the search results they are still inside. */
+  const choose = (slug: string) => {
+    setBook(slug)
+    setFilter('')
+  }
   const grid = (books: IndexItem[]) => (
     <div className="bookgrid">
       {books.map((b) => (
-        <button key={b.slug} className={`bkbtn ${b.slug === current ? 'on' : ''}`} onClick={() => setBook(b.slug)}>
+        <button key={b.slug} className={`bkbtn ${b.slug === current ? 'on' : ''}`} onClick={() => choose(b.slug)}>
           {bookName(b, ui)}
         </button>
       ))}
@@ -318,7 +326,7 @@ export function Navigator({
     if (e.key !== 'Enter') return
     e.preventDefault()
     if (ref) return onNavigate(ref.slug, ref.ch)
-    if (matches?.length === 1) setBook(matches[0].slug)
+    if (matches?.length === 1) choose(matches[0].slug)
   }
   return (
     <Sheet

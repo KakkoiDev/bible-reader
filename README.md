@@ -405,6 +405,21 @@ The service worker precaches the app shell, the index, and the three default
 editions (~18 MB of 55 MB total). The other eight are cached on first read and stay
 available offline from then on.
 
+### Fetching without network access
+
+`npm run fetch` downloads from `ebible.org` and `api.getbible.net`. Where those are
+unreachable — a sandbox or a locked-down CI answers 403 — save the file the URL ends
+in and point the fetch at its folder:
+
+```bash
+# https://ebible.org/Scriptures/latVUC_usfm.zip  →  ~/downloads/latVUC_usfm.zip
+npm run fetch -- la --from-dir=~/downloads
+```
+
+Names must match what the URLs end in: `<ref>_usfm.zip` for eBible, `<ref>.json` for
+getbible. Anything not found in the directory still goes to the network, so a folder
+holding one edition updates just that one.
+
 ## Deploy
 
 **Live: <https://bible.kakkoi.dev/>**
