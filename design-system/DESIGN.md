@@ -45,6 +45,13 @@ bar is full at six controls on a 390pt screen; a seventh needs a redesign, not a
 squeeze. Highlight and note are adjacent because they are the two everyday actions,
 and they carry the two glyphs most easily confused — see *Departures*.
 
+**Listen** reads that verse and stops, because a control named for a verse should
+mean a verse. Reading *on* from it is a different size of thing and gets its own two
+affordances rather than a seventh cell: **Read on from here**, a full-width row in
+the Study sheet body under the verse, and a seven-second offer raised once a single
+verse has finished, which starts at the verse *after* the one just read. Sheet body,
+not sheet footer: the footer is share and save, and this is neither.
+
 ## Type
 
 Scripture is serif, interface is system sans; never mixed in one run.

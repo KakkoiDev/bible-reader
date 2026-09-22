@@ -161,6 +161,13 @@ const en = {
 
   audio_interrupted: 'Audio stopped when the app went to the background.',
   resume_audio: 'Resume',
+  /** Study sheet: start a continuous read at the verse the sheet is showing. Listen in
+   *  the verse bar reads that verse and stops, so this is the way back to a run. */
+  read_on: 'Read on from here',
+  /** Offered for a few seconds after a single verse has been read, and only when the
+   *  chapter has a verse after it. The action starts at that next verse. */
+  read_on_offer: 'Keep reading from there?',
+  read_on_action: 'Read on',
   tts_not_installed: 'No {lang} voice is installed on this browser.',
 
   /** Speaks one word: the Greek or Hebrew behind a KJV word. */
@@ -319,6 +326,7 @@ const ja: Dict = {
   with_concordance: '原語辞書',
   anki: 'Anki', exported_anki_n: 'Anki用に{n}件を書き出しました',
   audio_interrupted: 'アプリが背面に移ったため音声を停止しました。', resume_audio: '再開',
+  read_on: 'ここから読み進める', read_on_offer: '続きを読みますか？', read_on_action: '続きを読む',
   tts_not_installed: 'この端末には{lang}の音声が入っていません。',
   pronounce: '発音を聞く',
   concordance_failed: '原語辞書を読み込めませんでした。', retry: '再試行', loading: '読み込み中…',
@@ -414,6 +422,7 @@ const fr: Dict = {
   with_concordance: 'concordance',
   anki: 'Anki', exported_anki_n: '{n} cartes pour Anki',
   audio_interrupted: "L'audio s'est arrêté au passage en arrière-plan.", resume_audio: 'Reprendre',
+  read_on: 'Lire à partir d’ici', read_on_offer: 'Continuer la lecture à partir de là ?', read_on_action: 'Continuer',
   tts_not_installed: "Aucune voix {lang} n'est installée sur ce navigateur.",
   pronounce: 'Prononcer',
   concordance_failed: 'Impossible de charger la concordance.', retry: 'Réessayer', loading: 'Chargement…',

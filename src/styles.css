@@ -1021,6 +1021,10 @@ html.modal-open { overflow: hidden; }
 /* The per-verse pronounce button under the verse text (reuses the concordance's 44px
    .cspeak square); a touch of top gap sets it off from the text above. */
 .cspeak.vspeak { margin-top: 2px; }
+/* "Read on from here", under the verse and above the word panels. Full width because
+   it is the one thing in the sheet body that acts rather than explains, and a
+   40%-width button among stacked prose reads as a stray chip. */
+.mini.readon { width: 100%; margin-bottom: 18px; }
 /* A word explained in the Older-words panel: a grey dotted underline in the running
    text, a real button so it is keyboard-reachable. Tapping it opens that word's note
    below. A transparent background (not a fill) so a saved colour highlight wrapping it

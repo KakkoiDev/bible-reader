@@ -13,6 +13,11 @@
 //   - Listen ran from that verse to the end of the book, and on into the next book
 //     unless "Stop at chapter end" was set.
 //
+// Fixing the second left a gap — a reader who wanted to hear on from a verse had no
+// control that did it — so "Read on from here" in the Study sheet and the offer raised
+// after a single verse both start a run, and both are checked here for where they
+// start as much as for how far they go.
+//
 // Both are invisible to a screenshot and inaudible to a headless browser, so this
 // stubs `speechSynthesis` the way verify14 does and reads back the list of utterances
 // the app handed over. That list is the whole assertion: its length is how much was
@@ -136,6 +141,63 @@ console.log('\nListen in a verse bar plays that verse and stops')
   check('exactly one utterance', spoken.length === 1, `${spoken.length} utterance(s)`)
   check('and it is John 3:16', /For God so loved the world/.test(spoken[0]), spoken[0]?.slice(0, 48))
   check('the bar closed behind it', (await page.locator('.vbar').count()) === 0)
+  await ctx.close()
+}
+
+// Listen reads a verse and stops, which leaves a reader who wanted a run with
+// nowhere to go. Two controls put them back into one, and neither of them is Listen:
+// a named row in the Study sheet, and an offer raised once the verse has been read.
+console.log('\nThe Study sheet reads on from the verse it is showing')
+{
+  const { ctx, page } = await open('#/john/3/en')
+  await page.locator('#v-en-16').click()
+  await page.locator('#v-en-16 .vbar').waitFor({ state: 'visible' })
+  await page.locator('#v-en-16 .vbar .vbtn', { hasText: 'Study' }).click()
+  await page.locator('.readon').waitFor({ state: 'visible' })
+  await page.locator('.readon').click()
+  const spoken = await settled(page)
+  check('16 to the end of the chapter is 21 verses', spoken.length === 21, `${spoken.length} utterance(s)`)
+  check('starting at verse 16 itself', /For God so loved the world/.test(spoken[0]), spoken[0]?.slice(0, 48))
+  check('and ending at verse 36', /wrath of God abideth on him/.test(spoken[20]), spoken[20]?.slice(-42))
+  check('the sheet closed behind it', (await page.locator('.sheet').count()) === 0)
+  await ctx.close()
+}
+
+// The offer starts at the *next* verse: the one just read is read, and an offer that
+// replayed it would be answering a question nobody asked.
+console.log('\nAfter one verse, the offer reads on from the next')
+{
+  const { ctx, page } = await open('#/john/3/en')
+  await page.locator('#v-en-16').click()
+  await page.locator('#v-en-16 .vbar').waitFor({ state: 'visible' })
+  await page.locator('#v-en-16 .vbar .vbtn', { hasText: 'Listen' }).click()
+  const one = await settled(page)
+  check('the verse alone was read first', one.length === 1, `${one.length} utterance(s)`)
+  await page.locator('.toast .toastact').waitFor({ state: 'visible' })
+  check('and an offer appeared', (await page.locator('.toast .toastact').textContent()) === 'Read on')
+  await page.evaluate(() => {
+    window.__spoken.length = 0
+    window.__last = 0
+  })
+  await page.locator('.toast .toastact').click()
+  const spoken = await settled(page)
+  check('17 to the end of the chapter is 20 verses', spoken.length === 20, `${spoken.length} utterance(s)`)
+  check('starting at verse 17, not 16 again', /For God sent not his Son/.test(spoken[0]), spoken[0]?.slice(0, 48))
+  await ctx.close()
+}
+
+// The last verse has nothing after it, so the offer would start a run with no verses
+// in it — a button that does nothing when pressed. It is not shown.
+console.log('\nAt the end of the chapter there is nothing to read on to')
+{
+  const { ctx, page } = await open('#/john/3/en')
+  await page.locator('#v-en-36').click()
+  await page.locator('#v-en-36 .vbar').waitFor({ state: 'visible' })
+  await page.locator('#v-en-36 .vbar .vbtn', { hasText: 'Listen' }).click()
+  const spoken = await settled(page)
+  check('the last verse was read', spoken.length === 1, `${spoken.length} utterance(s)`)
+  await page.waitForTimeout(600)
+  check('and no offer was raised', (await page.locator('.toast .toastact').count()) === 0)
   await ctx.close()
 }
 

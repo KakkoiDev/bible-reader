@@ -601,6 +601,10 @@ export default function App() {
       // `speaking` state instead would lose the last verse of a run: `onDone` clears
       // that state in the same commit as the final verse's update, so the two coalesce.
       onSpoke?: (at: number) => void,
+      // Fires once the run has finished of its own accord. Stopping does not reach it:
+      // the generation guard below drops the callback, so an offer to read on can't
+      // appear after the reader has pressed stop.
+      onEnd?: () => void,
     ) => {
       if (!canTTS || !verses.length) return
       const gen = ++genRef.current
@@ -640,6 +644,7 @@ export default function App() {
           setSpeaking(null)
           setPlayingLang(null)
           if (continuous) setAutoNext(lang) // advance to the next chapter
+          onEnd?.()
         },
         // Reached once the voice list is in and this language has no voice: clear the
         // playing state we set optimistically and tell the reader why nothing played.
@@ -685,16 +690,19 @@ export default function App() {
   /** One verse, and then silence. Never continuous: asking for a verse is asking for
    *  a verse, so "Stop at chapter end" does not enter into it. */
   const playOne = useCallback(
-    (lang: Lang, ch: number, v: number) => {
+    (lang: Lang, ch: number, v: number, onEnd?: () => void) => {
       const text = verseText[lang]?.get(`${ch}.${v}`)
       if (!text) return
-      speakList(lang, [{ ch, v, text }], false)
+      speakList(lang, [{ ch, v, text }], false, undefined, onEnd)
     },
     [verseText, speakList],
   )
   // Play continuously from a given verse onward (through the chapter, then the book).
-  // The one caller left is the offer to resume after the app was backgrounded, where
-  // carrying on from where playback stopped is exactly what is being asked for.
+  // Three callers: "Read on from here" in the Study sheet, the offer raised after a
+  // single verse has been read, and the offer to resume after the app was backgrounded.
+  // All three are a reader asking to carry on from a verse they have in front of them,
+  // which is why none of them is the verse bar's Listen — that one reads a verse and
+  // stops, and turning it back into a run belongs to a control that says so.
   const playFrom = useCallback(
     (lang: Lang, ch: number, v: number) => {
       const count = book?.chapters[ch - 1] ?? 0
@@ -706,6 +714,24 @@ export default function App() {
       speakList(lang, items, keepGoing)
     },
     [book, verseText, speakList, keepGoing],
+  )
+  /**
+   * The opportunistic half of "read on": after one verse has been read, offer to carry
+   * on from the next one for as long as the toast lives.
+   *
+   * It starts at `v + 1`, not at `v`: the verse just finished, and replaying it would
+   * be the offer answering a question nobody asked. That also means the offer is
+   * suppressed on the last verse of a chapter — `playFrom` would find nothing to say
+   * and the button would be dead. Rolling on into the next chapter is deliberately not
+   * done here; "stop at chapter end" is about a run that reached the end, and this is a
+   * run that has not started.
+   */
+  const offerReadOn = useCallback(
+    (lang: Lang, ch: number, v: number) => {
+      if (!verseText[lang]?.has(`${ch}.${v + 1}`)) return
+      say(t('read_on_offer'), { label: t('read_on_action'), run: () => playFrom(lang, ch, v + 1) })
+    },
+    [verseText, say, t, playFrom],
   )
   useEffect(() => () => stopSpeaking(), []) // stop on unmount
 
@@ -2111,7 +2137,7 @@ export default function App() {
                               onClearHL={() => clearHighlightsIn(ref, l, 0, Number.MAX_SAFE_INTEGER)}
                               onBookmark={() => toggleBookmark(ref)}
                               onNote={() => { setNoteRef(ref); setBarAt(null) }}
-                              onListen={() => { playOne(l, pos.chapter, v.v); setBarAt(null) }}
+                              onListen={() => { playOne(l, pos.chapter, v.v, () => offerReadOn(l, pos.chapter, v.v)); setBarAt(null) }}
                               onStudy={() => { openVerseAt(l, pos.chapter, v.v); setBarAt(null) }}
                               onCopyText={() => {
                                 if (text) copyVerseText(l, pos.chapter, v.v, text)
@@ -2361,6 +2387,16 @@ export default function App() {
         onSpeakWord={speakWord}
         onSpeakVerse={speakSheetVerse}
         sheetPlaying={sheetPlay}
+        onReadOn={() => {
+          if (!verseSheet) return
+          // Stop the sheet's own verse playback first: its state is tracked separately
+          // from the reader's, so leaving it running would give two voices at once and
+          // a title-row button still claiming to be playing.
+          stopSpeaking()
+          setSheetPlay(null)
+          playFrom(verseSheet.lang, verseSheet.ch, verseSheet.v)
+          setVerseSheet(null)
+        }}
         onNote={() => {
           if (verseSheet) setNoteRef(vref(verseSheet.slug, verseSheet.ch, verseSheet.v))
           setVerseSheet(null)
