@@ -713,7 +713,12 @@ html.modal-open { overflow: hidden; }
   overflow: auto;
   /* Keep the sheet's own scroll from chaining out to the page behind it. */
   overscroll-behavior: contain;
-  padding: 0 16px 16px;
+  /* The top padding is the focus ring's room, not decoration. A control at the top
+     of the body sits at the scroller's clipping edge, and the ring is drawn 3px
+     outside the control and 2px wide — so with `padding-top: 0` the top of the ring
+     was cut off by `overflow: auto`. 6px clears the 5px it needs. Anything a sheet
+     puts first now gets a whole ring instead of three sides of one. */
+  padding: 6px 16px 16px;
 }
 .sheet-foot {
   flex: none;
@@ -955,8 +960,9 @@ html.modal-open { overflow: hidden; }
 .flowtrack { flex: 1; height: 3px; border-radius: 2px; background: var(--line); overflow: hidden; }
 .flowfill { display: block; height: 100%; background: var(--accent); }
 .flowprog small { flex: none; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
-/* The book filter is a field in the sheet body, not in the head. */
-.searchin.bookfilter { display: block; width: 100%; margin: 4px 0 12px; }
+/* The book filter is a field in the sheet body, not in the head. No top margin: the
+   body's own top padding is what keeps its focus ring off the scroller's edge. */
+.searchin.bookfilter { display: block; width: 100%; margin: 0 0 12px; }
 .fpar { font-size: var(--verse-size); line-height: 1.95; margin: 0 0 1.05em; }
 :lang(ja) .fpar { line-height: 2.15; }
 /* A seam in the flow, not a paragraph: hairlines above and below so the eye reads it
@@ -1360,6 +1366,39 @@ html.modal-open { overflow: hidden; }
 }
 .danger:hover { background: color-mix(in srgb, var(--danger-fg) 10%, var(--danger-bg)); }
 
+/* ---------- adding a version ---------- */
+.sheet.import { width: min(560px, 94vw); }
+/* The dashed add row sits with the edition rows rather than apart from them, so the
+   list reads as "here are your versions" and not as a settings row with a button. */
+.pnew.addversion { margin-top: 8px; }
+.importpick { width: 100%; justify-content: center; }
+.importstat { margin: 4px 0 0; font-family: var(--f-ui); font-size: var(--fs-row); font-weight: 600; }
+/* What was found, at reading size but quiet: it is a list to scan for something
+   missing, which is the whole reason it is shown before anything is saved. */
+.importbooks {
+  margin: 6px 0 0;
+  font-family: var(--f-ui);
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--muted);
+}
+.importerr {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  font-family: var(--f-ui);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--danger-fg);
+  background: var(--danger-bg);
+  border: 1px solid var(--danger-line);
+  border-radius: var(--r-button);
+}
+/* The attribution is a paragraph, not a field on a row: it holds a title, a year, a
+   publisher and a licence, and a one-line input would hide most of it. */
+.srow.importattrib { flex-direction: column; align-items: stretch; gap: 8px; }
+.importnote { min-height: 88px; font-size: 13px; }
+.sheet.import .ptext { max-width: 60%; }
+
 /* ---------- invite ---------- */
 .sheet.invite { width: min(430px, 92vw); }
 .invlist { list-style: none; margin: 12px 0; padding: 0; display: flex; flex-direction: column; gap: 5px; }
@@ -1575,11 +1614,18 @@ html.modal-open { overflow: hidden; }
 
 /* ---------- focus: one visible, on-brand ring everywhere ---------- */
 /* The UA default was doing the work, which meant it varied by element and all but
-   vanished on the transparent buttons. */
+   vanished on the transparent buttons.
+   The ring is drawn outside the control, so it needs room and it needs to be on top:
+   `z-index` lifts it over a sticky settings heading it would otherwise be painted
+   under, and `position: relative` is what makes that z-index apply. Both are inside
+   `:where()`, so they carry no specificity and a control that positions itself —
+   the skip link, which is absolute until focused — still wins. */
 :where(button, a, input, select, textarea, [tabindex]):focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
   border-radius: 6px;
+  position: relative;
+  z-index: 3;
 }
 .swatch:focus-visible { outline-offset: 3px; }
 

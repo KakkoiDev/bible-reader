@@ -1,22 +1,23 @@
 import { vref, type Store } from '../lib/annotations'
 import { VerseText } from '../lib/format'
-import type { Chapter } from '../lib/types'
+import type { Chapter, IndexItem } from '../lib/types'
 import { BY_ID, coversBook, type Lang } from '../lib/versions'
 
 /** Print engines fragment tables reliably and repeat their headers, unlike the
  * interactive parallel grid. This view never appears on screen. */
-export function PrintPassage({ title, chapter, slug, chapterNumber, bookIndex, columns, store, furigana }: {
+export function PrintPassage({ title, chapter, slug, chapterNumber, book, columns, store, furigana }: {
   title: string
   chapter: Chapter | null
   slug: string
   chapterNumber: number
-  bookIndex: number
+  /** The open book's index entry, which is what says who carries it. */
+  book: IndexItem | undefined
   columns: Lang[]
   store: Store
   furigana: boolean
 }) {
   if (!chapter) return null
-  const visible = columns.filter((lang) => coversBook(lang, bookIndex))
+  const visible = columns.filter((lang) => coversBook(lang, book))
   return (
     <section className="print-passage" aria-hidden="true">
       <h1>{title} {chapterNumber}</h1>

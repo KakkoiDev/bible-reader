@@ -9,7 +9,7 @@
 // What *is* stored is which verses have been read, because that is a fact about the
 // reader rather than about the calendar.
 import { useCallback, useEffect, useState } from 'react'
-import type { IndexItem } from './types'
+import { sectionOf, type IndexItem, type Section } from './types'
 
 /** One chapter of one book. The unit a plan deals in. */
 export interface Ref {
@@ -18,7 +18,13 @@ export interface Ref {
 }
 
 export type Scope =
-  /** Every book from `from` to `to` inclusive, in canonical order. */
+  /** Whole sections of the canon, in canonical order. What the presets use: a
+   *  `range` from Genesis to Revelation would swallow a deuterocanon sitting
+   *  between the Testaments, and "the whole Bible" is not a claim about which
+   *  canon the reader holds. */
+  | { kind: 'sections'; sections: Section[] }
+  /** Every book from `from` to `to` inclusive, in canonical order. Kept because
+   *  plans saved before sections exist are stored this way. */
   | { kind: 'range'; from: string; to: string }
   /** A hand-picked set of books, read in canonical order. */
   | { kind: 'books'; slugs: string[] }
@@ -92,6 +98,10 @@ export function firstReadingDay(total: number, days: number): number {
 /** Every chapter a scope covers, in reading order. */
 export function scopeChapters(scope: Scope, index: IndexItem[]): Ref[] {
   const chaptersOf = (b: IndexItem): Ref[] => b.chapters.map((_, i) => ({ slug: b.slug, ch: i + 1 }))
+  if (scope.kind === 'sections') {
+    const want = new Set(scope.sections)
+    return index.filter((b, i) => want.has(sectionOf(b, i))).flatMap(chaptersOf)
+  }
   if (scope.kind === 'chapters') {
     const out: Ref[] = []
     for (const r of scope.refs) {

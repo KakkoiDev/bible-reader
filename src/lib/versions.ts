@@ -5,7 +5,24 @@
 // language codes so links shared before this change, and every saved annotation,
 // still resolve.
 
-export type Lang = 'en' | 'ja' | 'jako' | 'fr' | 'zht' | 'zhs' | 'pt' | 'es' | 'ar' | 'tl' | 'el' | 'he' | 'eo' | 'la'
+/** The editions that ship with the app. */
+export type BuiltinLang =
+  | 'en' | 'ja' | 'jako' | 'fr' | 'zht' | 'zhs' | 'pt' | 'es' | 'ar' | 'tl' | 'el' | 'he' | 'eo' | 'la'
+
+/**
+ * An edition id.
+ *
+ * Open, not a closed union, because a reader can add their own: an imported edition's
+ * id cannot be known here. `(string & {})` is the idiom that keeps the built-in
+ * literals in autocompletion while admitting any string, so `BY_ID.en` still resolves
+ * and every existing call site type-checks unchanged.
+ *
+ * The cost is that a mistyped literal is no longer a compile error, so ids that come
+ * from outside the app — a URL hash, saved preferences, an invite link — are passed
+ * through `isLang` at the boundary rather than trusted. That check is a real runtime
+ * lookup in `BY_ID`, which is the merged registry below.
+ */
+export type Lang = BuiltinLang | (string & {})
 
 /** How a verse's stored text is marked up — drives tokenizing in format.tsx. */
 export type Markup =
@@ -241,18 +258,68 @@ export const VERSIONS: VersionMeta[] = [
     defaultOn: false,
     uiAvailable: false,
     attribution:
-      'Latine: Biblia Sacra Vulgata Clementina (1598), textus ex editione Migne 1880. The reader includes the 66-book canon it can currently align; deuterocanonical continuations are not yet represented. Public domain; source: eBible.org latVUC.',
+      'Latine: Biblia Sacra Vulgata Clementina (1598), textus ex editione Migne 1880. The data shipped here is the 66-book cut taken before the reader could represent a deuterocanon; the source carries Tobit, Judith, Wisdom, Sirach, Baruch, the Maccabees and the continuations to Esther and Daniel, and `npm run fetch` now brings them through. Public domain; source: eBible.org latVUC.',
   },
 ]
 
+/**
+ * The live registry: the editions above, plus whatever the reader has imported.
+ *
+ * `BY_ID` is mutated in place rather than rebuilt, because it is imported by name all
+ * over the app and a rebound module export would leave every holder looking at the
+ * old object. The binding never changes; its contents do.
+ *
+ * `registerEditions` is called from `main.tsx` before the first render — synchronously,
+ * off localStorage — because `BY_ID[lang].label` is on the path of nearly every
+ * component and an edition arriving a tick later would render as a crash rather than
+ * as a missing row.
+ */
 export const BY_ID = Object.fromEntries(VERSIONS.map((v) => [v.id, v])) as Record<Lang, VersionMeta>
 export const VERSION_IDS: Lang[] = VERSIONS.map((v) => v.id)
 export const DEFAULT_COLUMNS: Lang[] = VERSIONS.filter((v) => v.defaultOn).map((v) => v.id)
 
-export const isLang = (x: unknown): x is Lang => typeof x === 'string' && x in BY_ID
+/** Every edition currently known, shipped first then imported in the order added. */
+export const allVersions = (): VersionMeta[] => VERSION_IDS.map((id) => BY_ID[id])
 
-/** Old Testament is books 0–38 of the canonical order. */
-export const coversBook = (id: Lang, bookIndex: number) => {
-  const c = BY_ID[id].coverage
-  return c === 'all' || (c === 'ot' ? bookIndex < 39 : bookIndex >= 39)
+/** Replace the imported half of the registry. Built-ins are never touched. */
+export function registerEditions(imported: VersionMeta[]) {
+  const builtin = new Set(VERSIONS.map((v) => v.id))
+  for (const id of [...VERSION_IDS]) {
+    if (builtin.has(id)) continue
+    delete BY_ID[id]
+    VERSION_IDS.splice(VERSION_IDS.indexOf(id), 1)
+  }
+  for (const v of imported) {
+    if (builtin.has(v.id)) continue // a built-in id can never be taken over
+    BY_ID[v.id] = v
+    if (!VERSION_IDS.includes(v.id)) VERSION_IDS.push(v.id)
+  }
 }
+
+/**
+ * True for an id the registry actually knows — the guard at every boundary where an
+ * id arrives from outside: a URL hash, a stored preference, an invite link.
+ *
+ * Deliberately a plain boolean and not a `x is Lang` type predicate. `Lang` now
+ * admits any string, so a predicate would narrow the *failing* branch to `never` and
+ * make the code after a rejected id unreachable as far as the compiler is concerned —
+ * which is the opposite of what a guard is for.
+ */
+export const isLang = (x: unknown): boolean => typeof x === 'string' && x in BY_ID
+
+/**
+ * Whether this edition carries this book.
+ *
+ * Read off the book, not computed from the edition: `index.json` lists the editions
+ * each book was actually built for, so this is exact where the old rule — the book's
+ * position against a hard-coded 39 — was a coarse guess that could only describe a
+ * canon of exactly 66 books in exactly two halves. It is also what lets an edition
+ * carry the deuterocanon, or half of it, without a special case.
+ *
+ * `has` missing means an index.json from before the field existed, which an installed
+ * app can be serving for one launch; assume the book is present rather than hiding
+ * every column. `VersionMeta.coverage` stays as the editorial copy that *explains* an
+ * absence ("This edition covers the New Testament only"), which is a different job.
+ */
+export const coversBook = (id: Lang, book?: { has?: Lang[] }) =>
+  !book?.has ? true : book.has.includes(id)

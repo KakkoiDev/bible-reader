@@ -242,6 +242,40 @@ const en = {
   filter_books: 'Filter books, or type a reference',
   /** Where you are in a book read as continuous prose, which has no other cue. */
   chapter_at: 'Chapter {n} of {total}',
+  /** The third section of the canon, where an edition carries one. */
+  deuterocanon: 'Deuterocanon',
+
+  // ---- importing an edition ----
+  /** The dashed row at the foot of the editions list. */
+  import_add: 'Add a version\u2026',
+  import_title: 'Add a version',
+  import_body: 'Choose an OSIS file (.xml). It is read on your device and stored there \u2014 nothing is uploaded.',
+  import_choose: 'Choose a file\u2026',
+  import_reading: 'Reading the file\u2026',
+  import_found: 'What the file contains',
+  import_counts: '{books} books \u00b7 {chapters} chapters \u00b7 {verses} verses',
+  /** Book ids the app has no place for, named rather than dropped quietly. */
+  import_skipped: 'Not added, because this reader has no place for them: {ids}',
+  import_naming: 'How it should appear',
+  import_label: 'Name',
+  import_edition: 'Short name',
+  import_attribution: 'Where it came from',
+  import_attribution_hint: 'Title, year, publisher and licence. Shown under Texts & licences.',
+  import_needs: 'A name and a source are needed before this can be saved.',
+  import_save: 'Add this version',
+  import_saving: 'Saving\u2026',
+  import_untitled: 'Untitled',
+  on_this_device: 'on this device',
+  import_added: '{label} added',
+  import_removed: '{label} removed',
+  import_err_unreadable: 'That file could not be read.',
+  import_err_not_xml: 'That file is not XML.',
+  import_err_not_osis: 'That is XML, but not an OSIS bible.',
+  import_err_no_verses: 'No verses were found in that file.',
+  import_err_no_known_books: 'None of the books in that file could be placed.',
+  import_err_storage: 'There was not enough room on this device to store it.',
+  confirm_remove_version_title: 'Remove this version?',
+  confirm_remove_version_body: 'The text of {label} is deleted from this device. Notes and highlights you made on it are kept.',
 }
 
 export type StringKey = keyof typeof en
@@ -313,6 +347,28 @@ const ja: Dict = {
   plan_pace_every: 'およそ{n}日に1章', plan_next_on: '次の通読：{date}', plan_read_ahead: '先に読む',
   filter_books: '書名で絞り込む、または箇所を入力',
   chapter_at: '{total}章中{n}章',
+  deuterocanon: '第二正典',
+
+  import_add: '訳を追加\u2026', import_title: '訳を追加',
+  import_body: 'OSIS ファイル (.xml) を選んでください。端末内で読み込み、端末内に保存します。アップロードはされません。',
+  import_choose: 'ファイルを選ぶ\u2026', import_reading: '読み込み中\u2026',
+  import_found: 'ファイルの内容', import_counts: '{books}書 \u00b7 {chapters}章 \u00b7 {verses}節',
+  import_skipped: 'このリーダーに該当する書がないため追加されません：{ids}',
+  import_naming: '表示の設定', import_label: '名称', import_edition: '略称',
+  import_attribution: '出典',
+  import_attribution_hint: '書名・年・発行者・ライセンス。「本文と権利表示」に表示されます。',
+  import_needs: '保存するには名称と出典が必要です。',
+  import_save: 'この訳を追加', import_saving: '保存中\u2026', import_untitled: '無題',
+  on_this_device: 'この端末内',
+  import_added: '{label} を追加しました', import_removed: '{label} を削除しました',
+  import_err_unreadable: 'このファイルは読み込めませんでした。',
+  import_err_not_xml: 'このファイルは XML ではありません。',
+  import_err_not_osis: 'XML ですが OSIS 聖書ではありません。',
+  import_err_no_verses: 'このファイルに節が見つかりませんでした。',
+  import_err_no_known_books: 'このファイルの書はいずれも配置できませんでした。',
+  import_err_storage: 'この端末に保存する空き容量が足りませんでした。',
+  confirm_remove_version_title: 'この訳を削除しますか？',
+  confirm_remove_version_body: '{label} の本文をこの端末から削除します。付けたノートとハイライトは残ります。',
 }
 
 const fr: Dict = {
@@ -388,6 +444,28 @@ const fr: Dict = {
   plan_next_on: 'Prochaine lecture : {date}', plan_read_ahead: 'La lire maintenant',
   filter_books: 'Filtrer les livres, ou saisir une référence',
   chapter_at: 'Chapitre {n} sur {total}',
+  deuterocanon: 'Deutérocanoniques',
+
+  import_add: 'Ajouter une version\u2026', import_title: 'Ajouter une version',
+  import_body: 'Choisissez un fichier OSIS (.xml). Il est lu sur votre appareil et y reste \u2014 rien n\u2019est envoyé.',
+  import_choose: 'Choisir un fichier\u2026', import_reading: 'Lecture du fichier\u2026',
+  import_found: 'Contenu du fichier', import_counts: '{books} livres \u00b7 {chapters} chapitres \u00b7 {verses} versets',
+  import_skipped: 'Non ajoutés, faute de place dans ce lecteur : {ids}',
+  import_naming: 'Affichage', import_label: 'Nom', import_edition: 'Nom court',
+  import_attribution: 'Provenance',
+  import_attribution_hint: 'Titre, année, éditeur et licence. Affiché sous Textes et licences.',
+  import_needs: 'Un nom et une provenance sont nécessaires pour enregistrer.',
+  import_save: 'Ajouter cette version', import_saving: 'Enregistrement\u2026', import_untitled: 'Sans titre',
+  on_this_device: 'sur cet appareil',
+  import_added: '{label} ajoutée', import_removed: '{label} supprimée',
+  import_err_unreadable: 'Ce fichier n\u2019a pas pu être lu.',
+  import_err_not_xml: 'Ce fichier n\u2019est pas du XML.',
+  import_err_not_osis: 'C\u2019est du XML, mais pas une bible OSIS.',
+  import_err_no_verses: 'Aucun verset n\u2019a été trouvé dans ce fichier.',
+  import_err_no_known_books: 'Aucun livre de ce fichier n\u2019a pu être placé.',
+  import_err_storage: 'Il n\u2019y avait pas assez de place sur cet appareil.',
+  confirm_remove_version_title: 'Supprimer cette version ?',
+  confirm_remove_version_body: 'Le texte de {label} est supprimé de cet appareil. Vos notes et surlignages sont conservés.',
 }
 
 const zht: Dict = {
@@ -447,6 +525,7 @@ const zht: Dict = {
   plan_pace_every: '約每 {n} 天一章', plan_next_on: '下次閱讀：{date}', plan_read_ahead: '現在就讀',
   filter_books: '篩選書卷，或輸入經文出處',
   chapter_at: '第 {n} 章，共 {total} 章',
+  deuterocanon: '次經',
 }
 
 const zhs: Dict = {
@@ -506,6 +585,7 @@ const zhs: Dict = {
   plan_pace_every: '约每 {n} 天一章', plan_next_on: '下次阅读：{date}', plan_read_ahead: '现在就读',
   filter_books: '筛选书卷，或输入经文出处',
   chapter_at: '第 {n} 章，共 {total} 章',
+  deuterocanon: '次经',
 }
 
 const pt: Dict = {
@@ -574,6 +654,7 @@ const pt: Dict = {
   plan_next_on: 'Próxima leitura: {date}', plan_read_ahead: 'Ler agora',
   filter_books: 'Filtrar livros, ou escrever uma referência',
   chapter_at: 'Capítulo {n} de {total}',
+  deuterocanon: 'Deuterocanónicos',
 }
 
 const es: Dict = {
@@ -643,6 +724,7 @@ const es: Dict = {
   plan_next_on: 'Próxima lectura: {date}', plan_read_ahead: 'Leerlo ahora',
   filter_books: 'Filtrar libros, o escribir una referencia',
   chapter_at: 'Capítulo {n} de {total}',
+  deuterocanon: 'Deuterocanónicos',
 }
 
 const ar: Dict = {
@@ -709,6 +791,7 @@ const ar: Dict = {
   plan_next_on: 'القراءة التالية: {date}', plan_read_ahead: 'اقرأها الآن',
   filter_books: 'تصفية الأسفار، أو اكتب شاهدًا',
   chapter_at: 'الأصحاح {n} من {total}',
+  deuterocanon: 'الأسفار القانونية الثانية',
 }
 
 const tl: Dict = {
@@ -779,6 +862,7 @@ const tl: Dict = {
   plan_next_on: 'Susunod na pagbasa: {date}', plan_read_ahead: 'Basahin na ngayon',
   filter_books: 'Salain ang mga aklat, o mag-type ng sanggunian',
   chapter_at: 'Kabanata {n} ng {total}',
+  deuterocanon: 'Deuterokanoniko',
 }
 
 // Modern Greek chrome; the text itself stays Koine.
@@ -853,6 +937,7 @@ const el: Dict = {
   plan_next_on: 'Επόμενη ανάγνωση: {date}', plan_read_ahead: 'Διαβάστε το τώρα',
   filter_books: 'Φιλτράρισμα βιβλίων, ή πληκτρολογήστε παραπομπή',
   chapter_at: 'Κεφάλαιο {n} από {total}',
+  deuterocanon: 'Δευτεροκανονικά',
 }
 
 // Modern Hebrew chrome; the text itself stays the Masoretic consonantal tradition.
@@ -920,6 +1005,7 @@ const he: Dict = {
   plan_next_on: 'הקריאה הבאה: {date}', plan_read_ahead: 'לקרוא עכשיו',
   filter_books: 'סינון ספרים, או הקלידו מראה מקום',
   chapter_at: 'פרק {n} מתוך {total}',
+  deuterocanon: 'הספרים החיצוניים',
 }
 
 // jako is a Japanese edition, so its UI strings are the Japanese ones.

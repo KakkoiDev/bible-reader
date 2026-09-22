@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Chapter, EditionBook, IndexItem } from './lib/types'
-import { bookName } from './lib/types'
-import { BY_ID, DEFAULT_COLUMNS, VERSION_IDS, coversBook, isLang, type Lang } from './lib/versions'
+import { bookName, sectionOf } from './lib/types'
+import { loadBook, loadCanon, mergeImported, type CanonBook } from './lib/canon'
+import { listImported, removeImported, type ImportedMeta } from './lib/imported'
+import { BY_ID, DEFAULT_COLUMNS, VERSION_IDS, coversBook, isLang, registerEditions, type Lang } from './lib/versions'
 import { VerseText, plainText, type HL } from './lib/format'
 import { useAnnotations, vref, parseRef, countTagged, type HColor } from './lib/annotations'
 import { selectionContext, setWordHighlight, clearWordHighlight } from './lib/highlight'
@@ -34,6 +36,7 @@ import {
 } from './components/Panels'
 import { SearchSheet, Navigator, VerseSheet, InviteBuilder, type VerseSheetData } from './components/Sheets'
 import { PrintPassage } from './components/PrintPassage'
+import { ImportEdition } from './components/ImportEdition'
 import { VerseBar } from './components/VerseBar'
 import { Planner, formatRefs } from './components/Planner'
 import { usePlans, chapterRead, type Ref as PlanRef } from './lib/plans'
@@ -170,7 +173,13 @@ export default function App() {
   const initHash = parseHash()
   const initLast = initHash.loc ? null : loadLastRead()
 
-  const [index, setIndex] = useState<IndexItem[]>([])
+  // Three inputs to one book list. `shippedIndex` is what the build produced;
+  // `canon` is every book the app can place, including ones no shipped edition has;
+  // `imported` is the reader's own editions. `index` is the merge, so adding or
+  // removing an edition re-derives the book list without refetching anything.
+  const [shippedIndex, setShippedIndex] = useState<IndexItem[]>([])
+  const [canon, setCanon] = useState<CanonBook[]>([])
+  const [imported, setImported] = useState<ImportedMeta[]>(listImported)
   const [pos, setPos] = useState<Pos>(() =>
     initHash.loc
       ? { slug: initHash.loc.slug, chapter: initHash.loc.chapter, lang: initHash.loc.lang ?? 'en' }
@@ -214,6 +223,9 @@ export default function App() {
   const [inviteFor, setInviteFor] = useState<number | null>(null)
   // Tag pending global deletion, awaiting confirmation.
   const [confirmTag, setConfirmTag] = useState<string | null>(null)
+  const [importOpen, setImportOpen] = useState(false)
+  /** An imported edition pending removal, awaiting confirmation. */
+  const [confirmVersion, setConfirmVersion] = useState<ImportedMeta | null>(null)
   const canTTS = ttsSupported()
 
   const {
@@ -303,11 +315,22 @@ export default function App() {
   const flowTargetRef = useRef(flowTarget)
   flowTargetRef.current = flowTarget
 
-  // load index + paragraph boundaries (for flow mode)
+  // load index + canon + paragraph boundaries (for flow mode)
   useEffect(() => {
-    fetch(`${BASE}data/index.json`).then((r) => r.json()).then(setIndex).catch(() => setIndex([]))
+    fetch(`${BASE}data/index.json`).then((r) => r.json()).then(setShippedIndex).catch(() => setShippedIndex([]))
     fetch(`${BASE}data/paragraphs.json`).then((r) => r.json()).then(setParas).catch(() => setParas({}))
+    loadCanon().then(setCanon)
   }, [])
+
+  const index = useMemo(
+    () => mergeImported(shippedIndex, canon, imported),
+    [shippedIndex, canon, imported],
+  )
+  // The registry is seeded before the first render in main.tsx; this keeps it in step
+  // when the reader adds or removes one afterwards.
+  useEffect(() => {
+    registerEditions(imported)
+  }, [imported])
 
   const book = useMemo(() => index.find((b) => b.slug === pos.slug), [index, pos.slug])
   const bookIdx = useMemo(() => index.findIndex((b) => b.slug === pos.slug), [index, pos.slug])
@@ -343,8 +366,8 @@ export default function App() {
   const needed = useMemo(() => {
     const reachable = flow || !wide ? prefs.columns : (showKey ? (showKey.split(',') as Lang[]) : [])
     const all = [...new Set([...reachable, pos.lang])]
-    return bookIdx < 0 ? all : all.filter((l) => coversBook(l, bookIdx))
-  }, [prefs.columns, flow, wide, showKey, pos.lang, bookIdx])
+    return !book ? all : all.filter((l) => coversBook(l, book))
+  }, [prefs.columns, flow, wide, showKey, pos.lang, book])
   const neededKey = needed.join(',')
 
   // ---- per-edition book loading ----
@@ -359,9 +382,7 @@ export default function App() {
         const key = `${l}/${slug}`
         let b = cache.current.get(key)
         if (!b) {
-          b = await fetch(`${BASE}data/${l}/${slug}.json`)
-            .then((r) => (r.ok ? (r.json() as Promise<EditionBook>) : { chapters: [] }))
-            .catch(() => ({ chapters: [] }) as EditionBook)
+          b = await loadBook(l, slug)
           cache.current.set(key, b)
         }
         return [l, b] as const
@@ -403,7 +424,13 @@ export default function App() {
     const { slug, ch, v } = verseSheet
     const bi = index.findIndex((b) => b.slug === slug)
     if (bi < 0) return
-    const oLang: Lang = bi < 39 ? 'he' : 'el' // OT = Hebrew, NT = Greek (matches coversBook)
+    // Hebrew behind an Old Testament verse, Greek behind a New Testament one. Read
+    // off the book's section rather than its position, and skipped for the
+    // deuterocanon: the WLC is Masoretic and the Textus Receptus is the New
+    // Testament, so neither carries it and there is nothing to show.
+    const section = sectionOf(index[bi], bi)
+    if (section === 'deutero') return
+    const oLang: Lang = section === 'ot' ? 'he' : 'el'
     let alive = true
     const pick = (b?: EditionBook) =>
       b?.chapters.find((c) => c.n === ch)?.verses.find((x) => x.v === v)?.t ?? null
@@ -417,13 +444,10 @@ export default function App() {
     }
     const cached = cache.current.get(key)
     if (cached) return apply(cached)
-    fetch(`${BASE}data/${oLang}/${slug}.json`)
-      .then((r) => (r.ok ? (r.json() as Promise<EditionBook>) : ({ chapters: [] } as EditionBook)))
-      .catch(() => ({ chapters: [] }) as EditionBook)
-      .then((b) => {
-        cache.current.set(key, b)
-        apply(b)
-      })
+    loadBook(oLang, slug).then((b) => {
+      cache.current.set(key, b)
+      apply(b)
+    })
     return () => {
       alive = false
     }
@@ -1105,9 +1129,7 @@ export default function App() {
         const key = `${pos.lang}/${s}`
         let b = cache.current.get(key)
         if (!b) {
-          b = await fetch(`${BASE}data/${pos.lang}/${s}.json`)
-            .then((r) => (r.ok ? (r.json() as Promise<EditionBook>) : { chapters: [] }))
-            .catch(() => ({ chapters: [] }) as EditionBook)
+          b = await loadBook(pos.lang, s)
           cache.current.set(key, b)
         }
         return [s, b] as const
@@ -1256,6 +1278,8 @@ export default function App() {
       const layers: [boolean, () => void][] = [
         [confirmDelete !== null, () => setConfirmDelete(null)],
         [confirmTag !== null, () => setConfirmTag(null)],
+        [confirmVersion !== null, () => setConfirmVersion(null)],
+        [importOpen, () => setImportOpen(false)],
         [noteRef !== null, () => setNoteRef(null)],
         [verseSheet !== null, () => setVerseSheet(null)],
         [inviteFor !== null, () => setInviteFor(null)],
@@ -1286,8 +1310,8 @@ export default function App() {
   // scrollbar width is padded back so removing overflow doesn't shift the layout.
   const anySheetOpen =
     navOpen || searchOpen || licencesOpen || verseSheet !== null || inviteFor !== null ||
-    confirmDelete !== null || confirmTag !== null || noteRef !== null || drawerOpen || settingsOpen ||
-    plannerOpen
+    confirmDelete !== null || confirmTag !== null || confirmVersion !== null || noteRef !== null ||
+    drawerOpen || settingsOpen || plannerOpen || importOpen
   // The bar belongs to the page, so it has no business sitting behind a sheet: it
   // used to stay open under the backdrop and be waiting there, still pointing at a
   // verse the reader has since left, when the sheet closed.
@@ -1431,6 +1455,36 @@ export default function App() {
       reader.readAsText(file)
     },
     [importStore, importVocab, importPlans, t, say],
+  )
+
+  /** A reader's own edition lands in the registry, the index and their columns in one
+   *  step — an edition you have just added and then have to go and switch on is a
+   *  half-finished action. */
+  const addImported = useCallback(
+    (meta: ImportedMeta) => {
+      registerEditions([...listImported()])
+      setImported(listImported())
+      setPref({ columns: [...prefs.columns, meta.id] })
+      say(t('import_added', { label: meta.label }))
+    },
+    [prefs.columns, setPref, say, t],
+  )
+
+  /** Remove the text and the registration. Annotations are deliberately left alone:
+   *  they are keyed by book and verse, not by edition, and a reader who re-imports
+   *  the same text should find their highlights where they left them. */
+  const dropImported = useCallback(
+    async (meta: ImportedMeta) => {
+      const slugs = Object.keys(meta.chapters)
+      await removeImported(meta.id, slugs)
+      const left = listImported()
+      registerEditions(left)
+      setImported(left)
+      setPref({ columns: prefs.columns.filter((l) => l !== meta.id) })
+      if (pos.lang === meta.id) navigate({ lang: prefs.columns.find((l) => l !== meta.id) ?? DEFAULT_COLUMNS[0] })
+      say(t('import_removed', { label: meta.label }))
+    },
+    [prefs.columns, pos.lang, setPref, navigate, say, t],
   )
 
   const labelFor = useCallback(
@@ -1697,7 +1751,7 @@ export default function App() {
             chapter={chapter}
             slug={pos.slug}
             chapterNumber={pos.chapter}
-            bookIndex={bookIdx}
+            book={book}
             columns={prefs.columns}
             store={store}
             furigana={prefs.furigana}
@@ -1855,7 +1909,7 @@ export default function App() {
             )}
             {/* Half a canon is not a run of omitted chapters, and saying so would blame
                 the Greek New Testament's source for not carrying Genesis. */}
-            {bookIdx >= 0 && !coversBook(pos.lang, bookIdx) ? (
+            {book && !coversBook(pos.lang, book) ? (
               <p className="coverage" lang={BY_ID[prefs.ui].htmlLang} dir={BY_ID[prefs.ui].dir}>
                 {t(BY_ID[pos.lang].coverage === 'nt' ? 'coverage_nt_only' : 'coverage_ot_only')}
               </p>
@@ -1892,7 +1946,7 @@ export default function App() {
           >
             {langsToShow.map((l) => {
               const m = BY_ID[l]
-              const covers = bookIdx < 0 || coversBook(l, bookIdx)
+              const covers = !book || coversBook(l, book)
               // The edition carries the book but its source shipped this chapter with
               // no verses. Read off the text rather than a table, so any future hole
               // says so too. The 口語訳's eighteen are the current ones.
@@ -2161,8 +2215,31 @@ export default function App() {
         onExportAnki={exportAnki}
         onPrint={printPassage}
         onImport={importData}
+        onAddVersion={() => setImportOpen(true)}
+        onRemoveImported={(id) => setConfirmVersion(imported.find((m) => m.id === id) ?? null)}
         onClose={() => setSettingsOpen(false)}
       />
+
+      <ImportEdition
+        open={importOpen}
+        t={t}
+        onClose={() => setImportOpen(false)}
+        onImported={addImported}
+      />
+
+      {confirmVersion && (
+        <ConfirmSheet
+          title={t('confirm_remove_version_title')}
+          body={t('confirm_remove_version_body', { label: confirmVersion.label })}
+          confirmLabel={t('delete')}
+          t={t}
+          onConfirm={() => {
+            void dropImported(confirmVersion)
+            setConfirmVersion(null)
+          }}
+          onClose={() => setConfirmVersion(null)}
+        />
+      )}
 
       <LicencesSheet open={licencesOpen} t={t} repoUrl={REPO_URL} onClose={() => setLicencesOpen(false)} />
 

@@ -6,19 +6,57 @@
 //
 // To swap an edition, change its `ref` here and re-run `npm run fetch && npm run data`.
 
-/** Canonical book order + English names — the alignment spine for every edition. */
-export const BOOK_ORDER = [
+/**
+ * The canon, in three sections.
+ *
+ * The spine used to be a flat list of 66 names, and "which half of the canon is this"
+ * was the book's index against a hard-coded 39. That is why the Vulgate shipped
+ * truncated: its source carries Tobit, Judith, Wisdom, Sirach, Baruch, the Maccabees
+ * and the continuations to Esther and Daniel, and there was nowhere in the model to
+ * put them. A book's section is a fact about the book, so it is carried per book here
+ * and written into `index.json`; nothing downstream counts to 39 any more.
+ *
+ * The deuterocanon sits between the Testaments rather than interleaved in the Vulgate's
+ * own order, which is the arrangement the 1611 KJV used and the one that leaves the
+ * Protestant 66 in their familiar places. Order within the section is the KJV's, with
+ * the wider Orthodox books after it — an OSIS import may carry those, and a book with
+ * nowhere to go would be dropped silently.
+ */
+export const OT_BOOKS = [
   'Genesis', 'Exodus', 'Leviticus', 'Numbers', 'Deuteronomy', 'Joshua', 'Judges', 'Ruth',
   '1 Samuel', '2 Samuel', '1 Kings', '2 Kings', '1 Chronicles', '2 Chronicles', 'Ezra',
   'Nehemiah', 'Esther', 'Job', 'Psalms', 'Proverbs', 'Ecclesiastes', 'Song of Solomon',
   'Isaiah', 'Jeremiah', 'Lamentations', 'Ezekiel', 'Daniel', 'Hosea', 'Joel', 'Amos',
   'Obadiah', 'Jonah', 'Micah', 'Nahum', 'Habakkuk', 'Zephaniah', 'Haggai', 'Zechariah',
-  'Malachi', 'Matthew', 'Mark', 'Luke', 'John', 'Acts', 'Romans', '1 Corinthians',
+  'Malachi',
+]
+
+export const DEUTERO_BOOKS = [
+  '1 Esdras', '2 Esdras', 'Tobit', 'Judith', 'Additions to Esther',
+  'Wisdom of Solomon', 'Sirach', 'Baruch', 'Letter of Jeremiah',
+  'Prayer of Azariah', 'Susanna', 'Bel and the Dragon', 'Prayer of Manasseh',
+  '1 Maccabees', '2 Maccabees',
+  // Beyond the KJV's Apocrypha; carried by Orthodox and Vulgate appendices.
+  '3 Maccabees', '4 Maccabees', 'Psalm 151',
+]
+
+export const NT_BOOKS = [
+  'Matthew', 'Mark', 'Luke', 'John', 'Acts', 'Romans', '1 Corinthians',
   '2 Corinthians', 'Galatians', 'Ephesians', 'Philippians', 'Colossians',
   '1 Thessalonians', '2 Thessalonians', '1 Timothy', '2 Timothy', 'Titus', 'Philemon',
   'Hebrews', 'James', '1 Peter', '2 Peter', '1 John', '2 John', '3 John', 'Jude',
   'Revelation',
 ]
+
+export const BOOK_ORDER = [...OT_BOOKS, ...DEUTERO_BOOKS, ...NT_BOOKS]
+
+/** Which section a book belongs to. The app reads this out of `index.json`. */
+const SECTION_OF = new Map([
+  ...OT_BOOKS.map((b) => [b, 'ot']),
+  ...DEUTERO_BOOKS.map((b) => [b, 'deutero']),
+  ...NT_BOOKS.map((b) => [b, 'nt']),
+])
+export const sectionOf = (book) => SECTION_OF.get(book) ?? 'ot'
 
 /** USFM 3-letter book codes → canonical English name (eBible file naming). */
 export const USFM_BOOKS = {
@@ -36,6 +74,46 @@ export const USFM_BOOKS = {
   '2TH': '2 Thessalonians', '1TI': '1 Timothy', '2TI': '2 Timothy', TIT: 'Titus',
   PHM: 'Philemon', HEB: 'Hebrews', JAS: 'James', '1PE': '1 Peter', '2PE': '2 Peter',
   '1JN': '1 John', '2JN': '2 John', '3JN': '3 John', JUD: 'Jude', REV: 'Revelation',
+  // Deuterocanon, USFM 3.0 codes. Files carrying these used to fall through
+  // `USFM_BOOKS[code]` as undefined and be skipped as "apocrypha, front/back matter".
+  '1ES': '1 Esdras', '2ES': '2 Esdras', TOB: 'Tobit', JDT: 'Judith',
+  ESG: 'Additions to Esther', WIS: 'Wisdom of Solomon', SIR: 'Sirach',
+  BAR: 'Baruch', LJE: 'Letter of Jeremiah', S3Y: 'Prayer of Azariah',
+  SUS: 'Susanna', BEL: 'Bel and the Dragon', MAN: 'Prayer of Manasseh',
+  '1MA': '1 Maccabees', '2MA': '2 Maccabees', '3MA': '3 Maccabees',
+  '4MA': '4 Maccabees', PS2: 'Psalm 151',
+}
+
+/**
+ * OSIS book ids → the same canonical English names, for reader-supplied files.
+ *
+ * OSIS and USFM disagree on almost every abbreviation (`1Sam` against `1SA`, `Song`
+ * against `SNG`, `PrAzar` against `S3Y`), so an importer cannot reuse the table
+ * above. Keys are matched case-insensitively.
+ */
+export const OSIS_BOOKS = {
+  Gen: 'Genesis', Exod: 'Exodus', Lev: 'Leviticus', Num: 'Numbers', Deut: 'Deuteronomy',
+  Josh: 'Joshua', Judg: 'Judges', Ruth: 'Ruth', '1Sam': '1 Samuel', '2Sam': '2 Samuel',
+  '1Kgs': '1 Kings', '2Kgs': '2 Kings', '1Chr': '1 Chronicles', '2Chr': '2 Chronicles',
+  Ezra: 'Ezra', Neh: 'Nehemiah', Esth: 'Esther', Job: 'Job', Ps: 'Psalms',
+  Prov: 'Proverbs', Eccl: 'Ecclesiastes', Song: 'Song of Solomon', Isa: 'Isaiah',
+  Jer: 'Jeremiah', Lam: 'Lamentations', Ezek: 'Ezekiel', Dan: 'Daniel', Hos: 'Hosea',
+  Joel: 'Joel', Amos: 'Amos', Obad: 'Obadiah', Jonah: 'Jonah', Mic: 'Micah',
+  Nah: 'Nahum', Hab: 'Habakkuk', Zeph: 'Zephaniah', Hag: 'Haggai', Zech: 'Zechariah',
+  Mal: 'Malachi',
+  '1Esd': '1 Esdras', '2Esd': '2 Esdras', Tob: 'Tobit', Jdt: 'Judith',
+  AddEsth: 'Additions to Esther', EsthGr: 'Additions to Esther',
+  Wis: 'Wisdom of Solomon', Sir: 'Sirach', Bar: 'Baruch', EpJer: 'Letter of Jeremiah',
+  PrAzar: 'Prayer of Azariah', Sus: 'Susanna', Bel: 'Bel and the Dragon',
+  PrMan: 'Prayer of Manasseh', '1Macc': '1 Maccabees', '2Macc': '2 Maccabees',
+  '3Macc': '3 Maccabees', '4Macc': '4 Maccabees', Ps151: 'Psalm 151',
+  Matt: 'Matthew', Mark: 'Mark', Luke: 'Luke', John: 'John', Acts: 'Acts',
+  Rom: 'Romans', '1Cor': '1 Corinthians', '2Cor': '2 Corinthians', Gal: 'Galatians',
+  Eph: 'Ephesians', Phil: 'Philippians', Col: 'Colossians',
+  '1Thess': '1 Thessalonians', '2Thess': '2 Thessalonians', '1Tim': '1 Timothy',
+  '2Tim': '2 Timothy', Titus: 'Titus', Phlm: 'Philemon', Heb: 'Hebrews',
+  Jas: 'James', '1Pet': '1 Peter', '2Pet': '2 Peter', '1John': '1 John',
+  '2John': '2 John', '3John': '3 John', Jude: 'Jude', Rev: 'Revelation',
 }
 
 /** getbible.net numbers books 1–66 in canonical order. */
@@ -65,14 +143,12 @@ export const SOURCES = [
   { id: 'el', kind: 'ebible', ref: 'grctr', coverage: 'nt' },
   { id: 'he', kind: 'ebible', ref: 'hebwlc', coverage: 'ot' },
   { id: 'eo', kind: 'getbible', ref: 'esperanto' },
-  // The source also carries the Vulgate's deuterocanonical continuations to Esther
-  // and Daniel. The reader's alignment spine is presently the 66-book KJV canon, so
-  // keep this edition to the corresponding chapters until the canon model expands.
-  { id: 'la', kind: 'ebible', ref: 'latVUC', chapterCeilings: { Esther: 10, Daniel: 12 } },
+  // The canon model has expanded, so this edition is no longer truncated: the
+  // Vulgate's deuterocanonical books and its continuations to Esther and Daniel come
+  // through as themselves. `npm run fetch` is what brings them in — the committed
+  // `data-src/la.md` predates this and still holds the 66-book cut.
+  { id: 'la', kind: 'ebible', ref: 'latVUC' },
 ]
-
-/** Genesis to Malachi, then Matthew to Revelation. */
-export const OT_COUNT = 39
 
 export const byId = (id) => SOURCES.find((s) => s.id === id)
 

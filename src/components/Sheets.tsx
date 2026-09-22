@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react'
-import type { IndexItem } from '../lib/types'
-import { bookName } from '../lib/types'
+import { Fragment, useEffect, useMemo, useState } from 'react'
+import type { IndexItem, Section } from '../lib/types'
+import { bookName, inSection } from '../lib/types'
 import { BY_ID, VERSIONS, type Lang } from '../lib/versions'
 import { VerseText, type HL } from '../lib/format'
 import { search, parseReference, bookLookup, minQueryLen, type Hit, type SearchResult } from '../lib/search'
@@ -12,8 +12,9 @@ import { Icon } from './Icon'
 import { Sheet } from './Sheet'
 
 /* ------------------------------- Search ------------------------------- */
-/** Which books a query runs over. `book` is whatever passage is open behind the sheet. */
-type Scope = 'all' | 'ot' | 'nt' | 'book'
+/** Which books a query runs over. `book` is whatever passage is open behind the sheet.
+ *  The deuterocanon chip is drawn only when some edition actually carries it. */
+type Scope = 'all' | Section | 'book'
 
 export function SearchSheet({
   open,
@@ -50,10 +51,9 @@ export function SearchSheet({
   // The books this scope covers, open book first.
   const slugs = useMemo(() => {
     const pool =
-      scope === 'ot' ? index.slice(0, 39)
-      : scope === 'nt' ? index.slice(39)
-      : scope === 'book' ? index.filter((b) => b.slug === currentSlug)
-      : index
+      scope === 'book' ? index.filter((b) => b.slug === currentSlug)
+      : scope === 'all' ? index
+      : inSection(index, scope)
     const here = pool.filter((b) => b.slug === currentSlug).map((b) => b.slug)
     return [...here, ...pool.filter((b) => b.slug !== currentSlug).map((b) => b.slug)]
   }, [index, scope, currentSlug])
@@ -158,6 +158,9 @@ export function SearchSheet({
   const chips: [Scope, string][] = [
     ['all', t('plan_scope_bible')],
     ['ot', t('old_testament')],
+    // Only where there is one to search. Most editions here carry no deuterocanon,
+    // and a chip that can only ever return nothing is worse than no chip.
+    ...(inSection(index, 'deutero').length ? ([['deutero', t('deuterocanon')]] as [Scope, string][]) : []),
     ['nt', t('new_testament')],
     ['book', bySlug.get(currentSlug) ?? t('this_book')],
   ]
@@ -367,10 +370,21 @@ export function Navigator({
             )
           ) : (
             <>
-              <h3 className="bgtitle">{t('old_testament')}</h3>
-              {grid(index.slice(0, 39))}
-              <h3 className="bgtitle">{t('new_testament')}</h3>
-              {grid(index.slice(39))}
+              {/* Grouped by the section each book declares, so a canon with a
+                  deuterocanon in it gets a third heading rather than having its
+                  extra books land silently in one of the two halves. */}
+              {(['ot', 'deutero', 'nt'] as Section[]).map((sec) => {
+                const books = inSection(index, sec)
+                if (!books.length) return null
+                return (
+                  <Fragment key={sec}>
+                    <h3 className="bgtitle">
+                      {t(sec === 'ot' ? 'old_testament' : sec === 'nt' ? 'new_testament' : 'deuterocanon')}
+                    </h3>
+                    {grid(books)}
+                  </Fragment>
+                )
+              })}
             </>
           )}
         </>

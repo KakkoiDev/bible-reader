@@ -199,6 +199,29 @@ Recorded here so the document and the code do not tell different stories.
   the window are reached with a counter and two paddles beside the chapter title.
   The phone's tab strip, which does scroll, carries the same counter underneath.
 
+- **A third section in the canon, and a picker that expects one.** The document draws
+  the book picker as two halves. Books declare their section now, so an edition that
+  carries a deuterocanon gets a third group between the Testaments, a fourth search
+  scope, and a reading-plan preset that asks for sections rather than a Genesis-to-
+  Revelation range that would have swallowed it. The two-halves drawing is the common
+  case, not the model.
+- **Adding a version is a sheet, and its middle step is the point.** The document has
+  no atom for importing anything. The sheet is three steps — choose, *read back what
+  was found*, name it — and the middle one is not a progress indicator: it lists the
+  books, chapters and verses actually parsed and names anything it could not place,
+  because a reader adding a text they downloaded has no other way to tell a complete
+  file from a truncated one. The attribution is a required paragraph rather than an
+  optional field, since every shipped edition carries one and the licences sheet lists
+  them all. An imported edition is badged `on this device` in the same slot the KJV
+  uses for `concordance`: it is a fact about where the text lives, which is why it
+  works offline and why clearing site data removes it.
+- **The focus ring needs room, and the room is the scroller's padding.** The document
+  specifies a 2px ring at 3px offset and says nothing about where it is drawn. Being
+  outside the control, it is clipped by any ancestor that scrolls — so `.sheet-body`
+  carries 6px of top padding for the 5px the ring needs, and a focused control is
+  lifted above a sticky section heading that would otherwise paint over it. A control
+  placed first in a sheet is the common case, not an edge one.
+
 ## Data this design assumes
 
 | Field | Status |

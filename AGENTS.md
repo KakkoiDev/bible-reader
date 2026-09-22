@@ -26,8 +26,9 @@ empty, which reads exactly like a stale script.
 the previous bundle, so any run against a rebuilt tree measures the old code until the
 server is restarted. Restart it after every build.
 
-Green as of 2026-09-21: `verify.mjs`, `verify12`, `verify13`, `verify14`, `verify15`,
-`verify16`, `verify17`, `verify18`, `verify19` (the last three need no browser), and
+Green as of 2026-09-22: `verify.mjs`, `verify12`, `verify13`, `verify14`, `verify15`,
+`verify16`, `verify17`, `verify18`, `verify19`, `verify20`, `verify21` (`verify15`,
+`verify18` and `verify19` need no browser), plus `check-data.mjs` and
 `check-references.mjs`. `verify2` through `verify11` fail on UI the scripts still expect
 and the app no longer renders; the failures reproduce identically on older commits, so
 treat them as stale scripts, not as regressions, and re-check against the base commit
@@ -45,6 +46,32 @@ expects. Every script here accepts `CHROMIUM=<path to chrome>`; the ones that do
 (`verify*.mjs`) need the expected revision present under `PLAYWRIGHT_BROWSERS_PATH`.
 Do not run `npx playwright install` in a sandbox — point `CHROMIUM` at the binary, or
 symlink the revision directory.
+
+## The canon, the registry, and where text comes from
+
+The canon is **not** 66 books in two halves, and nothing may assume it is. Each book
+declares its `section` (`ot` / `deutero` / `nt`) in `data/index.json`, and each lists
+in `has` the editions actually built for it — `coversBook` reads that rather than
+comparing a book's position against 39. `data/canon.json` is the wider list: every
+book `scripts/sources.mjs` knows about, in order, with its section and OSIS ids, so a
+book arriving from a reader's import has a place to go. Both files come from
+`npm run data`; `canon.json` is precached, because imported text is exactly the text
+that is always available offline.
+
+Edition ids are open. `Lang` is `BuiltinLang | (string & {})` and `BY_ID` is a live
+registry seeded before the first render in `main.tsx`; `isLang` is a runtime lookup
+and deliberately **not** a type predicate, since one would narrow its failing branch
+to `never`. Imported ids carry a reserved `x-` prefix because an id is a URL segment,
+an annotation key and a data directory at once. `loadBook` in `src/lib/canon.ts` is
+the single switch between the network and IndexedDB; add a new read of verse text
+there, never with a fresh `fetch`.
+
+No deuterocanonical text ships. The sources that have it are unreachable from a
+sandbox — `ebible.org` and `api.getbible.net` are refused by the network policy — and
+`data-src/*.md` is the 66-book cut. The model, the codes and the Vulgate's un-truncated
+fetch are all in place, so `npm run fetch && npm run data` on a machine with network
+brings the Latin apocrypha through with no code change. `FUTURE.md` §13 is the
+standing note; do not "fix" the absence by borrowing another translation's apocrypha.
 
 ## Sharp edges
 

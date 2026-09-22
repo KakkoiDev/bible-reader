@@ -3,10 +3,9 @@
 // Indexing is per edition and only for the editions a reader has visible: with many
 // editions an index over everything would be ~340k verse records, so the cost is
 // kept proportional to what's actually on screen.
-import type { IndexItem, EditionBook } from './types'
+import { loadBook } from './canon'
+import type { IndexItem } from './types'
 import { BY_ID, type Lang } from './versions'
-
-const BASE = import.meta.env.BASE_URL
 
 export interface Entry {
   slug: string
@@ -69,10 +68,7 @@ function indexBook(lang: Lang, slug: string): Promise<Entry[]> {
   if (done) return Promise.resolve(done)
   const inFlight = building.get(key)
   if (inFlight) return inFlight
-  const p = fetch(`${BASE}data/${lang}/${slug}.json`)
-    .then((r) => (r.ok ? (r.json() as Promise<EditionBook>) : ({ chapters: [] } as EditionBook)))
-    .catch(() => ({ chapters: [] }) as EditionBook)
-    .then((book) => {
+  const p = loadBook(lang, slug).then((book) => {
       const out: Entry[] = []
       for (const c of book.chapters)
         for (const vv of c.verses) {
