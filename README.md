@@ -127,8 +127,11 @@ Every attribution is reproduced verbatim in the app under **Texts & licences**.
   Highlights saved before this show as they always did. Notes and reading plans export as separate files, since one is what you
   wrote and the other is a schedule. Import is one code path either way: the payload
   names its own kind, so the button you pick does not decide what is read.
-- **Audio** reads a chapter aloud with word-level highlighting (EN/FR), optionally
-  stopping at the chapter end rather than rolling into the next. It holds a screen
+- **Audio** reads aloud with word-level highlighting (EN/FR), and the control you
+  press decides how much: the play button in a chapter's column head reads **the
+  chapter**, from its first verse, and *Listen* in a verse's action bar reads **that
+  verse** and stops. "Stop at chapter end" governs only the first of those — a single
+  verse is a single verse either way. `scripts/verify22.mjs` is the gate. It holds a screen
   wake lock while playing so an idle phone doesn't cut it off, and if you leave the
   app it offers to pick up from the verse it reached.
 - **Links:** a verse link opens that verse; if it names an edition the recipient has
@@ -697,6 +700,25 @@ end-to-end test, because no shipped edition has a deuterocanon to exercise it wi
 npx vite preview --port 4187 --strictPort
 node scripts/verify21.mjs   # the reading planner, through the form
 ```
+
+```bash
+npx vite preview --port 4188 --strictPort
+node scripts/verify22.mjs   # how much gets read aloud, and from where
+```
+
+`verify22.mjs` stubs `speechSynthesis` the way `verify14` does and reads back the
+list of utterances handed over, because how much was read is invisible to a
+screenshot and inaudible to a headless browser. The list's length is how much, and
+its first entry is from where. It covers both controls: the column head's button
+reads all 36 verses of John 3 from verse 1, and *Listen* in a verse bar reads exactly
+one utterance and does not run into John 4 even with "Stop at chapter end" off.
+
+One check in it clicks through the DOM rather than through Playwright, and the
+comment says why: `locator.click()` scrolls its target into view first, and the
+column head sits at the top of the chapter — so clicking it the ordinary way scrolls
+the page back and undoes the scrolled-past-the-start condition being tested. Against
+the old code, clicked through the DOM it reads 11 utterances from verse 26; clicked
+through Playwright it reads all 36 and the check proves nothing.
 
 `verify21.mjs` is the third planner suite and the only one that presses the buttons:
 `verify15` proves the arithmetic without a browser and `verify16` seeds plans through

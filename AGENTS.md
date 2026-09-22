@@ -26,8 +26,7 @@ empty, which reads exactly like a stale script.
 the previous bundle, so any run against a rebuilt tree measures the old code until the
 server is restarted. Restart it after every build.
 
-Green as of 2026-09-22: `verify.mjs`, `verify12`, `verify13`, `verify14`, `verify15`,
-`verify16`, `verify17`, `verify18`, `verify19`, `verify20`, `verify21` (`verify15`,
+Green as of 2026-09-22: `verify.mjs`, `verify12` through `verify22` (`verify15`,
 `verify18` and `verify19` need no browser), plus `check-data.mjs` and
 `check-references.mjs`. `verify2` through `verify11` fail on UI the scripts still expect
 and the app no longer renders; the failures reproduce identically on older commits, so
@@ -84,6 +83,12 @@ reported, never failed. Adding a book to `DEUTERO_BOOKS` is enough; adding a
 continuation to a book the KJV *does* have means adding it to `CONTINUED` too.
 
 ## Sharp edges
+
+`locator.click()` scrolls its target into view first. Any check whose premise is
+*where the page is scrolled to* is undone by that, silently and while still passing —
+`verify22`'s scrolled-past-the-start case read all 36 verses against the code it was
+written to catch until it was switched to `page.evaluate(() => el.click())`. Before
+trusting a green scroll-dependent check, run it against the commit it should fail on.
 
 A touch gesture only reaches the pointer handlers if CSS gave it up first. Anything
 dragged by finger needs `touch-action: none` on every element the finger can start on,
