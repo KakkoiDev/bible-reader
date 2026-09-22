@@ -46,16 +46,26 @@ const GOSPELS = ['matthew', 'mark', 'luke', 'john']
 
 type Preset = 'bible' | 'ot' | 'nt' | 'gospels' | 'book'
 
+// Sections, not a Genesis-to-Revelation range: a canon with a deuterocanon between
+// the Testaments would be pulled into "the whole Bible" by a range without anyone
+// choosing it, and a reader who wants it can pick the books.
 const scopeOf = (preset: Preset, slug: string): Scope =>
-  preset === 'bible' ? { kind: 'range', from: 'genesis', to: 'revelation' }
-  : preset === 'ot' ? { kind: 'range', from: 'genesis', to: 'malachi' }
-  : preset === 'nt' ? { kind: 'range', from: 'matthew', to: 'revelation' }
+  preset === 'bible' ? { kind: 'sections', sections: ['ot', 'nt'] }
+  : preset === 'ot' ? { kind: 'sections', sections: ['ot'] }
+  : preset === 'nt' ? { kind: 'sections', sections: ['nt'] }
   : preset === 'gospels' ? { kind: 'books', slugs: GOSPELS }
   : { kind: 'books', slugs: [slug] }
 
 /** What a block covers, in words, for the row under its name. */
 function scopeLabel(scope: Scope, index: IndexItem[], ui: Lang, t: ReturnType<typeof translator>): string {
   const named = (slug: string) => bookName(index.find((b) => b.slug === slug), ui)
+  if (scope.kind === 'sections') {
+    const s = scope.sections
+    if (s.includes('ot') && s.includes('nt')) return t('plan_scope_bible')
+    if (s.includes('ot')) return t('old_testament')
+    if (s.includes('nt')) return t('new_testament')
+    return t('deuterocanon')
+  }
   if (scope.kind === 'chapters') return t('plan_chapters_n', { n: String(scope.refs.length) })
   if (scope.kind === 'books')
     return scope.slugs.length === 4 && GOSPELS.every((g) => scope.slugs.includes(g))

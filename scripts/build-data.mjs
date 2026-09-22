@@ -13,7 +13,7 @@
 import { readFileSync, writeFileSync, mkdirSync, rmSync, copyFileSync, existsSync, statSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { SOURCES, BOOK_ORDER, NATIVE_NAMES } from './sources.mjs'
+import { SOURCES, BOOK_ORDER, NATIVE_NAMES, OSIS_BOOKS, sectionOf } from './sources.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const SRC = resolve(__dirname, '../data-src')
@@ -89,7 +89,9 @@ for (const en of BOOK_ORDER) {
   const slug = slugOf(en)
   const present = editions.filter((e) => e.books.has(en) && e.books.get(en).chapters.size)
   if (!present.length) {
-    console.warn(`  ! ${en}: no edition has this book. Skipped.`)
+    // Not an error: most of the deuterocanon has no edition behind it here, and a
+    // reader's own import may supply one. It still belongs in `canon.json` below,
+    // which is how an imported book finds its place in the order.
     continue
   }
 
@@ -162,10 +164,41 @@ for (const en of BOOK_ORDER) {
     s.bytes += statSync(path).size
   }
 
-  index.push({ slug, chapters: verseCounts, spine, names })
+  // `section` and `has` are what replaced counting to 39.
+  //
+  // `section` is the book's own fact — Old Testament, deuterocanon, New Testament —
+  // so the reader can group the picker, scope a search and pick the original-language
+  // column without assuming a 66-book canon in a fixed order.
+  //
+  // `has` is the editions that actually carry this book, taken from the build rather
+  // than inferred from a coarse coverage rule. It is what stops the reader asking for
+  // `data/el/genesis.json`, and unlike the rule it stays right for an edition whose
+  // canon is neither half nor whole — a Vulgate with the deuterocanon, say.
+  index.push({ slug, section: sectionOf(en), chapters: verseCounts, spine, names, has: present.map((e) => e.id) })
 }
 
 writeFileSync(resolve(OUT, 'index.json'), JSON.stringify(index))
+
+// ---- the canon, whether or not any edition here carries it ----
+//
+// `index.json` lists the books there is text for; this lists the books there *could*
+// be text for, in order, with each one's section. The reader needs it to place a book
+// that arrives from an imported edition: without it an imported Tobit has no position
+// among the others and no section to be grouped under, and would have to be appended
+// wherever it happened to be read. 85 entries, about 4 KB.
+// `osis` carries every OSIS id that names this book, so the importer can resolve a
+// reader's file without a second copy of the table living in the app.
+const osisIds = new Map()
+for (const [id, en] of Object.entries(OSIS_BOOKS)) {
+  if (!osisIds.has(en)) osisIds.set(en, [])
+  osisIds.get(en).push(id)
+}
+writeFileSync(
+  resolve(OUT, 'canon.json'),
+  JSON.stringify(
+    BOOK_ORDER.map((en) => ({ slug: slugOf(en), en, section: sectionOf(en), osis: osisIds.get(en) ?? [] })),
+  ),
+)
 
 // Paragraph boundaries for flow/reading mode (derived from WEB USFM, by reference).
 if (existsSync(resolve(SRC, 'paragraphs.json'))) copyFileSync(resolve(SRC, 'paragraphs.json'), resolve(OUT, 'paragraphs.json'))

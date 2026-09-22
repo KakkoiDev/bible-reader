@@ -21,7 +21,7 @@
 import { readFileSync, existsSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { SOURCES, BOOK_ORDER, OT_COUNT } from './sources.mjs'
+import { SOURCES, BOOK_ORDER, sectionOf } from './sources.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const SRC = resolve(__dirname, '../data-src')
@@ -194,8 +194,14 @@ for (const ed of editions) {
 // 口語訳 chapters shipped unnoticed. This pass iterates the spine instead.
 for (const ed of editions) {
   if (ed.id === 'en') continue
-  const scope = BOOK_ORDER.filter((_, i) =>
-    ed.coverage === 'all' || (ed.coverage === 'ot' ? i < OT_COUNT : i >= OT_COUNT))
+  // What this edition is expected to carry. The deuterocanon is never expected: no
+  // edition here is required to have it, and the ones that do are a bonus rather than
+  // a contract, so a Protestant source is not reported as missing eighteen books.
+  const scope = BOOK_ORDER.filter((b) => {
+    const sec = sectionOf(b)
+    if (sec === 'deutero') return false
+    return ed.coverage === 'all' || ed.coverage === sec
+  })
   for (const book of scope) {
     const chapters = ed.books.get(book)
     if (!chapters || chapters.size === 0) {

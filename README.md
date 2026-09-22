@@ -81,6 +81,20 @@ Every attribution is reproduced verbatim in the app under **Texts & licences**.
   button is marked, so a day is never mistaken for ordinary browsing.
 - **UI language** switches the chrome and displayed book names across all eleven
   languages, including right-to-left layout for Arabic and Hebrew.
+- **Add your own version.** Settings → Languages & versions → *Add a version…* reads
+  an OSIS file (`.xml`) on the device and stores it there; nothing is uploaded. Before
+  it saves, it reports what the file actually contained — books, chapters, verses, and
+  any book it could not place — because a reader adding a text they downloaded has no
+  other way to tell a complete one from one whose last books the exporter dropped. A
+  name and a source are required: every shipped edition carries an attribution and an
+  imported one should not be the only text in the app that cannot say what it is. It
+  then behaves as an edition everywhere — a column, a tab, a search scope, a plan
+  source — and is badged *on this device*, which is both why it works offline and why
+  clearing site data takes it away.
+- **The canon is not fixed at 66 books.** Each book declares its section, so an
+  edition carrying a deuterocanon gets a third group in the picker, a scope of its own
+  in search, and a place between the Testaments. No shipped edition has one yet — see
+  `FUTURE.md` §13 for why that is a data problem and what unblocks it.
 - **Search** matches text in the enabled editions, and resolves references in *any*
   edition's language — `John 3:16`, `Mateo 15:3`, `マタイ15:3`, `馬太福音15:3`,
   `إنجيل يوحنا 3:16`, `תהלים 23` all work. It says how many verses matched and how many
@@ -647,6 +661,38 @@ Joel is four chapters, and Ecclesiastes twelve. Reverting the Song of Solomon fi
 the last of those.
 
 ```bash
+npx vite preview --port 4186 --strictPort
+node scripts/verify20.mjs   # adding a version, and the canon that makes room for it
+```
+
+`verify20.mjs` writes its own OSIS fixture rather than committing one, in the
+*milestone* verse form — `<verse sID=.../>text<verse eID=.../>` — which is what the
+SWORD exporter emits and the harder of the two forms to read. The fixture carries a
+Tobit, a Judith and a Psalm 151, a book the reader already has, notes and section
+headings to be stripped, and one book id the app has no place for, so "what the file
+contains" is something the suite checks rather than takes on trust. It then asserts
+the whole path: the file is read, the counts are reported before anything is saved,
+the edition lands in IndexedDB under a reserved `x-` id and in the reader's columns,
+its text renders, its deuterocanonical books appear under their own heading between
+the Testaments and in a search scoped to them, and removing it leaves the app on its
+feet with no imported id left in the preferences. The canon model has no other
+end-to-end test, because no shipped edition has a deuterocanon to exercise it with.
+
+```bash
+npx vite preview --port 4187 --strictPort
+node scripts/verify21.mjs   # the reading planner, through the form
+```
+
+`verify21.mjs` is the third planner suite and the only one that presses the buttons:
+`verify15` proves the arithmetic without a browser and `verify16` seeds plans through
+`localStorage`, so neither would catch a planner that computes the right day and
+cannot be used. It builds a plan through the form, reads the day, ticks a chapter off,
+comes back for the count, reorders and deletes. The two cases it exists for are the
+ones that were wrong — a plan reading under a chapter a day delivering nothing on the
+day it was created and previewing `1.0 / today` for it, and a later empty day being a
+full stop with no date and no way forward.
+
+```bash
 npx vite preview --port 4185 --strictPort
 node scripts/verify17.mjs   # the sheet's drag-to-dismiss, driven by a real finger
 ```
@@ -696,8 +742,11 @@ from the rendered font metrics — a hidden span of known length laid out in the
 exact font gives an average advance, and the column width is divided by it — so the
 comfortable 45-75 band can be checked rather than assumed. Every width from 480 up
 should land inside it; 320 and 390 are device-bound and report 33 and 41.
-`measure-a11y.mjs` sweeps contrast, effective hit areas, the first twelve tab stops
-and each sheet's dialog semantics. `check-references.mjs` replays the resolver over all
+`measure-a11y.mjs` sweeps contrast, effective hit areas, the first twelve tab stops,
+each sheet's dialog semantics, and how much room a focused control has before the
+nearest clipping ancestor — the focus ring is drawn *outside* the control, so one at
+the edge of a scroller can have it cut, which is what `.sheet-body`'s top padding
+exists to prevent. `check-references.mjs` replays the resolver over all
 831 official book names in eleven languages plus the short forms a reader types; it
 reads the shipped `ALIAS` table out of `src/lib/search.ts` rather than keeping a copy,
 so adding a short form there is tested here without touching the script. It is the one

@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { COLORS, parseTags, type HColor } from '../lib/annotations'
-import { BY_ID, VERSIONS, type Lang } from '../lib/versions'
+import { BY_ID, VERSIONS, allVersions, type Lang } from '../lib/versions'
+import { isImported } from '../lib/imported'
 import type { T } from '../lib/i18n'
 import { Icon } from './Icon'
 import { Sheet } from './Sheet'
@@ -127,6 +128,10 @@ export interface SettingsProps {
   onExportAnki: () => void
   onPrint: () => void
   onImport: (file: File) => void
+  /** Open the add-a-version sheet. */
+  onAddVersion: () => void
+  /** Forget an imported edition, text and all. */
+  onRemoveImported: (id: Lang) => void
   onClose: () => void
 }
 
@@ -183,6 +188,8 @@ export function Settings({
   onExportAnki,
   onPrint,
   onImport,
+  onAddVersion,
+  onRemoveImported,
   onClose,
 }: SettingsProps) {
   if (!open) return null
@@ -195,7 +202,9 @@ export function Settings({
     onColumns(c)
   }
   const defaults = VERSIONS.filter((v) => v.defaultOn).map((v) => v.id)
-  const hidden = VERSIONS.filter((v) => !columns.includes(v.id))
+  // `allVersions()`, not `VERSIONS`: an edition the reader imported is as available
+  // as one that ships, and listing only the built-ins would hide their own text.
+  const hidden = allVersions().filter((v) => !columns.includes(v.id))
 
   const versionLabel = (id: Lang) => {
     const m = BY_ID[id]
@@ -209,6 +218,11 @@ export function Settings({
         {/* The KJV is the only edition carrying a concordance, so say so where a
             reader picks editions rather than leaving them to discover it. */}
         {id === 'en' && <small className="cbadge">{t('with_concordance')}</small>}
+        {/* Where this edition's text lives. The shipped ones are precached or fetched
+            on demand; an imported one is in this browser's database and nowhere else,
+            which is both why it always works offline and why clearing site data takes
+            it away. "Works offline" is two mechanisms now, so the list says which. */}
+        {isImported(id) && <small className="cbadge">{t('on_this_device')}</small>}
         {note && <small className="cnote">{note}</small>}
         {ttsOn && noVoice.has(id) && <small className="cnote">{t('no_voice')}</small>}
       </span>
@@ -343,9 +357,21 @@ export function Settings({
           {hidden.map((v) => (
             <div className="colrow off" key={v.id}>
               {versionLabel(v.id)}
-              <button className="mini" onClick={() => onColumns([...columns, v.id])}>{t('show')}</button>
+              <div className="colctl">
+                {isImported(v.id) && (
+                  <button className="mini" onClick={() => onRemoveImported(v.id)} aria-label={t('delete')}>
+                    <Icon name="delete" size={15} />
+                  </button>
+                )}
+                <button className="mini" onClick={() => onColumns([...columns, v.id])}>{t('show')}</button>
+              </div>
             </div>
           ))}
+          {/* Dashed, at the foot of the list: an edition you add sits with the ones
+              that ship, and this is where a reader is already choosing between them. */}
+          <button className="pnew addversion" onClick={onAddVersion}>
+            <Icon name="add" size={18} /> {t('import_add')}
+          </button>
         </div>
 
         <label className="srow">
@@ -383,7 +409,7 @@ export function LicencesSheet({
     <Sheet variant="licences" onClose={onClose} closeLabel={t('close')} title={t('licences')}>
         <p className="empty">{t('licences_intro')}</p>
         <ul className="liclist">
-          {VERSIONS.map((v) => (
+          {allVersions().map((v) => (
             <li key={v.id}>
               <span className="licname">
                 <bdi lang={v.htmlLang} dir={v.dir}>{v.label}</bdi> <small>{v.edition}</small>

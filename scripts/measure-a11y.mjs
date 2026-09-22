@@ -137,6 +137,49 @@ for (const [name, sel] of sheets) {
   await page.waitForTimeout(350);
 }
 
+console.log('\n--- FOCUS RING ROOM ---');
+// The ring is drawn outside the control, so a control at the edge of a scroller can
+// have it clipped by `overflow`. This reports, per focused control, how much room it
+// has before the nearest clipping ancestor against how much the ring needs.
+const ringProbe = async (label, prep) => {
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForSelector('.verse');
+  await prep();
+  const r = await page.evaluate(() => {
+    const el = document.activeElement;
+    if (!el || el === document.body) return null;
+    const cs = getComputedStyle(el);
+    const need = (parseFloat(cs.outlineOffset) || 0) + (parseFloat(cs.outlineWidth) || 0);
+    const b = el.getBoundingClientRect();
+    let clip = null;
+    for (let p = el.parentElement; p; p = p.parentElement) {
+      const st = getComputedStyle(p);
+      if (/hidden|auto|scroll|clip/.test(st.overflow + st.overflowX + st.overflowY)) { clip = p; break }
+    }
+    const c = clip ? clip.getBoundingClientRect() : null;
+    return {
+      need, clipper: clip ? String(clip.className).split(' ')[0] : '(viewport)',
+      room: c ? { top: +(b.top - c.top).toFixed(1), left: +(b.left - c.left).toFixed(1),
+                  right: +(c.right - b.right).toFixed(1), bottom: +(c.bottom - b.bottom).toFixed(1) } : null,
+    };
+  });
+  if (!r) return console.log(`  ${label.padEnd(24)} (nothing focused)`);
+  const cut = r.room ? Object.entries(r.room).filter(([, v]) => v < r.need) : [];
+  console.log(`  ${label.padEnd(24)} needs ${r.need}px in .${r.clipper}  ` +
+    (cut.length ? 'CUT: ' + cut.map(([k, v]) => `${k}=${v}`).join(' ') : 'ok'));
+};
+await ringProbe('search field', async () => {
+  await page.click('button.icon[title="Search"]'); await page.waitForTimeout(500);
+});
+await ringProbe('book filter', async () => {
+  await page.click('.navbtn'); await page.waitForTimeout(500);
+  await page.locator('.bookfilter').focus(); await page.waitForTimeout(200);
+});
+await ringProbe('settings: language', async () => {
+  await page.click('button.icon[title="Settings"]'); await page.waitForTimeout(500);
+  await page.evaluate(() => document.querySelector('.sheet-body .sel')?.focus());
+});
+
 console.log('\n--- HEADINGS ---');
 // Most of the app's headings are inside sheets, so count them with one open as well
 // as on the bare reader.

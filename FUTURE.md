@@ -313,34 +313,75 @@ For the 文語訳 the reading is already known from the furigana chunks, so its 
 speak the kana rather than depending on a voice guessing at classical kanji, which is
 the same trick `speechText` already uses for chapter playback.
 
-## 12. Importing a version — *designed, not built*
+## 12. Importing a version — *shipped*
 
-Asked for in the 2026 UI/UX review and deliberately left out of that pass: the UI is
-small and the registry rewrite underneath it is not, and mixing the two would have put
-a schema change inside a design change.
+Settings → Languages & versions → **Add a version…** reads an OSIS file, stores it on
+the device and registers it as an edition alongside the fourteen that ship. It reads
+as one of them everywhere afterwards: a column, a tab in the ring, a scope in search,
+a book in the picker, a source for a reading plan.
 
-**The UI.** A dashed *Add a version…* row at the foot of **Available** in the editions
-manager, then a sheet that reads the file, reports what it found (books, chapters,
-verses) and requires an attribution line before saving.
+The four blockers named when this was deferred are what the work actually was.
 
-**The blocker is the registry, not the parser.**
+1. **The registry is open.** `Lang` was a closed union of fourteen literals; it is now
+   `BuiltinLang | (string & {})`, which keeps the built-in ids in autocompletion while
+   admitting any string. `BY_ID` and `VERSION_IDS` are a live registry that `main.tsx`
+   seeds from localStorage *before the first render* — the metadata is in localStorage
+   and not beside the text precisely so that it can be read synchronously, because
+   `BY_ID[lang].label` is on the path of nearly every component. `isLang` is a runtime
+   lookup, and is no longer a type predicate: with `Lang` admitting any string a
+   predicate would narrow the failing branch to `never`.
+2. **Ids carry a reserved `x-` prefix.** An id is a URL segment, a localStorage key for
+   annotations and a data directory name at once, so a built-in added later can never
+   take an id a reader has already used and silently bind their highlights to a
+   different text. `isImported` is the one place that decides where a book comes from.
+3. **One switch for two sources.** Every read of verse text — the reader, the
+   original-language lookup, the day's passage, the search index — goes through
+   `loadBook` in `src/lib/canon.ts`, which fetches for a shipped edition and reads
+   IndexedDB for an imported one. Text is in IndexedDB because an edition is 4–8 MB.
+4. **Offline is two mechanisms, and the list says which.** An imported edition is
+   badged *on this device*: it is always available offline and it goes when site data
+   is cleared, neither of which is true of the precached ones.
 
-1. `src/lib/versions.ts` — `Lang` is a closed union of fourteen string literals, and
-   `BY_ID`, `VERSION_IDS` and `isLang` all derive from the static `VERSIONS` array. An
-   imported id cannot exist in that type. The registry has to become built-ins merged
-   with what is on the device, and `isLang` a runtime check.
-2. **Ids are load-bearing in three places at once** — URL segments, annotation keys in
-   `localStorage`, and data directory names (the file's own header comment says so).
-   Imported ids need a reserved prefix (`x-`) so a future built-in can never collide,
-   or a shared link and a saved highlight will bind to different text.
-3. **Two sources for verse text.** Loading is `fetch(data/<id>/<slug>.json)` in both
-   the reader and `indexBook` in `src/lib/search.ts`. Both need one switch: shipped
-   from the network, imported from IndexedDB. A full edition is 4-8MB, past what
-   `localStorage` holds.
-4. **Offline gains a second mechanism.** The service worker precaches `data/{en,ja,fr}`;
-   imported text is never in that cache. It is offline anyway via IndexedDB, but "works
-   offline" becomes two systems and the editions list should say which each uses.
+The parser takes both OSIS verse forms — container and the SWORD exporter's
+milestones — strips notes and section headings, and reports what it could not place
+rather than dropping it quietly. `scripts/verify20.mjs` is the gate.
 
-**Cheapest first version:** accept only the app's own per-book JSON, the shape
-`scripts/build-data.mjs` already emits. That makes release one about the registry
-change, which is the part that is actually hard, and defers USFM/OSIS readers.
+Still open:
+
+- **USFM and OSIS zip modules.** Only bare OSIS XML is accepted. A SWORD `.zip` module
+  would need unzipping in the browser and reading the module's own conf.
+- **No furigana or supplied-word markup on imported text.** It is stored as read
+  (`markup: 'plain'`); the two conventions in this app are properties of editions it
+  ships, not of OSIS.
+- **The concordance stays KJV-only**, which is unchanged: the tags are keyed to the
+  KJV's own word choices.
+
+## 13. The deuterocanon — *the model is open, the text is not shipped*
+
+The canon is no longer 66 books in two halves. `scripts/sources.mjs` carries the
+deuterocanon with its USFM and OSIS codes, every book declares its `section`, and
+`data/canon.json` lists the whole canon whether or not an edition here has text for
+it. `coversBook` reads the editions off the book instead of counting to 39, the picker
+groups by section, search has a Deuterocanon scope, and the plan presets ask for
+sections rather than a Genesis-to-Revelation range that would have swallowed them.
+
+An imported edition proves the whole path end to end, which is what `verify20.mjs`
+does with a Tobit, a Judith and a Psalm 151.
+
+**No deuterocanonical text ships yet, and this is a data problem, not a code one.**
+
+- The Vulgate is the one shipped edition whose source carries it. It used to be
+  truncated at fetch time by a `chapterCeilings` entry — Esther 10, Daniel 12 — and
+  that entry is gone, so `npm run fetch && npm run data` brings Tobit, Judith, Wisdom,
+  Sirach, Baruch, the Maccabees and the continuations through with no further change.
+  The committed `data-src/la.md` predates that and still holds the 66-book cut.
+- Every other shipped edition is a Protestant or Masoretic text that has no
+  deuterocanon to carry. Putting one translation's apocrypha under another edition's
+  name would be a claim about a text that is not true, so the honest routes are a new
+  source (`spavbl`, `engkjvcpb` and the Brenton Septuagint on eBible all carry one) or
+  the reader's own import.
+
+Next step, for whoever has network access to eBible: re-run `npm run fetch` and
+`npm run data`, check `check-data.mjs` still passes, and commit the enlarged
+`data-src/la.md`.
+

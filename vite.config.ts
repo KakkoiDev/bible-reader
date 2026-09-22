@@ -39,6 +39,12 @@ export default defineConfig({
         globPatterns: [
           '**/*.{js,css,html,svg,png,woff2}',
           'data/index.json',
+          // The canon, not just the books there is text for. An imported edition's
+          // deuterocanonical books take their place and their section from this, and
+          // imported text is exactly the text that is always available offline — so
+          // leaving it out would mean a reader offline could open Tobit's text but
+          // not find Tobit in the picker.
+          'data/canon.json',
           'data/paragraphs.json',
           'data/{en,ja,fr}/*.json',
         ],
