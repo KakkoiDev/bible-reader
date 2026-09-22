@@ -381,7 +381,25 @@ does with a Tobit, a Judith and a Psalm 151.
   source (`spavbl`, `engkjvcpb` and the Brenton Septuagint on eBible all carry one) or
   the reader's own import.
 
-Next step, for whoever has network access to eBible: re-run `npm run fetch` and
-`npm run data`, check `check-data.mjs` still passes, and commit the enlarged
-`data-src/la.md`.
+**The pipeline is proved, not assumed.** Building a `latVUC_usfm.zip` carrying Tobit,
+Judith, 1 Maccabees and Esther 11/16 and running it through
+`npm run fetch -- la --from-dir=DIR` gives:
+
+```
+  ✓ la: 5 books (OT 1 / deutero 3 / NT 1), 10 verses → data-src/la.md
+  4 deuterocanonical book(s) and continuation(s), carried by editions whose canon has them:
+      la Esther 11, 16 (continuation past the KJV's 10)
+      la Tobit (2 chapters)
+```
+
+and the reader then shows Tobit under its own heading with the KJV column reading
+*This book is not part of this edition.* Two things had to be fixed to get there that
+a code reading had missed: `check-data` failed the build on any book or chapter the
+KJV spine lacks, which is every deuterocanonical one; and choosing a book from a
+filtered picker left the filter live, so the chapter grid never appeared.
+
+Next step, for whoever has network access to eBible: `npm run fetch -- la`, then
+`npm run build`, then commit the enlarged `data-src/la.md`. Without network, download
+`https://ebible.org/Scriptures/latVUC_usfm.zip` by other means and pass
+`--from-dir=` the folder holding it.
 

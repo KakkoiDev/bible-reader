@@ -5,31 +5,60 @@
 //   ### Chapter 1
 //   **1** In the beginning…
 //
-// Run: npm run fetch          (all remote editions)
-//      npm run fetch -- ar el (just these ids)
+// Run: npm run fetch                       (all remote editions)
+//      npm run fetch -- ar el              (just these ids)
+//      npm run fetch -- la --from-dir=DIR  (read DIR instead of the network)
+//
+// `--from-dir` exists because the upstreams are not reachable from every machine
+// this is built on: a sandbox or a locked-down CI answers 403 for ebible.org and
+// api.getbible.net, and the fetch is then a dead end with no way to hand it the file
+// by other means. Put `<ref>_usfm.zip` (eBible) or `<ref>.json` (getbible) in the
+// directory — the same names the URLs end in — and each is used in place of its
+// download. Anything not found there still goes to the network, so a directory
+// holding one edition is enough to update just that one.
 //
 // Local editions (kjv/bungo/kjf) are hand-curated and never overwritten.
-import { writeFileSync, existsSync, mkdirSync } from 'node:fs'
-import { dirname, resolve } from 'node:path'
+import { writeFileSync, readFileSync, existsSync, mkdirSync } from 'node:fs'
+import { dirname, resolve, isAbsolute } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { SOURCES, USFM_BOOKS, BOOK_ORDER, bookByNumber } from './sources.mjs'
+import { SOURCES, USFM_BOOKS, BOOK_ORDER, bookByNumber, sectionOf } from './sources.mjs'
 import { parseUsfm, bookCodeFromFilename } from './usfm.mjs'
 import { unzip } from './unzip.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const SRC = resolve(__dirname, '../data-src')
 
-const only = process.argv.slice(2).filter((a) => !a.startsWith('-'))
+const args = process.argv.slice(2)
+const only = args.filter((a) => !a.startsWith('-'))
+const fromDirArg = args.find((a) => a.startsWith('--from-dir='))?.slice('--from-dir='.length)
+const FROM_DIR = fromDirArg ? (isAbsolute(fromDirArg) ? fromDirArg : resolve(process.cwd(), fromDirArg)) : null
+if (FROM_DIR && !existsSync(FROM_DIR)) {
+  console.error(`--from-dir: no such directory: ${FROM_DIR}`)
+  process.exit(1)
+}
 const targets = SOURCES.filter((s) => s.kind !== 'local' && (!only.length || only.includes(s.id)))
 if (!targets.length) {
   console.error(only.length ? `No remote edition matches: ${only.join(', ')}` : 'Nothing to fetch.')
   process.exit(1)
 }
 
-async function get(url, label) {
+/** The bytes for one edition: from `--from-dir` if it holds them, else the network.
+ *  `file` is the basename the URL ends in, so a directory of downloads needs no
+ *  renaming — save the link and point at the folder. */
+async function get(url, label, file) {
+  const local = FROM_DIR && resolve(FROM_DIR, file)
+  if (local && existsSync(local)) {
+    const buf = readFileSync(local)
+    console.log(`  ⇢ ${label} … ${(buf.length / 1e6).toFixed(1)} MB from ${file}`)
+    return buf
+  }
   process.stdout.write(`  ↓ ${label} … `)
   const res = await fetch(url, { headers: { 'user-agent': 'bible-reader/0.1 (+build script)' } })
-  if (!res.ok) throw new Error(`${url} → HTTP ${res.status}`)
+  if (!res.ok) {
+    // 403 from a proxy is the common case and says nothing useful on its own.
+    const hint = FROM_DIR ? '' : ` — unreachable from here? put ${file} in a directory and pass --from-dir=DIR`
+    throw new Error(`${url} → HTTP ${res.status}${hint}`)
+  }
   const buf = Buffer.from(await res.arrayBuffer())
   console.log(`${(buf.length / 1e6).toFixed(1)} MB`)
   return buf
@@ -37,7 +66,7 @@ async function get(url, label) {
 
 /** eBible USFM zip → { books: Map<englishName, {name, chapters}>, about } */
 async function fromEbible(src) {
-  const buf = await get(`https://ebible.org/Scriptures/${src.ref}_usfm.zip`, `${src.id} (eBible ${src.ref})`)
+  const buf = await get(`https://ebible.org/Scriptures/${src.ref}_usfm.zip`, `${src.id} (eBible ${src.ref})`, `${src.ref}_usfm.zip`)
   const files = unzip(buf)
   const books = new Map()
   for (const [path, contents] of files) {
@@ -69,7 +98,7 @@ const decodeEntities = (s) =>
 
 /** getbible.net whole-Bible JSON → the same shape. */
 async function fromGetbible(src) {
-  const buf = await get(`https://api.getbible.net/v2/${src.ref}.json`, `${src.id} (getbible ${src.ref})`)
+  const buf = await get(`https://api.getbible.net/v2/${src.ref}.json`, `${src.id} (getbible ${src.ref})`, `${src.ref}.json`)
   const data = JSON.parse(buf.toString('utf8'))
   const books = new Map()
   for (const b of data.books || []) {
@@ -120,9 +149,13 @@ for (const src of targets) {
     writeFileSync(resolve(SRC, `${src.id}.md`), md)
     let verses = 0
     for (const b of books.values()) for (const c of b.chapters.values()) verses += c.size
-    const ot = [...books.keys()].filter((n) => BOOK_ORDER.indexOf(n) < 39).length
-    const nt = books.size - ot
-    console.log(`  ✓ ${src.id}: ${books.size} books (OT ${ot} / NT ${nt}), ${verses} verses → data-src/${src.id}.md\n`)
+    // By section, not by position: the deuterocanon sits between the Testaments in
+    // BOOK_ORDER, so counting "index >= 39" as New Testament stopped being true the
+    // moment a source carried one.
+    const n = { ot: 0, deutero: 0, nt: 0 }
+    for (const name of books.keys()) n[sectionOf(name)]++
+    const parts = [`OT ${n.ot}`, n.deutero ? `deutero ${n.deutero}` : null, `NT ${n.nt}`].filter(Boolean)
+    console.log(`  ✓ ${src.id}: ${books.size} books (${parts.join(' / ')}), ${verses} verses → data-src/${src.id}.md\n`)
   } catch (err) {
     console.error(`  ✗ ${src.id}: ${err.message}\n`)
     process.exitCode = 1

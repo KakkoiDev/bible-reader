@@ -326,6 +326,27 @@ export default function App() {
     () => mergeImported(shippedIndex, canon, imported),
     [shippedIndex, canon, imported],
   )
+
+  /**
+   * Why an edition has nothing for a book.
+   *
+   * Two different facts, and one message used to answer both. A half-canon edition
+   * is missing the other Testament — the Greek New Testament has no Genesis. But an
+   * edition whose coverage is `all` can still lack a book, because "all" means the
+   * 66 and a deuterocanonical book is outside its canon rather than missing from it:
+   * the KJV has no Tobit and never claimed to, and telling a reader it "covers the
+   * Old Testament only" would be false about an edition that covers both.
+   */
+  const whyUncovered = useCallback(
+    (l: Lang, at: number): 'coverage_nt_only' | 'coverage_ot_only' | 'coverage_not_in_canon' => {
+      const c = BY_ID[l]?.coverage
+      const section = sectionOf(index[at], at)
+      if (c === 'nt' && section === 'ot') return 'coverage_nt_only'
+      if (c === 'ot' && section === 'nt') return 'coverage_ot_only'
+      return 'coverage_not_in_canon'
+    },
+    [index],
+  )
   // The registry is seeded before the first render in main.tsx; this keeps it in step
   // when the reader adds or removes one afterwards.
   useEffect(() => {
@@ -1911,7 +1932,7 @@ export default function App() {
                 the Greek New Testament's source for not carrying Genesis. */}
             {book && !coversBook(pos.lang, book) ? (
               <p className="coverage" lang={BY_ID[prefs.ui].htmlLang} dir={BY_ID[prefs.ui].dir}>
-                {t(BY_ID[pos.lang].coverage === 'nt' ? 'coverage_nt_only' : 'coverage_ot_only')}
+                {t(whyUncovered(pos.lang, bookIdx))}
               </p>
             ) : flowParas.map((b, pi) => b.kind === 'gap' ? (
               // The note is interface copy, so it takes the interface language and
@@ -1978,7 +1999,7 @@ export default function App() {
                   {uncovered || absent ? (
                     <p className="coverage" dir={BY_ID[prefs.ui].dir} lang={BY_ID[prefs.ui].htmlLang}>
                       {uncovered
-                        ? t(m.coverage === 'nt' ? 'coverage_nt_only' : 'coverage_ot_only')
+                        ? t(whyUncovered(l, bookIdx))
                         : t('coverage_chapter_absent')}
                     </p>
                   ) : (
