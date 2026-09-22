@@ -656,30 +656,45 @@ export default function App() {
   // "Stop at chapter end" turns off the roll-on into the next chapter/book.
   const keepGoing = !prefs.stopAtChapterEnd
   // Play the whole chapter in one language, from the top-visible verse of that column.
+  /**
+   * The chapter, from its first verse.
+   *
+   * It used to start at the top *visible* verse instead, which made the button in
+   * the column head mean something different depending on how far the reader had
+   * scrolled: press it half way down and the first half of the chapter was never
+   * read. The control is titled "Play chapter" and sits in the chapter's own header,
+   * so it plays the chapter.
+   *
+   * `keepGoing` still applies at the end: whether playback rolls into the next
+   * chapter is the reader's "Stop at chapter end" setting, not this button's business.
+   */
   const playChapter = useCallback(
     (lang: Lang) => {
       if (!chapter) return
-      const els = readerRef.current?.querySelectorAll(`[id^="${flow ? 'fv-' + chapter.n + '-' : 'v-' + lang + '-'}"]`)
-      let start = chapter.verses[0]?.v ?? 1
-      if (els) {
-        for (const el of els) {
-          if (el.getBoundingClientRect().bottom > 96) {
-            start = Number(/-(\d+)$/.exec(el.id)?.[1] ?? start)
-            break
-          }
-        }
-      }
       speakList(
         lang,
         chapter.verses
-          .filter((v) => v.v >= start && v.text[lang])
+          .filter((v) => v.text[lang])
           .map((v) => ({ ch: chapter.n, v: v.v, text: v.text[lang]! })),
         keepGoing,
       )
     },
-    [chapter, speakList, flow, keepGoing],
+    [chapter, speakList, keepGoing],
+  )
+
+  /** One verse, and then silence. Never continuous: asking for a verse is asking for
+   *  a verse, so "Stop at chapter end" does not enter into it. */
+  const playOne = useCallback(
+    (lang: Lang, ch: number, v: number) => {
+      const text = verseText[lang]?.get(`${ch}.${v}`)
+      if (!text) return
+      speakList(lang, [{ ch, v, text }], false)
+    },
+    [verseText, speakList],
   )
   // Play continuously from a given verse onward (through the chapter, then the book).
+  // The one caller left is the offer to resume after the app was backgrounded, where
+  // carrying on from where playback stopped is exactly what is being asked for.
   const playFrom = useCallback(
     (lang: Lang, ch: number, v: number) => {
       const count = book?.chapters[ch - 1] ?? 0
@@ -2096,7 +2111,7 @@ export default function App() {
                               onClearHL={() => clearHighlightsIn(ref, l, 0, Number.MAX_SAFE_INTEGER)}
                               onBookmark={() => toggleBookmark(ref)}
                               onNote={() => { setNoteRef(ref); setBarAt(null) }}
-                              onListen={() => { playFrom(l, pos.chapter, v.v); setBarAt(null) }}
+                              onListen={() => { playOne(l, pos.chapter, v.v); setBarAt(null) }}
                               onStudy={() => { openVerseAt(l, pos.chapter, v.v); setBarAt(null) }}
                               onCopyText={() => {
                                 if (text) copyVerseText(l, pos.chapter, v.v, text)
