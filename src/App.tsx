@@ -698,11 +698,10 @@ export default function App() {
     [verseText, speakList],
   )
   // Play continuously from a given verse onward (through the chapter, then the book).
-  // Three callers: "Read on from here" in the Study sheet, the offer raised after a
-  // single verse has been read, and the offer to resume after the app was backgrounded.
-  // All three are a reader asking to carry on from a verse they have in front of them,
-  // which is why none of them is the verse bar's Listen — that one reads a verse and
-  // stops, and turning it back into a run belongs to a control that says so.
+  // Two callers: the offer raised once a single verse has been read, and the offer to
+  // resume after the app was backgrounded. Both are offers rather than controls, and
+  // that is the point — neither costs a permanent place in the interface, and each
+  // appears at the only moment it means anything.
   const playFrom = useCallback(
     (lang: Lang, ch: number, v: number) => {
       const count = book?.chapters[ch - 1] ?? 0
@@ -2387,16 +2386,6 @@ export default function App() {
         onSpeakWord={speakWord}
         onSpeakVerse={speakSheetVerse}
         sheetPlaying={sheetPlay}
-        onReadOn={() => {
-          if (!verseSheet) return
-          // Stop the sheet's own verse playback first: its state is tracked separately
-          // from the reader's, so leaving it running would give two voices at once and
-          // a title-row button still claiming to be playing.
-          stopSpeaking()
-          setSheetPlay(null)
-          playFrom(verseSheet.lang, verseSheet.ch, verseSheet.v)
-          setVerseSheet(null)
-        }}
         onNote={() => {
           if (verseSheet) setNoteRef(vref(verseSheet.slug, verseSheet.ch, verseSheet.v))
           setVerseSheet(null)

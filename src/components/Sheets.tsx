@@ -815,7 +815,6 @@ export function VerseSheet({
   onSpeakWord,
   onSpeakVerse,
   sheetPlaying,
-  onReadOn,
   onClose,
 }: {
   data: VerseSheetData | null
@@ -838,8 +837,6 @@ export function VerseSheet({
   onSpeakVerse: (text: string, lang: Lang) => void
   /** The edition whose full verse is currently playing (button shows stop), or null. */
   sheetPlaying: Lang | null
-  /** Start a continuous read at this verse and close the sheet. */
-  onReadOn: () => void
   onClose: () => void
 }) {
   // The sheet owns the glossary load and which entry is open, so a grey marker tapped
@@ -915,10 +912,10 @@ export function VerseSheet({
            exactly as the bar does — one idea in the app instead of two, and one row
            instead of three. They stay here rather than going altogether because in
            flowing mode there is no verse bar and this sheet is the only route to
-           them. Neither play in this sheet is the run: the title row below speaks
-           this verse and stops, and "Read on from here" under it starts the run. It
-           sits in the body rather than the footer because the footer is share and
-           save, and because the verse bar is full at six controls.
+           them. The title row below speaks this verse and stops; nothing in this
+           sheet starts a continuous read. A row for that was tried here and removed:
+           two taps behind a sheet is no place for a control whose whole value is
+           being to hand when you are already listening.
            The primary is Note because saving what you found is what a reader does
            after studying. The eyebrow in the title says the sheet is Study, so the
            filled button no longer has to carry a name that is not its job. */
@@ -1013,16 +1010,6 @@ export function VerseSheet({
             </div>
         </div>
       </div>
-      {/* The way from one verse to a continuous read. Listen in the verse bar reads
-          the verse and stops — which is what asking for a verse means — so the run has
-          its own control, named for what it does, rather than a second meaning loaded
-          onto the first. Closing the sheet is part of the action: what you asked to
-          hear is behind it. */}
-      {text && canSpeak(l) && (
-        <button className="mini readon" onClick={onReadOn}>
-          <Icon name="play" size={15} /> {t('read_on')}
-        </button>
-      )}
       {WORD_PANEL[data.lang]?.includes('glossary') && (
         <Glossary
           words={glossWords}

@@ -14,9 +14,8 @@
 //     unless "Stop at chapter end" was set.
 //
 // Fixing the second left a gap — a reader who wanted to hear on from a verse had no
-// control that did it — so "Read on from here" in the Study sheet and the offer raised
-// after a single verse both start a run, and both are checked here for where they
-// start as much as for how far they go.
+// way to say so — which an offer raised after the verse fills. Where that offer starts
+// is checked here as closely as how far it goes.
 //
 // Both are invisible to a screenshot and inaudible to a headless browser, so this
 // stubs `speechSynthesis` the way verify14 does and reads back the list of utterances
@@ -145,24 +144,8 @@ console.log('\nListen in a verse bar plays that verse and stops')
 }
 
 // Listen reads a verse and stops, which leaves a reader who wanted a run with
-// nowhere to go. Two controls put them back into one, and neither of them is Listen:
-// a named row in the Study sheet, and an offer raised once the verse has been read.
-console.log('\nThe Study sheet reads on from the verse it is showing')
-{
-  const { ctx, page } = await open('#/john/3/en')
-  await page.locator('#v-en-16').click()
-  await page.locator('#v-en-16 .vbar').waitFor({ state: 'visible' })
-  await page.locator('#v-en-16 .vbar .vbtn', { hasText: 'Study' }).click()
-  await page.locator('.readon').waitFor({ state: 'visible' })
-  await page.locator('.readon').click()
-  const spoken = await settled(page)
-  check('16 to the end of the chapter is 21 verses', spoken.length === 21, `${spoken.length} utterance(s)`)
-  check('starting at verse 16 itself', /For God so loved the world/.test(spoken[0]), spoken[0]?.slice(0, 48))
-  check('and ending at verse 36', /wrath of God abideth on him/.test(spoken[20]), spoken[20]?.slice(-42))
-  check('the sheet closed behind it', (await page.locator('.sheet').count()) === 0)
-  await ctx.close()
-}
-
+// nowhere to go. The way back is an offer raised once the verse has been read, not a
+// control sitting somewhere waiting to be found.
 // The offer starts at the *next* verse: the one just read is read, and an offer that
 // replayed it would be answering a question nobody asked.
 console.log('\nAfter one verse, the offer reads on from the next')

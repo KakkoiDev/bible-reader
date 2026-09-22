@@ -46,11 +46,13 @@ squeeze. Highlight and note are adjacent because they are the two everyday actio
 and they carry the two glyphs most easily confused — see *Departures*.
 
 **Listen** reads that verse and stops, because a control named for a verse should
-mean a verse. Reading *on* from it is a different size of thing and gets its own two
-affordances rather than a seventh cell: **Read on from here**, a full-width row in
-the Study sheet body under the verse, and a seven-second offer raised once a single
-verse has finished, which starts at the verse *after* the one just read. Sheet body,
-not sheet footer: the footer is share and save, and this is neither.
+mean a verse. Reading *on* from it is a different size of thing, and it is an
+**offer, not a control**: once a single verse has finished, a seven-second *Read on*
+starts at the verse after the one just read. A row in the Study sheet was built for
+this first and removed — putting it two taps behind a sheet meant it could only be
+found by someone already looking for it, and the reader who wants it is the one
+already listening, not the one studying. When a control is worth less than the space
+it would take, an offer at the right moment is the cheaper answer than a worse home.
 
 ## Type
 

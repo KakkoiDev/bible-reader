@@ -131,11 +131,11 @@ Every attribution is reproduced verbatim in the app under **Texts & licences**.
   press decides how much: the play button in a chapter's column head reads **the
   chapter**, from its first verse, and *Listen* in a verse's action bar reads **that
   verse** and stops. "Stop at chapter end" governs only the first of those — a single
-  verse is a single verse either way. Reading on from a verse is its own control
-  rather than a second meaning for *Listen*: **Read on from here** in the Study sheet
-  starts a run at the verse on screen, and once a single verse has finished a
-  seven-second offer carries on from the *next* one — suppressed at the end of a
-  chapter, where there would be nothing to read. `scripts/verify22.mjs` is the gate.
+  verse is a single verse either way. Getting from one verse to a run is an offer
+  rather than a control: once a single verse has finished, a seven-second **Read on**
+  carries on from the *next* one — suppressed at the end of a chapter, where there
+  would be nothing to read. It costs no permanent place in the interface and appears
+  at the only moment it means anything. `scripts/verify22.mjs` is the gate.
   It holds a screen wake lock while playing so an idle phone doesn't cut it off, and
   if you leave the app it offers to pick up from the verse it reached.
 - **Links:** a verse link opens that verse; if it names an edition the recipient has
@@ -713,12 +713,11 @@ node scripts/verify22.mjs   # how much gets read aloud, and from where
 `verify22.mjs` stubs `speechSynthesis` the way `verify14` does and reads back the
 list of utterances handed over, because how much was read is invisible to a
 screenshot and inaudible to a headless browser. The list's length is how much, and
-its first entry is from where. It covers all four controls: the column head's button
-reads all 36 verses of John 3 from verse 1; *Listen* in a verse bar reads exactly one
-utterance and does not run into John 4 even with "Stop at chapter end" off; *Read on
-from here* in the Study sheet reads 21 verses starting at John 3:16 itself; and the
-offer raised after a single verse reads 20 starting at 3:17, not at 16 again, and is
-not raised at all on the chapter's last verse.
+its first entry is from where. It covers both controls and the offer: the column
+head's button reads all 36 verses of John 3 from verse 1; *Listen* in a verse bar
+reads exactly one utterance and does not run into John 4 even with "Stop at chapter
+end" off; and the offer raised after a single verse reads 20 starting at 3:17, not at
+16 again, and is not raised at all on the chapter's last verse.
 
 One check in it clicks through the DOM rather than through Playwright, and the
 comment says why: `locator.click()` scrolls its target into view first, and the
