@@ -26,7 +26,7 @@ empty, which reads exactly like a stale script.
 the previous bundle, so any run against a rebuilt tree measures the old code until the
 server is restarted. Restart it after every build.
 
-Green as of 2026-09-23: `verify.mjs`, `verify12` through `verify23` (`verify15`,
+Green as of 2026-09-23: `verify.mjs`, `verify12` through `verify24` (`verify15`,
 `verify18` and `verify19` need no browser), plus `check-data.mjs` and
 `check-references.mjs`. `verify2` through `verify11` fail on UI the scripts still expect
 and the app no longer renders; the failures reproduce identically on older commits, so
@@ -113,6 +113,11 @@ for this; a field inside a head opts back in by selector, as with `touch-action`
 Widening an element that sits under a drag path is enough to introduce it: promoting the
 sheet titles from `<b>` to a `flex: 1` `<h2>` is what first put text under the pointer at
 the middle of the head.
+
+A check that presses a button in the middle of a stubbed speech run is measuring the
+stub unless the stub is slow. `scripts/verify24.mjs` makes the verse length a parameter
+for this: at 250ms a run advances between reading the position and clicking, and the
+check reports a number the code never produced.
 
 `scrollWidth > clientWidth` does not detect a clipped `text-overflow: ellipsis` label.
 Such a label shrinks to fit its own text, so the two are equal whether or not the text

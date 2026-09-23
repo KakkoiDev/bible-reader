@@ -147,6 +147,18 @@ Every attribution is reproduced verbatim in the app under **Texts & licences**.
   carries on from the *next* one — suppressed at the end of a chapter, where there
   would be nothing to read. It costs no permanent place in the interface and appears
   at the only moment it means anything. `scripts/verify22.mjs` is the gate.
+- **A transport, not a stop button.** While anything is being read a bar at the foot
+  of the window names the verse, says how far through the run it is over a hairline,
+  and carries previous / play-pause / next / stop. The run is the chapter in the
+  reader and the day in a plan, so the count resets at a chapter boundary rather than
+  creeping across a book. The reference is a button: playback follows the spoken verse
+  down the page until you scroll by hand, at which point it lets go, and tapping the
+  reference is how you rejoin. To move the playhead further than a verse, tap one —
+  the bar's play cell reads **From here** whenever there is a playhead to move, and
+  **Listen** (this verse, then silence) when there is not. `scripts/verify24.mjs` is
+  the gate. Anything that genuinely ends playback takes the bar with it — navigating,
+  a back press, stopping from the column head, speaking a concordance word over a
+  chapter — and a run that rolls into the next chapter carries the bar onto it.
   It holds a screen wake lock while playing so an idle phone doesn't cut it off, and
   if you leave the app it offers to pick up from the verse it reached.
 - **Links:** a verse link opens that verse; if it names an edition the recipient has
@@ -725,6 +737,29 @@ node scripts/verify22.mjs   # how much gets read aloud, and from where
 npx vite preview --port 4189 --strictPort
 node scripts/verify23.mjs   # a plan day you can put down and pick up
 ```
+
+```bash
+npx vite preview --port 4191 --strictPort
+node scripts/verify24.mjs   # the transport: where the audio is, and moving it
+```
+
+`verify24.mjs` is about the bar rather than about what gets read. It checks the three
+questions the bar exists to answer — what is playing, how far through it is, and how to
+go back over a bit — plus the two behaviours around it: that playback lets go of the
+page once the reader scrolls by hand (a real wheel event, not `scrollTo`, which is what
+the app itself does and must not be mistaken for the reader), and that the reference
+brings the verse back. It also pins the thing that made rapid taps useless before the
+playhead was moved into a ref: three presses of *next* inside one frame move three
+verses, not one.
+
+It also gates two things that are easy to lose: every control in the bar is a 44px
+target (the app's token; `DESIGN.md`'s one departure is pills and chips at 32-36, which
+these are not), and a flowing-mode deep link opens the chapter it names rather than the
+book's first one.
+
+Its verse length is a parameter. The sections that press a button in the middle of a
+run use a long one — with a short verse the run moves on between reading the position
+and clicking it, and the check ends up measuring the stub.
 
 `verify22.mjs` stubs `speechSynthesis` the way `verify14` does and reads back the
 list of utterances handed over, because how much was read is invisible to a
