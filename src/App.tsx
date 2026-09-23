@@ -320,7 +320,17 @@ export default function App() {
   // In flow mode the whole book is on one page, so navigating a chapter means
   // scrolling to it. Non-null while that scroll is pending — the observer below
   // must not fight it by deriving the chapter back from scroll position.
-  const [flowTarget, setFlowTarget] = useState<{ ch: number; v: number } | null>(null)
+  // Seeded from where the app is opening, not just from later navigation: a flowing-mode
+  // deep link used to land on the book's first chapter and stay there. `pos` was right,
+  // but with no target pending the observer below immediately derived the chapter back
+  // from a scroll position of zero and overwrote it, so #/john/3 opened at John 1.
+  const [flowTarget, setFlowTarget] = useState<{ ch: number; v: number } | null>(
+    initHash.loc
+      ? { ch: initHash.loc.chapter, v: initHash.loc.verse ?? 1 }
+      : initLast
+        ? { ch: initLast.chapter, v: initLast.verse ?? 1 }
+        : null,
+  )
   const flowTargetRef = useRef(flowTarget)
   flowTargetRef.current = flowTarget
 
@@ -595,8 +605,39 @@ export default function App() {
     if (!canTTS || !voicesLoaded()) return new Set<Lang>()
     return new Set(VERSION_IDS.filter((id) => !hasVoice(id)))
   }, [canTTS, voicesTick])
+  /**
+   * A run of speech, as the transport sees it.
+   *
+   * Every kind of playback in the app used to call `speakList` with its own list and
+   * then forget it, which is why nothing could say where the audio was or move it: the
+   * list was gone by the next line. A run is that list, kept.
+   *
+   * `items` is the whole run from its beginning, not from where playback started, so
+   * the transport can seek *backwards* past the verse the reader started at.
+   */
+  type RunSpec = {
+    lang: Lang
+    /** The book the items belong to, when they all belong to one. A plan day sets the
+     *  book per item instead, because it crosses them. */
+    slug?: string
+    items: { ch: number; v: number; text: string; slug?: string; count?: number }[]
+    /** Roll on into the next chapter when this one ends. */
+    continuous: boolean
+    /** Tick verses off as they are spoken. A plan day does; a chapter does not. */
+    tick: boolean
+    /** What the play button offers when this run is not playing. */
+    playLabel: string
+  }
+  type Run = RunSpec & { at: number; paused: boolean }
+  const [active, setActive] = useState<Run | null>(null)
+  /** The playhead, as a ref. Prev and next are relative, and reading `at` out of the
+   *  rendered run makes two taps inside one frame both land on the same verse — the
+   *  second reads the position the first has not committed yet. */
+  const atRef = useRef(0)
+
   const genRef = useRef(0) // bumped on stop/new-play so stale callbacks are ignored
-  const stopAudio = useCallback(() => {
+  /** Silence playback, leaving the transport's run alone. Only pausing wants this. */
+  const hushAudio = useCallback(() => {
     genRef.current++
     stopSpeaking()
     clearWordHighlight()
@@ -605,6 +646,18 @@ export default function App() {
     setAutoNext(null)
     setPending(null)
   }, [])
+  /**
+   * Silence playback and forget the run, so the transport goes with it.
+   *
+   * Everything that genuinely ends playback comes through here — navigating, pressing
+   * stop in the column head, speaking a concordance word over a chapter, the app being
+   * backgrounded. Each of those already cancelled the speech; none of them told the
+   * transport, which went on naming a verse that nothing was reading.
+   */
+  const stopAudio = useCallback(() => {
+    hushAudio()
+    setActive(null)
+  }, [hushAudio])
   const speakList = useCallback(
     (
       lang: Lang,
@@ -674,36 +727,6 @@ export default function App() {
   )
   // "Stop at chapter end" turns off the roll-on into the next chapter/book.
   const keepGoing = !prefs.stopAtChapterEnd
-
-  /**
-   * A run of speech, as the transport sees it.
-   *
-   * Every kind of playback in the app used to call `speakList` with its own list and
-   * then forget it, which is why nothing could say where the audio was or move it: the
-   * list was gone by the next line. A run is that list, kept.
-   *
-   * `items` is the whole run from its beginning, not from where playback started, so
-   * the transport can seek *backwards* past the verse the reader started at.
-   */
-  type RunSpec = {
-    lang: Lang
-    /** The book the items belong to, when they all belong to one. A plan day sets the
-     *  book per item instead, because it crosses them. */
-    slug?: string
-    items: { ch: number; v: number; text: string; slug?: string; count?: number }[]
-    /** Roll on into the next chapter when this one ends. */
-    continuous: boolean
-    /** Tick verses off as they are spoken. A plan day does; a chapter does not. */
-    tick: boolean
-    /** What the play button offers when this run is not playing. */
-    playLabel: string
-  }
-  type Run = RunSpec & { at: number; paused: boolean }
-  const [active, setActive] = useState<Run | null>(null)
-  /** The playhead, as a ref. Prev and next are relative, and reading `at` out of the
-   *  rendered run makes two taps inside one frame both land on the same verse — the
-   *  second reads the position the first has not committed yet. */
-  const atRef = useRef(0)
 
   /**
    * Whether playback still pulls the page along.
@@ -803,6 +826,9 @@ export default function App() {
     (lang: Lang, ch: number, v: number, onEnd?: () => void) => {
       const text = verseText[lang]?.get(`${ch}.${v}`)
       if (!text) return
+      // Speaking anything cancels whatever was running, so the transport must not be
+      // left naming a verse of a run that has just been silenced under it.
+      setActive(null)
       speakList(lang, [{ ch, v, text }], false, undefined, onEnd)
     },
     [verseText, speakList],
@@ -1035,13 +1061,12 @@ export default function App() {
     if (pos.slug === pending.slug && pos.chapter === pending.chapter) {
       const lang = pending.lang
       setPending(null)
-      speakList(
-        lang,
-        chapter.verses.filter((v) => v.text[lang]).map((v) => ({ ch: chapter.n, v: v.v, text: v.text[lang]! })),
-        keepGoing,
-      )
+      // Through `startRun`, or the transport would go on showing the chapter that just
+      // finished — its old list, its old position — while the next one played.
+      const spec = chapterRun(lang)
+      if (spec) startRun(spec)
     }
-  }, [pending, chapter, ready, pos.slug, pos.chapter, speakList, keepGoing])
+  }, [pending, chapter, ready, pos.slug, pos.chapter, chapterRun, startRun])
 
   // apply hash on change (pasted link, back/forward)
   useEffect(() => {
@@ -1060,7 +1085,15 @@ export default function App() {
       // language ring re-reads the same day through one of them.
       const own = selfHash.current === location.hash
       selfHash.current = null
-      if (!own) setPatch(null)
+      if (!own) {
+        setPatch(null)
+        // A back press or a pasted link is the reader leaving, exactly as `go` is, and
+        // `go` stops the audio. This did not: the run speaks from its own list, so the
+        // chapter changed on screen while the previous one went on being read aloud
+        // underneath it. The app's own writes are excluded because one of them is the
+        // roll-on into the next chapter, which must not silence itself.
+        stopAudio()
+      }
       setPos((prev) => {
         if (flow && (loc.slug !== prev.slug || loc.chapter !== prev.chapter))
           setFlowTarget({ ch: loc.chapter, v: loc.verse ?? 1 })
@@ -1070,7 +1103,7 @@ export default function App() {
     }
     window.addEventListener('hashchange', apply)
     return () => window.removeEventListener('hashchange', apply)
-  }, [flow])
+  }, [flow, stopAudio])
 
   // scroll to flashed verse once rendered; auto-clear the flash
   useEffect(() => {
@@ -1087,7 +1120,14 @@ export default function App() {
 
   // flow mode: scroll to the chapter the reader navigated to, then release the observer
   useEffect(() => {
-    if (!flowTarget || !flow || !ready) return
+    if (!flowTarget) return
+    // A target seeded at mount outlives a reader who is not in flowing mode, and would
+    // then fire the moment they switched into it. Drop it instead.
+    if (!flow) {
+      setFlowTarget(null)
+      return
+    }
+    if (!ready) return
     const el =
       document.getElementById(`fv-${flowTarget.ch}-${flowTarget.v}`) ||
       document.getElementById(`fv-${flowTarget.ch}-1`)
@@ -1500,7 +1540,10 @@ export default function App() {
   const run: Run | null = active ?? (dayRun ? { ...dayRun, at: dayResumeAt(), paused: false } : null)
   // A day that has not started yet still has a playhead — where it left off — and the
   // ref is what prev and next read, so it has to know about it before the first press.
-  if (!active && run) atRef.current = run.at
+  const standingAt = active ? null : (run?.at ?? null)
+  useEffect(() => {
+    if (standingAt !== null) atRef.current = standingAt
+  }, [standingAt])
 
   /** Pause: stop the voice but keep the run, so the same button starts it again where
    *  it stopped. Not `speechSynthesis.pause()`, which wedges on several engines and is
@@ -1508,14 +1551,12 @@ export default function App() {
    *  per verse, so resuming at the top of the verse you were in is both reliable and
    *  the right place to come back to in scripture. */
   const pauseRun = useCallback(() => {
-    setActive((prev) => (prev ? { ...prev, paused: true } : prev))
-    stopAudio()
-  }, [stopAudio])
-
-  const stopRun = useCallback(() => {
-    stopAudio()
-    setActive(null)
-  }, [stopAudio])
+    // Read from the ref, not from the rendered run: the verse that started speaking in
+    // this same frame has not been committed yet.
+    const at = atRef.current
+    hushAudio()
+    setActive((prev) => (prev ? { ...prev, at, paused: true } : prev))
+  }, [hushAudio])
 
   /** Move the playhead. Seeking plays: pressing *next* on a paused run means you want
    *  to hear that verse, not to watch a number change. */
@@ -1632,11 +1673,13 @@ export default function App() {
   }, [anySheetOpen])
   // The transport is fixed to the foot of the window, so the page needs that much room
   // at its own foot or the last verse of a chapter sits permanently underneath it.
+  const showTransport = !anySheetOpen && !!run && canTTS
   useEffect(() => {
-    const on = !anySheetOpen && !!run && canTTS
-    document.documentElement.classList.toggle('audio-open', on)
+    // A boolean, not `run`: a day's run is rebuilt on every render, so depending on it
+    // would tear the class off and put it back on each one.
+    document.documentElement.classList.toggle('audio-open', showTransport)
     return () => document.documentElement.classList.remove('audio-open')
-  }, [anySheetOpen, run, canTTS])
+  }, [showTransport])
   useEffect(() => {
     if (!anySheetOpen) return
     const { body, documentElement: html } = document
@@ -2303,7 +2346,7 @@ export default function App() {
                 className={`flowplay ${playingLang === pos.lang ? 'on' : ''}`}
                 title={playingLang === pos.lang ? t('stop') : `${t('play_chapter')}: ${BY_ID[pos.lang].label}`}
                 aria-label={playingLang === pos.lang ? t('stop') : `${t('play_chapter')}: ${BY_ID[pos.lang].label}`}
-                onClick={() => (playingLang === pos.lang ? stopRun() : playChapter(pos.lang))}
+                onClick={() => (playingLang === pos.lang ? stopAudio() : playChapter(pos.lang))}
               >
                 <Icon name={playingLang === pos.lang ? 'pause' : 'play'} size={15} />
               </button>
@@ -2842,7 +2885,7 @@ export default function App() {
           Never over a sheet: it is fixed at z-index 78 and a sheet's backdrop is 70,
           so it used to float above the note editor and sit on its Save. A sheet is
           modal; nothing of the page behind it should still be reachable. */}
-      {!anySheetOpen && run && canTTS && (
+      {showTransport && run && (
         <NowPlaying
           t={t}
           lang={prefs.ui}
@@ -2857,7 +2900,7 @@ export default function App() {
           onPrev={() => seekBy(-1)}
           onNext={() => seekBy(1)}
           onPlayPause={() => (playingLang ? pauseRun() : startRun(run, run.at))}
-          onStop={stopRun}
+          onStop={stopAudio}
         />
       )}
 

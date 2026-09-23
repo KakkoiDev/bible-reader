@@ -109,6 +109,24 @@ console.log('\nIt says which verse, and how far through the chapter')
   await ctx.close()
 }
 
+// The app's own token is 44px, and DESIGN.md's one documented departure is pills and
+// chips at 32-36 — which the bar's controls are not.
+console.log('\nEvery control in the bar is a 44px target')
+{
+  const { ctx, page } = await open('#/john/3/en', {}, 4000)
+  await page.locator('.colplay').first().click()
+  await page.locator('.nowplay').waitFor({ state: 'visible' })
+  const small = await page.evaluate(() =>
+    [...document.querySelectorAll('.nowplay button')]
+      .map((el) => {
+        const r = el.getBoundingClientRect()
+        return { label: el.getAttribute('aria-label') ?? el.textContent.trim(), w: Math.round(r.width), h: Math.round(r.height) }
+      })
+      .filter((b) => b.w < 44 || b.h < 44))
+  check('none is under it', small.length === 0, small.map((b) => `${b.label} ${b.w}x${b.h}`).join('; '))
+  await ctx.close()
+}
+
 console.log('\nPrev and next move a verse at a time')
 {
   const { ctx, page } = await open('#/john/3/en', {}, 4000)
@@ -232,12 +250,22 @@ console.log('\nPlayback lets go of the page once the reader scrolls')
 // Flowing mode renders no column head. It used to have no way to start audio at all —
 // only a corner button saying "stop", reachable solely by starting a chapter in the
 // parallel view and switching. Its progress row carries the play now.
+// A flowing-mode deep link used to open the book's first chapter whatever it named.
+// `pos` was right; with no scroll target pending, the observer derived the chapter back
+// from a scroll position of zero and overwrote it before anything had scrolled.
+console.log('\nA flowing-mode deep link opens the chapter it names')
+{
+  const { ctx, page } = await open('#/john/3/en', { flow: true })
+  await page.waitForTimeout(1200)
+  const nav = (await page.locator('.navbtn').innerText()).replace(/\s+/g, ' ').trim()
+  check('the header names John 3', /John 3\b/.test(nav), nav)
+  check('and the page is scrolled to it', (await page.evaluate(() => window.scrollY)) > 500,
+    `scrollY ${Math.round(await page.evaluate(() => window.scrollY))}`)
+  await ctx.close()
+}
+
 console.log('\nIt is the same bar in flowing mode')
 {
-  // John 1, not 3: a flowing-mode deep link to a chapter lands on the book's first
-  // chapter and stays there — `setFlowTarget` fires on navigation and on hashchange,
-  // never at mount. That is a bug of its own and not this one's to fix, so this reads
-  // the chapter flowing mode actually opens rather than pretending otherwise.
   const { ctx, page } = await open('#/john/1/en', { flow: true })
   check('nothing at rest', (await page.locator('.nowplay').count()) === 0)
   check('but there is something to press', (await page.locator('.flowplay').count()) === 1)
@@ -250,6 +278,58 @@ console.log('\nIt is the same bar in flowing mode')
   await page.locator('.nowbtn[title="Stop audio"]').click()
   await page.waitForTimeout(300)
   check('and stop clears it here too', (await page.locator('.nowplay').count()) === 0)
+  await ctx.close()
+}
+
+// Everything that genuinely ends playback used to leave the bar behind, naming a verse
+// nothing was reading. Each of these cancelled the speech and told the transport
+// nothing.
+console.log('\nThe bar goes when the audio does')
+{
+  const { ctx, page } = await open('#/john/3/en', {}, 4000)
+  await page.locator('.colplay').first().click()
+  await page.locator('.nowplay').waitFor({ state: 'visible' })
+  await page.locator('.colplay').first().click() // the same button, now a stop
+  await page.waitForTimeout(300)
+  check('stopping from the column head clears it', (await page.locator('.nowplay').count()) === 0)
+
+  await page.locator('.colplay').first().click()
+  await page.locator('.nowplay').waitFor({ state: 'visible' })
+  await page.locator('.chapnav .mini, .colpage .mini').first().click().catch(() => {})
+  await page.evaluate(() => { location.hash = '#/john/4/en' })
+  await page.waitForTimeout(700)
+  check('and so does navigating away', (await page.locator('.nowplay').count()) === 0)
+  await ctx.close()
+}
+
+console.log('\nA single verse takes the bar down with it')
+{
+  const { ctx, page } = await open('#/john/3/en', {}, 4000)
+  await page.locator('.colplay').first().click()
+  await page.locator('.nowplay').waitFor({ state: 'visible' })
+  await page.locator('.nowbtn.play').click() // pause, so the bar stays
+  await page.waitForTimeout(300)
+  check('a paused run keeps its bar', (await page.locator('.nowplay').count()) === 1)
+  await page.locator('#v-en-10').click()
+  await page.locator('#v-en-10 .vbar').waitFor({ state: 'visible' })
+  // Paused, so there is no playhead being *read* — but there is one to move, and the
+  // cell says so rather than offering a one-verse detour that would kill the run.
+  check('the cell still offers the playhead', (await page.locator('#v-en-10 .vbar .vlabel').nth(4).innerText()) === 'Read on',
+    await page.locator('#v-en-10 .vbar .vlabel').nth(4).innerText())
+  await ctx.close()
+}
+
+// With "stop at chapter end" off the run rolls into the next chapter. The transport
+// used to go on showing the chapter that had finished — its old list, its old count.
+console.log('\nRolling into the next chapter moves the bar with it')
+{
+  const { ctx, page } = await open('#/john/3/en', { stopAtChapterEnd: false }, 20)
+  await page.locator('.colplay').first().click()
+  await page.locator('.nowplay').waitFor({ state: 'visible' })
+  await page.waitForFunction(() => /John 4:/.test(document.querySelector('.nowlabel')?.textContent ?? ''),
+    null, { timeout: 20000 })
+  check('it names the new chapter', /^John 4:/.test(await ref(page)), await ref(page))
+  check('and counts over it, not the old one', /of 54$/.test(await pos(page)), await pos(page))
   await ctx.close()
 }
 

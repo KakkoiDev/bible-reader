@@ -156,7 +156,9 @@ Every attribution is reproduced verbatim in the app under **Texts & licences**.
   reference is how you rejoin. To move the playhead further than a verse, tap one —
   the bar's play cell reads **From here** whenever there is a playhead to move, and
   **Listen** (this verse, then silence) when there is not. `scripts/verify24.mjs` is
-  the gate.
+  the gate. Anything that genuinely ends playback takes the bar with it — navigating,
+  a back press, stopping from the column head, speaking a concordance word over a
+  chapter — and a run that rolls into the next chapter carries the bar onto it.
   It holds a screen wake lock while playing so an idle phone doesn't cut it off, and
   if you leave the app it offers to pick up from the verse it reached.
 - **Links:** a verse link opens that verse; if it names an edition the recipient has
@@ -749,6 +751,11 @@ the app itself does and must not be mistaken for the reader), and that the refer
 brings the verse back. It also pins the thing that made rapid taps useless before the
 playhead was moved into a ref: three presses of *next* inside one frame move three
 verses, not one.
+
+It also gates two things that are easy to lose: every control in the bar is a 44px
+target (the app's token; `DESIGN.md`'s one departure is pills and chips at 32-36, which
+these are not), and a flowing-mode deep link opens the chapter it names rather than the
+book's first one.
 
 Its verse length is a parameter. The sections that press a button in the middle of a
 run use a long one — with a short verse the run moves on between reading the position
