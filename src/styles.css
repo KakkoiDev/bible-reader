@@ -688,6 +688,10 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: var(--f-ui); }
    backdrop can't scroll under a finger or wheel. The viewport scrolls on <html> here,
    not <body>, so the lock has to sit on the document element. */
 html.modal-open { overflow: hidden; }
+/* Room at the foot of the page for the transport, which is fixed to the window and
+   would otherwise sit permanently over the last verse of a chapter. */
+html.audio-open .reader,
+html.audio-open .patch { padding-bottom: calc(env(safe-area-inset-bottom) + 108px); }
 .sheet-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.4); z-index: 70; display: flex; }
 /* A flex column with exactly one scroller in it. That is what makes the head and
    the footer pinned by construction rather than by `position: sticky`, and it is
@@ -957,6 +961,23 @@ html.modal-open { overflow: hidden; }
 /* How far into the book this is. A hairline, not a widget: reading mode exists to
    take the furniture away, so the one cue it puts back is 3px tall. */
 .flowprog { display: flex; align-items: center; gap: 10px; margin: 0 0 22px; font-family: var(--f-ui); }
+/* The one control reading mode carries, sized to the hairline rather than to a
+   toolbar: it starts the chapter, and everything after that is the transport's. */
+.flowplay {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--touch);
+  min-height: var(--touch);
+  margin: 0 0 6px -10px;
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 50%;
+  color: var(--muted);
+  cursor: pointer;
+}
+.flowplay:hover, .flowplay.on { color: var(--accent); background: var(--accent-bg); }
 .flowtrack { flex: 1; height: 3px; border-radius: 2px; background: var(--line); overflow: hidden; }
 .flowfill { display: block; height: 100%; background: var(--accent); }
 .flowprog small { flex: none; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -985,25 +1006,73 @@ html.modal-open { overflow: hidden; }
 /* The tap target is the row, so give it a little reach past the text without
    disturbing the aligned-row rhythm. */
 .verse .vt { cursor: pointer; }
-.audiofab {
+/* ---------- the transport ---------- */
+/* Full width rather than a floating pill: it carries a progress track, and a track
+   that does not span the thing it measures is a decoration. */
+.nowplay {
   position: fixed;
-  inset-inline-end: calc(env(safe-area-inset-right) + 16px);
-  bottom: calc(env(safe-area-inset-bottom) + 18px);
+  inset-inline: 0;
+  bottom: 0;
   z-index: 78;
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  border: 0;
+  background: var(--card);
+  border-top: 1px solid var(--line);
+  box-shadow: var(--e-float);
+  padding-bottom: env(safe-area-inset-bottom);
+  font-family: var(--f-ui);
+}
+/* The same 3px hairline flowing mode uses for "how far into the book", so progress is
+   one idea in this app and not two. It sits on the bar's top edge, over the border. */
+.nowtrack { height: 3px; background: var(--line); overflow: hidden; }
+.nowfill { display: block; block-size: 100%; background: var(--accent); transition: inline-size 180ms linear; }
+.nowrow { display: flex; align-items: center; gap: 8px; padding: 6px 12px 8px; }
+/* Reference and position in one control, because the answer to "where is the audio"
+   is both the name of the verse and the way back to it. */
+.nowref {
+  flex: 1;
+  min-width: 0;
   display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 6px 4px;
+  min-height: var(--touch);
+  justify-content: center;
+  font: inherit;
+  text-align: start;
+  background: none;
+  border: 0;
+  border-radius: var(--r-button);
+  color: var(--fg);
+  cursor: pointer;
+}
+.nowref:hover { background: var(--accent-bg); }
+.nowlabel {
+  max-width: 100%;
+  font-size: 14px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.nowref small { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.nowbtns { display: flex; align-items: center; gap: 2px; flex: none; }
+.nowbtn {
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
-  line-height: 1;
-  color: #fff;
-  background: var(--accent);
+  min-width: var(--touch);
+  min-height: var(--touch);
+  padding: 0;
+  background: none;
+  border: 0;
+  border-radius: 50%;
+  color: var(--fg);
   cursor: pointer;
-  box-shadow: var(--e-float);
 }
+.nowbtn:hover { background: var(--accent-bg); color: var(--accent); }
+/* Play is the one that carries the accent: it is what the bar is for. */
+.nowbtn.play { color: #fff; background: var(--accent); }
+.nowbtn.play:hover { color: #fff; background: var(--accent); filter: brightness(1.08); }
 .collist { display: flex; flex-direction: column; gap: 6px; padding: 4px 0 8px; }
 .colrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 10px; border: 1px solid var(--line); border-radius: var(--r-button); }
 .colrow.off { opacity: 0.55; }

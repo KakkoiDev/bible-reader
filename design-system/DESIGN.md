@@ -45,10 +45,24 @@ bar is full at six controls on a 390pt screen; a seventh needs a redesign, not a
 squeeze. Highlight and note are adjacent because they are the two everyday actions,
 and they carry the two glyphs most easily confused — see *Departures*.
 
-A **plan day** is the one surface with a transport rather than a play button: the run
-is the day, not a chapter, so it has a state worth pausing. The corner button reads the
-day and then pauses it, remembering the verse; a day reopened lands on the first verse
-not yet read, with the last ones read still above it. Its verses carry the same
+**Audio has one place, and it is a transport.** A bar at the foot of the window while
+anything is being read: a 3px progress hairline — the same atom flowing mode uses, so
+progress is one idea here and not two — then the verse named, the position in the run,
+and previous / play-pause / next / stop. It replaced a round button meaning "stop" that
+lived in three different places and could say none of what was playing, how far in it
+was, or how to hear that bit again.
+
+The hairline is not draggable. Three pixels is not a drag target and making it one
+turns the one cue in the bar into a widget. The seek surface is the text: tap a verse,
+press *From here*.
+
+Playback follows the spoken verse until the reader scrolls by hand, then lets go — it
+used to drag the page back every verse, which made looking anything up a fight. The
+reference is a button, and that is how you rejoin.
+
+A **plan day** keeps its own shape within that: the run is the day rather than a
+chapter, so the transport is on screen from the moment the day opens, ready. A day
+reopened lands on the first verse not yet read, with the last ones read still above it. Its verses carry the same
 six-cell bar as the reader's, because everything in that bar is keyed by a verse
 reference and a day has one as surely as a chapter does. Only the play cell differs:
 a day's reads on from that verse to the end of the day.
