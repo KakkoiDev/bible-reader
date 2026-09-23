@@ -114,6 +114,13 @@ Widening an element that sits under a drag path is enough to introduce it: promo
 sheet titles from `<b>` to a `flex: 1` `<h2>` is what first put text under the pointer at
 the middle of the head.
 
+`scrollWidth > clientWidth` does not detect a clipped `text-overflow: ellipsis` label.
+Such a label shrinks to fit its own text, so the two are equal whether or not the text
+was cut, and a check built on it passes while the label visibly loses characters.
+Measure the string against an unclipped probe span instead — `scripts/verify23.mjs`
+has the worked example. A tenth of a pixel is enough to cost two characters, so a
+label that "just fits" is a label that does not.
+
 ## Maintaining this file
 
 Keep this file for knowledge useful to almost every future agent session in this project.

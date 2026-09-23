@@ -13,6 +13,11 @@
 //     planner had already closed behind you.
 //   - the day could only be read from its beginning. No way to say "from here".
 //
+// A fourth followed from the third: a day's verses carried no actions at all, so a
+// note could not be written on the passage the reader was actually reading. They now
+// carry the reader's own six-cell bar — everything in it is keyed by a verse
+// reference, which a day has as surely as a chapter does.
+//
 // Playback is stubbed the way verify14 and verify22 do it, so "how much was read and
 // from where" is the list of utterances handed over rather than something audible.
 import { chromium } from 'playwright'
@@ -173,14 +178,110 @@ console.log('\nThe day has a transport, and pause resumes where it stopped')
   await ctx.close()
 }
 
-console.log('\nAny verse of the day can start the reading')
+console.log('\nA day\'s verses carry the reader\'s own bar')
 {
   const { ctx, page } = await openPlanDay()
   check('a verse carries no bar until it is tapped', (await page.locator('.patch .vbar').count()) === 0)
   await page.locator('#pv-john-1-40').click()
   await page.locator('#pv-john-1-40 .vbar').waitFor({ state: 'visible' })
-  check('tapping one offers to read from there', (await page.locator('.patch .vbar .vbtn').innerText()).includes('Read from here'))
-  await page.locator('#pv-john-1-40 .vbar .vbtn').click()
+  const cells = await page.locator('#pv-john-1-40 .vbar .vlabel').allInnerTexts()
+  check('six cells, the same as everywhere else', cells.length === 6, cells.join(' · '))
+  check('Note among them', cells.includes('Note'))
+  check('and the play cell is the day\'s, not one verse', cells.includes('Read on'), cells[4])
+  // Measured against an unclipped probe, not `scrollWidth`. A `text-overflow` label
+  // shrinks to fit, so its scrollWidth equals its clientWidth whether or not the text
+  // was cut — that comparison reports every label as fine and caught nothing. "From
+  // here" needed 50.1px in 50px of box and lost two characters to a tenth of a pixel.
+  await page.evaluate(() => document.fonts.ready)
+  const room = await page.evaluate(() => {
+    const cell = document.querySelector('.patch .vbar .vbtn')
+    const cs = getComputedStyle(cell.querySelector('.vlabel'))
+    const probe = document.createElement('span')
+    probe.style.position = 'absolute'
+    probe.style.visibility = 'hidden'
+    probe.style.whiteSpace = 'nowrap'
+    probe.style.font = `${cs.fontWeight} ${cs.fontSize}/${cs.lineHeight} ${cs.fontFamily}`
+    probe.style.letterSpacing = cs.letterSpacing
+    cell.appendChild(probe)
+    const p = getComputedStyle(cell)
+    const box = cell.getBoundingClientRect().width - parseFloat(p.paddingLeft) - parseFloat(p.paddingRight)
+    const out = [...document.querySelectorAll('.patch .vbar .vlabel')].map((e) => {
+      probe.textContent = e.textContent
+      return { text: e.textContent, needs: probe.getBoundingClientRect().width, box }
+    })
+    probe.remove()
+    return out
+  })
+  const tight = room.filter((r) => r.needs > r.box - 2)
+  check('every label fits its cell with room to spare', tight.length === 0,
+    tight.map((r) => `${r.text} needs ${r.needs.toFixed(1)} of ${r.box.toFixed(1)}`).join('; '))
+  await ctx.close()
+}
+
+// The reason this exists. A note written in a day is a note: same store, same key,
+// same mark on the verse, visible from the reader afterwards.
+console.log('\nA note can be written on a verse of the day')
+{
+  const { ctx, page } = await openPlanDay()
+  await page.locator('#pv-john-1-14').click()
+  await page.locator('#pv-john-1-14 .vbar').waitFor({ state: 'visible' })
+  await page.locator('#pv-john-1-14 .vbar .vbtn', { hasText: 'Note' }).click()
+  await page.locator('.notearea').waitFor({ state: 'visible' })
+  check('the editor names the verse', (await page.locator('.sheet-title').innerText()).includes('John 1:14'),
+    await page.locator('.sheet-title').innerText())
+  await page.locator('.notearea').fill('the Word was made flesh')
+  await page.locator('.sheet .primary', { hasText: 'Save' }).click()
+  await page.waitForTimeout(400)
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('annotations.v1') || '{}'))
+  check('it is stored under the verse\'s own reference', saved['john.1.14']?.note === 'the Word was made flesh',
+    JSON.stringify(Object.keys(saved)))
+  check('and the verse now carries the mark', (await page.locator('#pv-john-1-14 .mk.note').count()) === 1)
+  // The same note, from the ordinary reader.
+  await page.goto(URL + '#/john/1/en', { waitUntil: 'networkidle' })
+  await page.locator('.verse').first().waitFor({ state: 'visible' })
+  check('the reader shows the same note', (await page.locator('#v-en-14 .mk.note').count()) === 1)
+  await ctx.close()
+}
+
+console.log('\nHighlight and bookmark work there too')
+{
+  const { ctx, page } = await openPlanDay()
+  await page.locator('#pv-john-1-12').click()
+  await page.locator('#pv-john-1-12 .vbar .vbtn', { hasText: 'Bookmark' }).click()
+  await page.waitForTimeout(300)
+  check('bookmarking marks the verse', (await page.locator('#pv-john-1-12 .mk.bm').count()) === 1)
+  await page.locator('#pv-john-1-12 .vbar .vbtn', { hasText: 'Highlight' }).click()
+  await page.locator('#pv-john-1-12 .vbar .swatch').first().click()
+  await page.waitForTimeout(300)
+  const ann = await page.evaluate(() => JSON.parse(localStorage.getItem('annotations.v1') || '{}'))
+  check('and the highlight is stored under the same key',
+    ann['john.1.12']?.bookmarked === true && ann['john.1.12']?.highlights?.length === 1,
+    JSON.stringify(ann['john.1.12']))
+  check('with the verse text saved on it, as the reader does',
+    typeof ann['john.1.12']?.highlights?.[0]?.text === 'string' && ann['john.1.12'].highlights[0].text.length > 20)
+  await ctx.close()
+}
+
+// The copy actions used to name whatever book the day happened to be scrolled to.
+console.log('\nShare names the verse\'s own book, not the scrolled-to one')
+{
+  const { ctx, page } = await openPlanDay()
+  await ctx.grantPermissions(['clipboard-read', 'clipboard-write'])
+  await page.locator('#pv-john-1-18').click()
+  await page.locator('#pv-john-1-18 .vbar .vbtn', { hasText: 'Share' }).click()
+  await page.locator('.patch .vbar .vbtn', { hasText: 'Copy link' }).click()
+  await page.waitForTimeout(400)
+  const url = await page.evaluate(() => navigator.clipboard.readText())
+  check('the link points at John 1:18', /john\/1\/.*18/.test(url) || /john.*1.*18/.test(url), url)
+  await ctx.close()
+}
+
+console.log('\nAny verse of the day can start the reading')
+{
+  const { ctx, page } = await openPlanDay()
+  await page.locator('#pv-john-1-40').click()
+  await page.locator('#pv-john-1-40 .vbar').waitFor({ state: 'visible' })
+  await page.locator('#pv-john-1-40 .vbar .vbtn', { hasText: 'Read on' }).click()
   const spoken = await settled(page)
   check('John 1:40 to the end of the day is 12 verses', spoken.length === 12, `${spoken.length} utterance(s)`)
   check('starting at verse 40', /Andrew, Simon Peter's brother/.test(spoken[0]), spoken[0]?.slice(0, 44))

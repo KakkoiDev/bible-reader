@@ -84,10 +84,12 @@ Every attribution is reproduced verbatim in the app under **Texts & licences**.
   beginning — the tick is stored per verse, so where you stopped was always known. The
   same point starts the audio. A day carries its own transport in the corner: it reads
   the day aloud, and pressing it again pauses, remembering the verse so the next press
-  carries on from there rather than starting the day over. Tapping any verse of the day
-  offers **Read from here**, which is the one per-verse action a day can always answer
-  — a day crosses books, and highlight, note and Study all want a loaded one.
-  `scripts/verify23.mjs` is the gate.
+  carries on from there rather than starting the day over. Its verses carry the
+  reader's own action bar — highlight, note, bookmark, share and Study all work on the
+  passage you are actually reading, and are stored under the verse's own reference, so
+  a note written in a day is the same note the reader shows afterwards. The one cell
+  that differs is the play: a day's reads on from that verse to the end of the day,
+  not the verse alone. `scripts/verify23.mjs` is the gate.
 - **UI language** switches the chrome and displayed book names across all eleven
   languages, including right-to-left layout for Arabic and Hebrew.
 - **Add your own version.** Settings → Languages & versions → *Add a version…* reads
@@ -746,9 +748,18 @@ verses already ticked, then checks the three things a reader loses a day's place
 that reopening lands the first unread verse in the middle of the window rather than
 scrolling to nothing, that the day's transport pauses and resumes at the verse it
 stopped in instead of starting over, and that tapping a verse reads from there to the
-end of the day and no further. Every one of its checks was run against the build
-before the change and fails there — the transport one by timing out, because the
-control did not exist.
+end of the day and no further. It also covers the bar those verses now carry: that a
+note written in a day is stored under the verse's own reference and shows in the
+ordinary reader, that highlight and bookmark write the same keys, and that Copy link
+names the verse's own book rather than whichever one the day happens to be scrolled
+to. Every one of its checks was run against the build before the change and fails
+there — the transport one by timing out, because the control did not exist.
+
+One of its checks measures rather than asserts: each label in the bar is compared
+against an unclipped probe of the same text. `scrollWidth` cannot do this. A
+`text-overflow` label shrinks to fit its text, so its scrollWidth equals its
+clientWidth whether or not the text was cut, and that comparison reported every label
+as fine while one of them was visibly losing two characters to a tenth of a pixel.
 
 `verify21.mjs` is the third planner suite and the only one that presses the buttons:
 `verify15` proves the arithmetic without a browser and `verify16` seeds plans through

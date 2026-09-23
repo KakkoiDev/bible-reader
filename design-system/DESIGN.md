@@ -48,9 +48,20 @@ and they carry the two glyphs most easily confused — see *Departures*.
 A **plan day** is the one surface with a transport rather than a play button: the run
 is the day, not a chapter, so it has a state worth pausing. The corner button reads the
 day and then pauses it, remembering the verse; a day reopened lands on the first verse
-not yet read, with the last ones read still above it. Its verses carry a single action,
-*Read from here* — not the six-cell bar, because a day crosses books and highlight,
-note and Study all want a loaded one.
+not yet read, with the last ones read still above it. Its verses carry the same
+six-cell bar as the reader's, because everything in that bar is keyed by a verse
+reference and a day has one as surely as a chapter does. Only the play cell differs:
+a day's reads on from that verse to the end of the day.
+
+Nothing fixed to a corner may sit over a sheet. The day's transport is at z-index 78
+and a sheet's backdrop at 70, which put it on top of the note editor's Save — the one
+control the reader had opened the sheet to press. A sheet is modal; the page behind it
+is not reachable, floating controls included.
+
+Cell labels are 9px in one of six equal cells, which is 52px of room on a 390pt
+screen. "Bookmark" is the longest that fits. Anything longer is not "nearly fine": at
+50.1px in a 50px box `text-overflow` removes two whole characters, so a label wants
+real headroom, not a tenth of a pixel.
 
 **Listen** reads that verse and stops, because a control named for a verse should
 mean a verse. Reading *on* from it is a different size of thing, and it is an

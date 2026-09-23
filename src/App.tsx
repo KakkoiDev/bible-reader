@@ -224,8 +224,11 @@ export default function App() {
   const [paras, setParas] = useState<Paragraphs>({})
   const [invite, setInvite] = useState<Invite | null>(initHash.invite ?? null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
-  // Set to the verse to share (or 0 for the chapter) while the builder is open.
-  const [inviteFor, setInviteFor] = useState<number | null>(null)
+  /** What the invite builder is open for: a chapter, and a verse within it when the
+   *  invite was raised from one. It carries its own reference rather than reading
+   *  `pos`, because a plan day crosses books and `pos` follows whatever chapter is
+   *  scrolled to — which is not necessarily the chapter of the verse that was tapped. */
+  const [inviteFor, setInviteFor] = useState<{ slug: string; ch: number; v?: number } | null>(null)
   // Tag pending global deletion, awaiting confirmation.
   const [confirmTag, setConfirmTag] = useState<string | null>(null)
   const [importOpen, setImportOpen] = useState(false)
@@ -460,7 +463,11 @@ export default function App() {
     let alive = true
     const pick = (b?: EditionBook) =>
       b?.chapters.find((c) => c.n === ch)?.verses.find((x) => x.v === v)?.t ?? null
-    const have = verseText[oLang]?.get(`${ch}.${v}`) // fast path: that edition is a visible column
+    // Fast path: that edition is a visible column — but only when the sheet is showing
+    // a verse of the *loaded* book. `verseText` is keyed by chapter and verse alone, so
+    // for a sheet opened on another book of a plan day it would hand back the loaded
+    // book's Hebrew under the same numbers.
+    const have = slug === pos.slug ? verseText[oLang]?.get(`${ch}.${v}`) : undefined
     if (have) return setOrigVerse({ lang: oLang, text: have })
     const key = `${oLang}/${slug}`
     const apply = (b: EditionBook) => {
@@ -477,7 +484,7 @@ export default function App() {
     return () => {
       alive = false
     }
-  }, [verseSheet, index, verseText])
+  }, [verseSheet, index, verseText, pos.slug])
 
   // Warm the book's concordance cards once the text itself is up, so the first verse
   // tap opens with the words already there. Deferred to idle (with a timeout, since
@@ -1070,9 +1077,12 @@ export default function App() {
   )
 
   // Copy a shareable link to a verse (does not move you or stop audio).
+  // This and copyVerseText name the book they are given rather than the one the reader
+  // has loaded: a plan day runs across books, so the verse being copied is not always
+  // in `book`.
   const copyVerseLink = useCallback(
-    async (lang: Lang, v: number) => {
-      const url = `${location.origin}${location.pathname}${buildHash(pos.slug, pos.chapter, lang, v)}`
+    async (lang: Lang, slug: string, ch: number, v: number) => {
+      const url = `${location.origin}${location.pathname}${buildHash(slug, ch, lang, v)}`
       try {
         await navigator.clipboard.writeText(url)
         say(t('link_copied'))
@@ -1080,15 +1090,15 @@ export default function App() {
         say(t('copy_failed'))
       }
     },
-    [pos.slug, pos.chapter, t],
+    [t, say],
   )
   /** An invite carries a chosen set of editions, not just the passage. The first
    *  column is the one it opens in. */
   const copyInvite = useCallback(
-    async (columns: Lang[], verse?: number) => {
+    async (columns: Lang[], at: { slug: string; ch: number; v?: number }) => {
       try {
         await navigator.clipboard.writeText(
-          inviteUrl({ columns, lang: columns[0], slug: pos.slug, chapter: pos.chapter, verse }),
+          inviteUrl({ columns, lang: columns[0], slug: at.slug, chapter: at.ch, verse: at.v }),
         )
         say(t('invite_copied'))
       } catch {
@@ -1096,13 +1106,13 @@ export default function App() {
       }
       setInviteFor(null)
     },
-    [pos.slug, pos.chapter, t, say],
+    [t, say],
   )
   const copyVerseText = useCallback(
-    async (lang: Lang, ch: number, v: number, text: string) => {
+    async (lang: Lang, slug: string, ch: number, v: number, text: string) => {
       const plain = plainText(text, lang)
       // Cite in the verse's own language, not the UI's.
-      const name = bookName(book, lang)
+      const name = bookName(index.find((b) => b.slug === slug), lang)
       try {
         await navigator.clipboard.writeText(`"${plain}" [${name} ${ch}:${v}] ${BY_ID[lang].fullName}`)
         say(t('verse_copied'))
@@ -1110,7 +1120,31 @@ export default function App() {
         say(t('copy_failed'))
       }
     },
-    [book, t],
+    [index, t, say],
+  )
+
+  /**
+   * Study a verse of an open plan day.
+   *
+   * Separate from `openVerseAt` because a day is not the loaded book: it carries its
+   * own text, it runs across books, and it shows one edition. So the sheet gets that
+   * one edition rather than every visible column — there is no second column behind
+   * the day to line the verse up against, and claiming one would be inventing it.
+   */
+  const openDayVerse = useCallback(
+    (slug: string, ch: number, v: number, text: string) => {
+      setVerseSheet({
+        label: `${bookName(index.find((b) => b.slug === slug), prefs.ui)} ${ch}:${v}`,
+        lang: pos.lang,
+        slug,
+        ch,
+        v,
+        text: { [pos.lang]: text },
+        // Never shown: the day only renders verses it has text for.
+        gap: 'absent',
+      })
+    },
+    [index, prefs.ui, pos.lang],
   )
 
   const openVerseAt = useCallback(
@@ -2001,48 +2035,95 @@ export default function App() {
                               badge, so it gets the line above the numbers instead. */}
                           <p className="patchchapno"><span className="fchap" dir="ltr">{c.ch}</span></p>
                           <ol className="verses">
-                            {c.verses.map((v) => (
+                            {c.verses.map((v) => {
+                              const pref = vref(c.slug, c.ch, v.v)
+                              const pann = store[pref]
+                              return (
                               <li
                                 key={v.v}
                                 id={patchVerseId(c.slug, c.ch, v.v)}
                                 className={`verse pverse ${spoken(v.v)}`}
-                                onClick={() =>
-                                  window.getSelection()?.isCollapsed &&
+                                onClick={(e) => {
+                                  if ((e.target as HTMLElement).closest('button')) return
+                                  if (!window.getSelection()?.isCollapsed) return
                                   setPatchBarAt((prev) =>
                                     prev && prev.slug === c.slug && prev.ch === c.ch && prev.v === v.v
                                       ? null
                                       : { slug: c.slug, ch: c.ch, v: v.v },
                                   )
-                                }
+                                }}
                               >
                                 <span className="vn">{v.v}</span>
+                                {/* The same two marks the reader draws, for the same
+                                    reason: a note saved in a day is a note, and it has to
+                                    be visible from the day it was written in. */}
+                                {pann?.bookmarked && (
+                                  <span className="mk bm" title={t('bookmark')}>
+                                    <Icon name="bookmarked" size={12} />
+                                  </span>
+                                )}
+                                {pann?.note && (
+                                  <button className="mk note" title={t('note')} onClick={() => setNoteRef(pref)}>
+                                    <Icon name="note" size={12} />
+                                  </button>
+                                )}
                                 <span className="vt">
                                   <VerseText text={v.text} lang={pos.lang} showFurigana={prefs.furigana} highlights={v.hl} />
                                 </span>
-                                {/* One action, not the reader's six. Highlight, note and
-                                    Study all want a loaded book, and a day crosses books,
-                                    so the bar that belongs here is the one thing a day
-                                    can always answer: start reading at this verse. */}
+                                {/* The reader's bar, not a reduced one. Everything in it
+                                    is keyed by a verse reference, which a day has as
+                                    surely as a chapter does — what the day had to supply
+                                    was the *book*, since `pos` here follows whatever is
+                                    scrolled to rather than what was tapped. The one cell
+                                    that differs is the play: a day's is the rest of the
+                                    day, not this verse and then silence. */}
                                 {patchBarAt?.slug === c.slug && patchBarAt.ch === c.ch && patchBarAt.v === v.v && (
-                                  <div className="vbar pbar" lang={BY_ID[prefs.ui].htmlLang} dir={BY_ID[prefs.ui].dir}>
-                                    <button
-                                      className="vbtn"
-                                      onClick={(e) => {
-                                        e.stopPropagation()
+                                  <div lang={BY_ID[prefs.ui].htmlLang} dir={BY_ID[prefs.ui].dir}>
+                                    <VerseBar
+                                      t={t}
+                                      hasHL={!!pann?.highlights?.some((h) => h.lang === pos.lang)}
+                                      bookmarked={!!pann?.bookmarked}
+                                      canListen={canTTS && !noVoice.has(pos.lang)}
+                                      listenLabel={t('plan_read_from_here')}
+                                      onColour={(col) => {
+                                        clearHighlightsIn(pref, pos.lang, 0, Number.MAX_SAFE_INTEGER)
+                                        addHighlight(pref, {
+                                          lang: pos.lang,
+                                          start: 0,
+                                          end: Number.MAX_SAFE_INTEGER,
+                                          color: col,
+                                          text: plainText(v.text, pos.lang),
+                                        })
+                                      }}
+                                      onClearHL={() => clearHighlightsIn(pref, pos.lang, 0, Number.MAX_SAFE_INTEGER)}
+                                      onBookmark={() => toggleBookmark(pref)}
+                                      onNote={() => { setNoteRef(pref); setPatchBarAt(null) }}
+                                      onListen={() => {
                                         const at = patchVerses.findIndex(
                                           (x) => x.slug === c.slug && x.ch === c.ch && x.v === v.v,
                                         )
                                         setPatchBarAt(null)
                                         if (at >= 0) speakDay(at)
                                       }}
-                                    >
-                                      <Icon name="play" size={17} />
-                                      <span>{t('plan_read_from_here')}</span>
-                                    </button>
+                                      onStudy={() => { openDayVerse(c.slug, c.ch, v.v, v.text); setPatchBarAt(null) }}
+                                      onCopyText={() => {
+                                        copyVerseText(pos.lang, c.slug, c.ch, v.v, v.text)
+                                        setPatchBarAt(null)
+                                      }}
+                                      onCopyLink={() => {
+                                        copyVerseLink(pos.lang, c.slug, c.ch, v.v)
+                                        setPatchBarAt(null)
+                                      }}
+                                      onInvite={() => {
+                                        setInviteFor({ slug: c.slug, ch: c.ch, v: v.v })
+                                        setPatchBarAt(null)
+                                      }}
+                                    />
                                   </div>
                                 )}
                               </li>
-                            ))}
+                              )
+                            })}
                           </ol>
                         </>
                       )}
@@ -2261,11 +2342,11 @@ export default function App() {
                               onListen={() => { playOne(l, pos.chapter, v.v, () => offerReadOn(l, pos.chapter, v.v)); setBarAt(null) }}
                               onStudy={() => { openVerseAt(l, pos.chapter, v.v); setBarAt(null) }}
                               onCopyText={() => {
-                                if (text) copyVerseText(l, pos.chapter, v.v, text)
+                                if (text) copyVerseText(l, pos.slug, pos.chapter, v.v, text)
                                 setBarAt(null)
                               }}
-                              onCopyLink={() => { copyVerseLink(l, v.v); setBarAt(null) }}
-                              onInvite={() => { setInviteFor(v.v); setBarAt(null) }}
+                              onCopyLink={() => { copyVerseLink(l, pos.slug, pos.chapter, v.v); setBarAt(null) }}
+                              onInvite={() => { setInviteFor({ slug: pos.slug, ch: pos.chapter, v: v.v }); setBarAt(null) }}
                             />
                           )}
                         </li>
@@ -2500,10 +2581,12 @@ export default function App() {
         onCopyText={() =>
           verseSheet &&
           verseSheet.text[verseSheet.lang] &&
-          copyVerseText(verseSheet.lang, verseSheet.ch, verseSheet.v, verseSheet.text[verseSheet.lang]!)
+          copyVerseText(verseSheet.lang, verseSheet.slug, verseSheet.ch, verseSheet.v, verseSheet.text[verseSheet.lang]!)
         }
-        onCopyLink={() => verseSheet && copyVerseLink(verseSheet.lang, verseSheet.v)}
-        onCopyInvite={() => verseSheet && setInviteFor(verseSheet.v)}
+        onCopyLink={() => verseSheet && copyVerseLink(verseSheet.lang, verseSheet.slug, verseSheet.ch, verseSheet.v)}
+        onCopyInvite={() =>
+          verseSheet && setInviteFor({ slug: verseSheet.slug, ch: verseSheet.ch, v: verseSheet.v })
+        }
         canSpeak={canSpeak}
         onSpeakWord={speakWord}
         onSpeakVerse={speakSheetVerse}
@@ -2523,8 +2606,12 @@ export default function App() {
         open={inviteFor !== null}
         t={t}
         initial={prefs.columns}
-        refLabel={`${title} ${pos.chapter}${inviteFor ? `:${inviteFor}` : ''}`}
-        onCopy={(cols) => copyInvite(cols, inviteFor || undefined)}
+        refLabel={
+          inviteFor
+            ? `${bookName(index.find((b) => b.slug === inviteFor.slug), prefs.ui)} ${inviteFor.ch}${inviteFor.v ? `:${inviteFor.v}` : ''}`
+            : ''
+        }
+        onCopy={(cols) => inviteFor && copyInvite(cols, inviteFor)}
         onClose={() => setInviteFor(null)}
       />
 
@@ -2583,7 +2670,11 @@ export default function App() {
           chapter and the chapter pill is one scroll away. A plan day gets a transport:
           the run *is* the day, there is no other control anywhere for it, and once the
           planner was dismissed the only way back to the audio was to reopen it. */}
-      {patch && canTTS ? (
+      {/* Never over a sheet. The button is fixed at z-index 78 and a sheet's backdrop
+          is 70, so while a day was open it floated above the note editor and sat on
+          its Save — the one control the reader had come there to press. A sheet is
+          modal; nothing of the page behind it should still be reachable. */}
+      {anySheetOpen ? null : patch && canTTS ? (
         <button
           className="audiofab"
           onClick={() => (playingLang ? pauseDay() : speakDay(patchPaused ?? dayResumeAt()))}
