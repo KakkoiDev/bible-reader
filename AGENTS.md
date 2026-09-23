@@ -26,7 +26,7 @@ empty, which reads exactly like a stale script.
 the previous bundle, so any run against a rebuilt tree measures the old code until the
 server is restarted. Restart it after every build.
 
-Green as of 2026-09-22: `verify.mjs`, `verify12` through `verify22` (`verify15`,
+Green as of 2026-09-23: `verify.mjs`, `verify12` through `verify23` (`verify15`,
 `verify18` and `verify19` need no browser), plus `check-data.mjs` and
 `check-references.mjs`. `verify2` through `verify11` fail on UI the scripts still expect
 and the app no longer renders; the failures reproduce identically on older commits, so

@@ -39,7 +39,7 @@ import { PrintPassage } from './components/PrintPassage'
 import { ImportEdition } from './components/ImportEdition'
 import { VerseBar } from './components/VerseBar'
 import { Planner, formatRefs } from './components/Planner'
-import { usePlans, chapterRead, type Ref as PlanRef } from './lib/plans'
+import { usePlans, chapterRead, isRead, type Ref as PlanRef } from './lib/plans'
 import { Icon } from './components/Icon'
 
 const BASE = import.meta.env.BASE_URL
@@ -216,6 +216,11 @@ export default function App() {
   const [verseSheet, setVerseSheet] = useState<VerseSheetData | null>(null)
   // The verse whose action bar is open. One at a time: tapping another verse moves it.
   const [barAt, setBarAt] = useState<{ lang: Lang; ch: number; v: number } | null>(null)
+  /** The verse of an open plan day whose "Read from here" is showing. The day has its
+   *  own because a day crosses books, so a chapter and a verse number do not name a
+   *  row on their own — and because the only action it offers is the one the reader
+   *  bar is full at six without. */
+  const [patchBarAt, setPatchBarAt] = useState<{ slug: string; ch: number; v: number } | null>(null)
   const [paras, setParas] = useState<Paragraphs>({})
   const [invite, setInvite] = useState<Invite | null>(initHash.invite ?? null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
@@ -1239,12 +1244,22 @@ export default function App() {
    *  put the day's first chapter in the history, so a back press would restore the old
    *  chapter into the header while the day stayed on screen, which is the bug this is
    *  fixing. Flow mode already lets `pos` follow the scroll without touching the hash. */
+  /** Set while a day is opening, until it has been scrolled to where it left off.
+   *  The landing place cannot be decided in `openDay` — the text is still being
+   *  fetched — so the effect below does it once there are verses to land on. */
+  const [seekDay, setSeekDay] = useState(false)
   const openDay = useCallback((refs: PlanRef[]) => {
     setPatch(refs)
     setPlannerOpen(false)
+    setPatchPaused(null)
+    setPatchBarAt(null)
     if (refs.length) setPos((prev) => ({ ...prev, slug: refs[0].slug, chapter: refs[0].ch }))
     window.scrollTo({ top: 0 })
+    // The text is still being fetched, so where to land cannot be decided here. The
+    // effect below does it once there are verses to land on.
+    setSeekDay(true)
   }, [])
+
 
   // Which chapter of the day is on screen. A day is often several chapters and sometimes
   // several books, so no single value is honest for the whole passage; the selector names
@@ -1278,18 +1293,87 @@ export default function App() {
     return () => io.disconnect()
   }, [patch, patchVerses.length, flow])
 
+  /**
+   * Where the day picks up: the first verse of it not already ticked off.
+   *
+   * A day is often five chapters, and stopping half way through one is the normal
+   * case, not the exception. Everything needed to carry on was already stored — the
+   * tick is per verse — and nothing read it back, so returning to a day put you at
+   * its first verse however much of it you had done. This is the read.
+   *
+   * A finished day answers 0, which reads it again from the top rather than refusing
+   * to open. Deliberately a function of `progress` at the moment it is called, not a
+   * memo: the dwell observer ticks verses as you scroll, so a live value would slide
+   * out from under the thing that asked for it.
+   */
+  const dayResumeAt = useCallback(() => {
+    const at = patchVerses.findIndex((it) => !isRead(progress, it.slug, it.ch, it.v))
+    return at < 0 ? 0 : at
+  }, [patchVerses, progress])
+
+  useEffect(() => {
+    if (!seekDay || !patch || !patchVerses.length) return
+    setSeekDay(false)
+    const at = dayResumeAt()
+    if (at === 0) return // nothing read yet: the top is where it left off
+    const it = patchVerses[at]
+    // After paint, or the row is measured before the day has laid out.
+    requestAnimationFrame(() => {
+      document.getElementById(patchVerseId(it.slug, it.ch, it.v))?.scrollIntoView({ block: 'center' })
+    })
+  }, [seekDay, patch, patchVerses, dayResumeAt])
+
+  /** Index into `patchVerses` of the verse being spoken, so pausing knows where it
+   *  got to. A ref, not state: it changes once per verse and nothing renders from it. */
+  const patchAt = useRef(0)
+  /** Where a paused day resumes, or null when it is not paused. Distinct from
+   *  `dayResumeAt()`, which is about what has been *read* — you can pause a re-read of
+   *  a day you already finished, and it should resume where you stopped it. */
+  const [patchPaused, setPatchPaused] = useState<number | null>(null)
+
+  /** Speak the day from `from` to its end. The day's list is the whole run, so this is
+   *  never continuous: rolling on would read past the day the reader asked for. */
+  const speakDay = useCallback(
+    (from: number) => {
+      const items = patchVerses.slice(from)
+      if (!items.length) return
+      setPatchPaused(null)
+      patchAt.current = from
+      speakList(
+        pos.lang,
+        items,
+        false,
+        (at) => {
+          patchAt.current = from + at
+          const it = items[at]
+          markVerse(it.slug, it.ch, it.v, it.count)
+        },
+        () => {
+          patchAt.current = 0
+        },
+      )
+    },
+    [patchVerses, pos.lang, speakList, markVerse],
+  )
+
+  /** Pause: stop the voice but remember the verse, so the same button starts it again
+   *  there. Not `speechSynthesis.pause()`, which wedges on several engines and is why
+   *  `stopSpeaking` has to lift a pause before it can cancel — this run is sequential
+   *  per verse, so resuming at the top of the verse you were in is both reliable and
+   *  the right place to come back to in scripture. */
+  const pauseDay = useCallback(() => {
+    setPatchPaused(patchAt.current)
+    stopAudio()
+  }, [stopAudio])
+
   // Play from the planner: the chapters are still being fetched when the button is
-  // pressed, so the request is held until there is something to speak. Not continuous,
-  // because the day's list is the whole run and rolling on would read past it.
+  // pressed, so the request is held until there is something to speak.
   const [playPatch, setPlayPatch] = useState(false)
   useEffect(() => {
     if (!playPatch || !patchVerses.length) return
     setPlayPatch(false)
-    speakList(pos.lang, patchVerses, false, (at) => {
-      const it = patchVerses[at]
-      markVerse(it.slug, it.ch, it.v, it.count)
-    })
-  }, [playPatch, patchVerses, pos.lang, speakList, markVerse])
+    speakDay(dayResumeAt())
+  }, [playPatch, patchVerses.length, speakDay, dayResumeAt])
 
   // Tick a verse off once it has been on screen long enough to have been read.
   useEffect(() => {
@@ -1355,6 +1439,7 @@ export default function App() {
         [patch !== null, () => setPatch(null)],
         [sel !== null, () => clearSelection()],
         [barAt !== null, () => setBarAt(null)],
+        [patchBarAt !== null, () => setPatchBarAt(null)],
       ]
       const top = layers.find(([open]) => open)
       if (top) {
@@ -1377,7 +1462,9 @@ export default function App() {
   // used to stay open under the backdrop and be waiting there, still pointing at a
   // verse the reader has since left, when the sheet closed.
   useEffect(() => {
-    if (anySheetOpen) setBarAt(null)
+    if (!anySheetOpen) return
+    setBarAt(null)
+    setPatchBarAt(null)
   }, [anySheetOpen])
   useEffect(() => {
     if (!anySheetOpen) return
@@ -1803,7 +1890,10 @@ export default function App() {
         // Tapping the page away from a verse puts the action bar away. The verse rows
         // and the bar itself both stop this from reaching here.
         onClick={(e) => {
-          if (!(e.target as HTMLElement).closest('.verse')) setBarAt(null)
+          if (!(e.target as HTMLElement).closest('.verse')) {
+            setBarAt(null)
+            setPatchBarAt(null)
+          }
         }}
       >
         {!patch && (
@@ -1912,13 +2002,45 @@ export default function App() {
                           <p className="patchchapno"><span className="fchap" dir="ltr">{c.ch}</span></p>
                           <ol className="verses">
                             {c.verses.map((v) => (
-                              <li key={v.v} id={patchVerseId(c.slug, c.ch, v.v)} className={`verse pverse ${spoken(v.v)}`}>
-                                {/* The day carries no per-verse action in either mode; the
-                                    number is the same label the reader draws. */}
+                              <li
+                                key={v.v}
+                                id={patchVerseId(c.slug, c.ch, v.v)}
+                                className={`verse pverse ${spoken(v.v)}`}
+                                onClick={() =>
+                                  window.getSelection()?.isCollapsed &&
+                                  setPatchBarAt((prev) =>
+                                    prev && prev.slug === c.slug && prev.ch === c.ch && prev.v === v.v
+                                      ? null
+                                      : { slug: c.slug, ch: c.ch, v: v.v },
+                                  )
+                                }
+                              >
                                 <span className="vn">{v.v}</span>
                                 <span className="vt">
                                   <VerseText text={v.text} lang={pos.lang} showFurigana={prefs.furigana} highlights={v.hl} />
                                 </span>
+                                {/* One action, not the reader's six. Highlight, note and
+                                    Study all want a loaded book, and a day crosses books,
+                                    so the bar that belongs here is the one thing a day
+                                    can always answer: start reading at this verse. */}
+                                {patchBarAt?.slug === c.slug && patchBarAt.ch === c.ch && patchBarAt.v === v.v && (
+                                  <div className="vbar pbar" lang={BY_ID[prefs.ui].htmlLang} dir={BY_ID[prefs.ui].dir}>
+                                    <button
+                                      className="vbtn"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        const at = patchVerses.findIndex(
+                                          (x) => x.slug === c.slug && x.ch === c.ch && x.v === v.v,
+                                        )
+                                        setPatchBarAt(null)
+                                        if (at >= 0) speakDay(at)
+                                      }}
+                                    >
+                                      <Icon name="play" size={17} />
+                                      <span>{t('plan_read_from_here')}</span>
+                                    </button>
+                                  </div>
+                                )}
                               </li>
                             ))}
                           </ol>
@@ -2456,10 +2578,27 @@ export default function App() {
         />
       )}
 
-      {flow && playingLang && (
-        <button className="audiofab" onClick={stopAudio} title={t('stop_audio')} aria-label={t('stop_audio')}>
-          <Icon name="stop" size={22} />
+      {/* The audio control of last resort, for the two surfaces that render no column
+          head to put one in. Flowing mode gets a stop, because the run there is a
+          chapter and the chapter pill is one scroll away. A plan day gets a transport:
+          the run *is* the day, there is no other control anywhere for it, and once the
+          planner was dismissed the only way back to the audio was to reopen it. */}
+      {patch && canTTS ? (
+        <button
+          className="audiofab"
+          onClick={() => (playingLang ? pauseDay() : speakDay(patchPaused ?? dayResumeAt()))}
+          title={playingLang ? t('pause_audio') : t('plan_play_day')}
+          aria-label={playingLang ? t('pause_audio') : t('plan_play_day')}
+        >
+          <Icon name={playingLang ? 'pause' : 'play'} size={22} />
         </button>
+      ) : (
+        flow &&
+        playingLang && (
+          <button className="audiofab" onClick={stopAudio} title={t('stop_audio')} aria-label={t('stop_audio')}>
+            <Icon name="stop" size={22} />
+          </button>
+        )
       )}
 
       {toast && (

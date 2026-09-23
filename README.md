@@ -79,6 +79,15 @@ Every attribution is reproduced verbatim in the app under **Texts & licences**.
   verse toggle as ordinary reading, with no separate preference of its own. While a day
   is open the book and chapter selectors follow the chapter on screen, and the header
   button is marked, so a day is never mistaken for ordinary browsing.
+- **A day can be put down and picked up.** Reopening one lands on the first verse not
+  yet read, with the last few you did read still above it, rather than at the day's
+  beginning — the tick is stored per verse, so where you stopped was always known. The
+  same point starts the audio. A day carries its own transport in the corner: it reads
+  the day aloud, and pressing it again pauses, remembering the verse so the next press
+  carries on from there rather than starting the day over. Tapping any verse of the day
+  offers **Read from here**, which is the one per-verse action a day can always answer
+  — a day crosses books, and highlight, note and Study all want a loaded one.
+  `scripts/verify23.mjs` is the gate.
 - **UI language** switches the chrome and displayed book names across all eleven
   languages, including right-to-left layout for Arabic and Hebrew.
 - **Add your own version.** Settings → Languages & versions → *Add a version…* reads
@@ -710,6 +719,11 @@ npx vite preview --port 4188 --strictPort
 node scripts/verify22.mjs   # how much gets read aloud, and from where
 ```
 
+```bash
+npx vite preview --port 4189 --strictPort
+node scripts/verify23.mjs   # a plan day you can put down and pick up
+```
+
 `verify22.mjs` stubs `speechSynthesis` the way `verify14` does and reads back the
 list of utterances handed over, because how much was read is invisible to a
 screenshot and inaudible to a headless browser. The list's length is how much, and
@@ -725,6 +739,16 @@ column head sits at the top of the chapter — so clicking it the ordinary way s
 the page back and undoes the scrolled-past-the-start condition being tested. Against
 the old code, clicked through the DOM it reads 11 utterances from verse 26; clicked
 through Playwright it reads all 36 and the check proves nothing.
+
+`verify23.mjs` is the fourth planner suite and the only one about staying in a day
+rather than getting into one. It seeds John a chapter a day with the first twenty
+verses already ticked, then checks the three things a reader loses a day's place to:
+that reopening lands the first unread verse in the middle of the window rather than
+scrolling to nothing, that the day's transport pauses and resumes at the verse it
+stopped in instead of starting over, and that tapping a verse reads from there to the
+end of the day and no further. Every one of its checks was run against the build
+before the change and fails there — the transport one by timing out, because the
+control did not exist.
 
 `verify21.mjs` is the third planner suite and the only one that presses the buttons:
 `verify15` proves the arithmetic without a browser and `verify16` seeds plans through

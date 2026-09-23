@@ -509,6 +509,11 @@ ruby rt { font-size: 0.55em; color: var(--muted); font-family: var(--f-ui); }
 /* The sub-rows read as a row of labelled buttons, not as a cell grid. */
 .vbar:not(.cells) .vbtn { flex-direction: row; gap: 7px; min-height: var(--touch); }
 .vbtn.wide { padding: 0 12px; }
+/* A plan day's bar carries one action, so it takes its own width at the start of the
+   line rather than stretching across it. Stretching put its right end under the day's
+   audio button, which is fixed to that corner and would sit on the label. */
+.vbar.pbar { margin-bottom: 6px; }
+.vbar.pbar .vbtn { padding: 0 16px; }
 .vbtn.on { color: var(--accent); background: var(--accent-bg); border-color: var(--accent); }
 /* No voice for this edition, or no text in this verse. The cell stays so the six
    actions never move; it just says it cannot do anything. */

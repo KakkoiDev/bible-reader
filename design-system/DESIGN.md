@@ -45,6 +45,13 @@ bar is full at six controls on a 390pt screen; a seventh needs a redesign, not a
 squeeze. Highlight and note are adjacent because they are the two everyday actions,
 and they carry the two glyphs most easily confused — see *Departures*.
 
+A **plan day** is the one surface with a transport rather than a play button: the run
+is the day, not a chapter, so it has a state worth pausing. The corner button reads the
+day and then pauses it, remembering the verse; a day reopened lands on the first verse
+not yet read, with the last ones read still above it. Its verses carry a single action,
+*Read from here* — not the six-cell bar, because a day crosses books and highlight,
+note and Study all want a loaded one.
+
 **Listen** reads that verse and stops, because a control named for a verse should
 mean a verse. Reading *on* from it is a different size of thing, and it is an
 **offer, not a control**: once a single verse has finished, a seven-second *Read on*
