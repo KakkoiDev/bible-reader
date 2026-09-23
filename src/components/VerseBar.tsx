@@ -28,6 +28,10 @@ export interface VerseBarProps {
   bookmarked: boolean
   /** False for an edition with no voice installed, or no text in this verse. */
   canListen: boolean
+  /** What the play cell promises here. The reader's Listen is this verse and then
+   *  silence; a reading plan day's is the rest of the day, which is a different size
+   *  of thing and has to say so. Defaults to Listen. */
+  listenLabel?: string
   onColour: (c: HColor) => void
   onClearHL: () => void
   onBookmark: () => void
@@ -40,7 +44,7 @@ export interface VerseBarProps {
 }
 
 export function VerseBar({
-  t, hasHL, bookmarked, canListen,
+  t, hasHL, bookmarked, canListen, listenLabel,
   onColour, onClearHL, onBookmark, onNote, onListen, onStudy,
   onCopyText, onCopyLink, onInvite,
 }: VerseBarProps) {
@@ -142,7 +146,7 @@ export function VerseBar({
           from edition to edition. */}
       <button className="vbtn" onClick={onListen} disabled={!canListen}>
         <Icon name="play" size={15} />
-        <span className="vlabel">{t('listen')}</span>
+        <span className="vlabel">{listenLabel ?? t('listen')}</span>
       </button>
       {/* Study is the only action here that opens a sheet, so it is the only filled
           one. It is a cell like the others now, not a wider button pushed right. */}

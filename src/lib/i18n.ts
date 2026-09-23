@@ -121,6 +121,16 @@ const en = {
   saved_aria: 'Saved (notes & highlights)',
   language: 'Language',
   stop_audio: 'Stop audio',
+  /** The plan day's transport. Pause remembers the verse; playing again starts there,
+   *  and playing a day that was never started begins at the first verse not yet read. */
+  pause_audio: 'Pause',
+  plan_play_day: 'Read the day aloud',
+  /** The play cell of a plan day's verse bar: start the day's reading at this verse.
+   *  It has to fit a 9px label in one of six equal cells on a 390pt screen, which is
+   *  52px of room. "Read from here" is far too wide and even "From here" lands within
+   *  0.1px of the limit, where `text-overflow` eats two characters. Keep any
+   *  translation of this comfortably under — verify23 measures it. */
+  plan_read_from_here: 'Read on',
   install_app: 'Install app',
   source_code: 'Source code',
 
@@ -161,6 +171,11 @@ const en = {
 
   audio_interrupted: 'Audio stopped when the app went to the background.',
   resume_audio: 'Resume',
+  /** Offered for a few seconds after a single verse has been read, and only when the
+   *  chapter has a verse after it. The action starts at that next verse — Listen in
+   *  the verse bar reads a verse and stops, and this is the way from that to a run. */
+  read_on_offer: 'Keep reading?',
+  read_on_action: 'Read on',
   tts_not_installed: 'No {lang} voice is installed on this browser.',
 
   /** Speaks one word: the Greek or Hebrew behind a KJV word. */
@@ -308,7 +323,8 @@ const ja: Dict = {
   confirm_delete_title: 'このノートを削除しますか？', confirm_delete_body: '{ref} のノート・タグ・ハイライトが削除されます。',
   cancel: 'キャンセル',
   close: '閉じる', search: '検索', saved_aria: '保存済み（ノートとハイライト）', language: '言語',
-  stop_audio: '音声を停止', install_app: 'アプリをインストール', source_code: 'ソースコード',
+  stop_audio: '音声を停止',
+  pause_audio: '一時停止', plan_play_day: '今日の分を読み上げる', plan_read_from_here: 'ここから', install_app: 'アプリをインストール', source_code: 'ソースコード',
   licences: '底本と著作権', licences_intro: '本アプリは以下の版を収録しています。帰属および利用条件は原文のまま掲載し、翻訳していません。',
   group_reading: '表示', group_languages: '言語と訳', group_audio: '音声', group_data: 'ノートとデータ',
   coverage_nt_only: 'この版は新約聖書のみを収録しています。', coverage_ot_only: 'この版は旧約聖書のみを収録しています。', coverage_chapter_absent: 'この章はこの版の底本に収録されていません。', gap_absent: 'この版にはありません', gap_versification: 'この版では番号の付け方が異なります', flow_absent_run: 'この版の底本には{ref}が収録されていません。', end_of: '{ref} 終わり', continue_reading: '続きを読む',
@@ -319,6 +335,7 @@ const ja: Dict = {
   with_concordance: '原語辞書',
   anki: 'Anki', exported_anki_n: 'Anki用に{n}件を書き出しました',
   audio_interrupted: 'アプリが背面に移ったため音声を停止しました。', resume_audio: '再開',
+  read_on_offer: '続きを読みますか？', read_on_action: '続きを読む',
   tts_not_installed: 'この端末には{lang}の音声が入っていません。',
   pronounce: '発音を聞く',
   concordance_failed: '原語辞書を読み込めませんでした。', retry: '再試行', loading: '読み込み中…',
@@ -403,7 +420,8 @@ const fr: Dict = {
   confirm_delete_body: 'La note, les étiquettes et les surlignages de {ref} seront supprimés.',
   cancel: 'Annuler',
   close: 'Fermer', search: 'Rechercher', saved_aria: 'Enregistré (notes et surlignages)', language: 'Langue',
-  stop_audio: "Arrêter l'audio", install_app: "Installer l'application", source_code: 'Code source',
+  stop_audio: "Arrêter l'audio",
+  pause_audio: 'Pause', plan_play_day: 'Lire le jour à voix haute', plan_read_from_here: 'Lire ici', install_app: "Installer l'application", source_code: 'Code source',
   licences: 'Textes et licences', licences_intro: "Cette application reproduit les éditions suivantes. Les mentions d'attribution et de licence sont citées telles quelles et ne sont pas traduites.",
   group_reading: 'Lecture', group_languages: 'Langues et versions', group_audio: 'Audio', group_data: 'Notes et données',
   coverage_nt_only: 'Cette édition ne contient que le Nouveau Testament.', coverage_ot_only: 'Cette édition ne contient que l’Ancien Testament.', coverage_chapter_absent: 'Ce chapitre est absent de la source dont provient cette édition.', gap_absent: 'absent de cette édition', gap_versification: 'numérotation différente ici', flow_absent_run: 'La source dont provient cette édition ne contient pas {ref}.', end_of: 'Fin de {ref}', continue_reading: 'Continuer',
@@ -414,6 +432,7 @@ const fr: Dict = {
   with_concordance: 'concordance',
   anki: 'Anki', exported_anki_n: '{n} cartes pour Anki',
   audio_interrupted: "L'audio s'est arrêté au passage en arrière-plan.", resume_audio: 'Reprendre',
+  read_on_offer: 'Lire la suite ?', read_on_action: 'Continuer',
   tts_not_installed: "Aucune voix {lang} n'est installée sur ce navigateur.",
   pronounce: 'Prononcer',
   concordance_failed: 'Impossible de charger la concordance.', retry: 'Réessayer', loading: 'Chargement…',

@@ -912,8 +912,10 @@ export function VerseSheet({
            exactly as the bar does — one idea in the app instead of two, and one row
            instead of three. They stay here rather than going altogether because in
            flowing mode there is no verse bar and this sheet is the only route to
-           them. Listen from here is gone: the title row below plays this verse and
-           the bar reads on from it.
+           them. The title row below speaks this verse and stops; nothing in this
+           sheet starts a continuous read. A row for that was tried here and removed:
+           two taps behind a sheet is no place for a control whose whole value is
+           being to hand when you are already listening.
            The primary is Note because saving what you found is what a reader does
            after studying. The eyebrow in the title says the sheet is Study, so the
            filled button no longer has to carry a name that is not its job. */

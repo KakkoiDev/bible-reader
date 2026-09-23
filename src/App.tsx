@@ -39,7 +39,7 @@ import { PrintPassage } from './components/PrintPassage'
 import { ImportEdition } from './components/ImportEdition'
 import { VerseBar } from './components/VerseBar'
 import { Planner, formatRefs } from './components/Planner'
-import { usePlans, chapterRead, type Ref as PlanRef } from './lib/plans'
+import { usePlans, chapterRead, isRead, type Ref as PlanRef } from './lib/plans'
 import { Icon } from './components/Icon'
 
 const BASE = import.meta.env.BASE_URL
@@ -216,11 +216,19 @@ export default function App() {
   const [verseSheet, setVerseSheet] = useState<VerseSheetData | null>(null)
   // The verse whose action bar is open. One at a time: tapping another verse moves it.
   const [barAt, setBarAt] = useState<{ lang: Lang; ch: number; v: number } | null>(null)
+  /** The verse of an open plan day whose "Read from here" is showing. The day has its
+   *  own because a day crosses books, so a chapter and a verse number do not name a
+   *  row on their own — and because the only action it offers is the one the reader
+   *  bar is full at six without. */
+  const [patchBarAt, setPatchBarAt] = useState<{ slug: string; ch: number; v: number } | null>(null)
   const [paras, setParas] = useState<Paragraphs>({})
   const [invite, setInvite] = useState<Invite | null>(initHash.invite ?? null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
-  // Set to the verse to share (or 0 for the chapter) while the builder is open.
-  const [inviteFor, setInviteFor] = useState<number | null>(null)
+  /** What the invite builder is open for: a chapter, and a verse within it when the
+   *  invite was raised from one. It carries its own reference rather than reading
+   *  `pos`, because a plan day crosses books and `pos` follows whatever chapter is
+   *  scrolled to — which is not necessarily the chapter of the verse that was tapped. */
+  const [inviteFor, setInviteFor] = useState<{ slug: string; ch: number; v?: number } | null>(null)
   // Tag pending global deletion, awaiting confirmation.
   const [confirmTag, setConfirmTag] = useState<string | null>(null)
   const [importOpen, setImportOpen] = useState(false)
@@ -455,7 +463,11 @@ export default function App() {
     let alive = true
     const pick = (b?: EditionBook) =>
       b?.chapters.find((c) => c.n === ch)?.verses.find((x) => x.v === v)?.t ?? null
-    const have = verseText[oLang]?.get(`${ch}.${v}`) // fast path: that edition is a visible column
+    // Fast path: that edition is a visible column — but only when the sheet is showing
+    // a verse of the *loaded* book. `verseText` is keyed by chapter and verse alone, so
+    // for a sheet opened on another book of a plan day it would hand back the loaded
+    // book's Hebrew under the same numbers.
+    const have = slug === pos.slug ? verseText[oLang]?.get(`${ch}.${v}`) : undefined
     if (have) return setOrigVerse({ lang: oLang, text: have })
     const key = `${oLang}/${slug}`
     const apply = (b: EditionBook) => {
@@ -472,7 +484,7 @@ export default function App() {
     return () => {
       alive = false
     }
-  }, [verseSheet, index, verseText])
+  }, [verseSheet, index, verseText, pos.slug])
 
   // Warm the book's concordance cards once the text itself is up, so the first verse
   // tap opens with the words already there. Deferred to idle (with a timeout, since
@@ -601,6 +613,10 @@ export default function App() {
       // `speaking` state instead would lose the last verse of a run: `onDone` clears
       // that state in the same commit as the final verse's update, so the two coalesce.
       onSpoke?: (at: number) => void,
+      // Fires once the run has finished of its own accord. Stopping does not reach it:
+      // the generation guard below drops the callback, so an offer to read on can't
+      // appear after the reader has pressed stop.
+      onEnd?: () => void,
     ) => {
       if (!canTTS || !verses.length) return
       const gen = ++genRef.current
@@ -640,6 +656,7 @@ export default function App() {
           setSpeaking(null)
           setPlayingLang(null)
           if (continuous) setAutoNext(lang) // advance to the next chapter
+          onEnd?.()
         },
         // Reached once the voice list is in and this language has no voice: clear the
         // playing state we set optimistically and tell the reader why nothing played.
@@ -685,16 +702,18 @@ export default function App() {
   /** One verse, and then silence. Never continuous: asking for a verse is asking for
    *  a verse, so "Stop at chapter end" does not enter into it. */
   const playOne = useCallback(
-    (lang: Lang, ch: number, v: number) => {
+    (lang: Lang, ch: number, v: number, onEnd?: () => void) => {
       const text = verseText[lang]?.get(`${ch}.${v}`)
       if (!text) return
-      speakList(lang, [{ ch, v, text }], false)
+      speakList(lang, [{ ch, v, text }], false, undefined, onEnd)
     },
     [verseText, speakList],
   )
   // Play continuously from a given verse onward (through the chapter, then the book).
-  // The one caller left is the offer to resume after the app was backgrounded, where
-  // carrying on from where playback stopped is exactly what is being asked for.
+  // Two callers: the offer raised once a single verse has been read, and the offer to
+  // resume after the app was backgrounded. Both are offers rather than controls, and
+  // that is the point — neither costs a permanent place in the interface, and each
+  // appears at the only moment it means anything.
   const playFrom = useCallback(
     (lang: Lang, ch: number, v: number) => {
       const count = book?.chapters[ch - 1] ?? 0
@@ -706,6 +725,24 @@ export default function App() {
       speakList(lang, items, keepGoing)
     },
     [book, verseText, speakList, keepGoing],
+  )
+  /**
+   * The opportunistic half of "read on": after one verse has been read, offer to carry
+   * on from the next one for as long as the toast lives.
+   *
+   * It starts at `v + 1`, not at `v`: the verse just finished, and replaying it would
+   * be the offer answering a question nobody asked. That also means the offer is
+   * suppressed on the last verse of a chapter — `playFrom` would find nothing to say
+   * and the button would be dead. Rolling on into the next chapter is deliberately not
+   * done here; "stop at chapter end" is about a run that reached the end, and this is a
+   * run that has not started.
+   */
+  const offerReadOn = useCallback(
+    (lang: Lang, ch: number, v: number) => {
+      if (!verseText[lang]?.has(`${ch}.${v + 1}`)) return
+      say(t('read_on_offer'), { label: t('read_on_action'), run: () => playFrom(lang, ch, v + 1) })
+    },
+    [verseText, say, t, playFrom],
   )
   useEffect(() => () => stopSpeaking(), []) // stop on unmount
 
@@ -1040,9 +1077,12 @@ export default function App() {
   )
 
   // Copy a shareable link to a verse (does not move you or stop audio).
+  // This and copyVerseText name the book they are given rather than the one the reader
+  // has loaded: a plan day runs across books, so the verse being copied is not always
+  // in `book`.
   const copyVerseLink = useCallback(
-    async (lang: Lang, v: number) => {
-      const url = `${location.origin}${location.pathname}${buildHash(pos.slug, pos.chapter, lang, v)}`
+    async (lang: Lang, slug: string, ch: number, v: number) => {
+      const url = `${location.origin}${location.pathname}${buildHash(slug, ch, lang, v)}`
       try {
         await navigator.clipboard.writeText(url)
         say(t('link_copied'))
@@ -1050,15 +1090,15 @@ export default function App() {
         say(t('copy_failed'))
       }
     },
-    [pos.slug, pos.chapter, t],
+    [t, say],
   )
   /** An invite carries a chosen set of editions, not just the passage. The first
    *  column is the one it opens in. */
   const copyInvite = useCallback(
-    async (columns: Lang[], verse?: number) => {
+    async (columns: Lang[], at: { slug: string; ch: number; v?: number }) => {
       try {
         await navigator.clipboard.writeText(
-          inviteUrl({ columns, lang: columns[0], slug: pos.slug, chapter: pos.chapter, verse }),
+          inviteUrl({ columns, lang: columns[0], slug: at.slug, chapter: at.ch, verse: at.v }),
         )
         say(t('invite_copied'))
       } catch {
@@ -1066,13 +1106,13 @@ export default function App() {
       }
       setInviteFor(null)
     },
-    [pos.slug, pos.chapter, t, say],
+    [t, say],
   )
   const copyVerseText = useCallback(
-    async (lang: Lang, ch: number, v: number, text: string) => {
+    async (lang: Lang, slug: string, ch: number, v: number, text: string) => {
       const plain = plainText(text, lang)
       // Cite in the verse's own language, not the UI's.
-      const name = bookName(book, lang)
+      const name = bookName(index.find((b) => b.slug === slug), lang)
       try {
         await navigator.clipboard.writeText(`"${plain}" [${name} ${ch}:${v}] ${BY_ID[lang].fullName}`)
         say(t('verse_copied'))
@@ -1080,7 +1120,31 @@ export default function App() {
         say(t('copy_failed'))
       }
     },
-    [book, t],
+    [index, t, say],
+  )
+
+  /**
+   * Study a verse of an open plan day.
+   *
+   * Separate from `openVerseAt` because a day is not the loaded book: it carries its
+   * own text, it runs across books, and it shows one edition. So the sheet gets that
+   * one edition rather than every visible column — there is no second column behind
+   * the day to line the verse up against, and claiming one would be inventing it.
+   */
+  const openDayVerse = useCallback(
+    (slug: string, ch: number, v: number, text: string) => {
+      setVerseSheet({
+        label: `${bookName(index.find((b) => b.slug === slug), prefs.ui)} ${ch}:${v}`,
+        lang: pos.lang,
+        slug,
+        ch,
+        v,
+        text: { [pos.lang]: text },
+        // Never shown: the day only renders verses it has text for.
+        gap: 'absent',
+      })
+    },
+    [index, prefs.ui, pos.lang],
   )
 
   const openVerseAt = useCallback(
@@ -1214,12 +1278,22 @@ export default function App() {
    *  put the day's first chapter in the history, so a back press would restore the old
    *  chapter into the header while the day stayed on screen, which is the bug this is
    *  fixing. Flow mode already lets `pos` follow the scroll without touching the hash. */
+  /** Set while a day is opening, until it has been scrolled to where it left off.
+   *  The landing place cannot be decided in `openDay` — the text is still being
+   *  fetched — so the effect below does it once there are verses to land on. */
+  const [seekDay, setSeekDay] = useState(false)
   const openDay = useCallback((refs: PlanRef[]) => {
     setPatch(refs)
     setPlannerOpen(false)
+    setPatchPaused(null)
+    setPatchBarAt(null)
     if (refs.length) setPos((prev) => ({ ...prev, slug: refs[0].slug, chapter: refs[0].ch }))
     window.scrollTo({ top: 0 })
+    // The text is still being fetched, so where to land cannot be decided here. The
+    // effect below does it once there are verses to land on.
+    setSeekDay(true)
   }, [])
+
 
   // Which chapter of the day is on screen. A day is often several chapters and sometimes
   // several books, so no single value is honest for the whole passage; the selector names
@@ -1253,18 +1327,87 @@ export default function App() {
     return () => io.disconnect()
   }, [patch, patchVerses.length, flow])
 
+  /**
+   * Where the day picks up: the first verse of it not already ticked off.
+   *
+   * A day is often five chapters, and stopping half way through one is the normal
+   * case, not the exception. Everything needed to carry on was already stored — the
+   * tick is per verse — and nothing read it back, so returning to a day put you at
+   * its first verse however much of it you had done. This is the read.
+   *
+   * A finished day answers 0, which reads it again from the top rather than refusing
+   * to open. Deliberately a function of `progress` at the moment it is called, not a
+   * memo: the dwell observer ticks verses as you scroll, so a live value would slide
+   * out from under the thing that asked for it.
+   */
+  const dayResumeAt = useCallback(() => {
+    const at = patchVerses.findIndex((it) => !isRead(progress, it.slug, it.ch, it.v))
+    return at < 0 ? 0 : at
+  }, [patchVerses, progress])
+
+  useEffect(() => {
+    if (!seekDay || !patch || !patchVerses.length) return
+    setSeekDay(false)
+    const at = dayResumeAt()
+    if (at === 0) return // nothing read yet: the top is where it left off
+    const it = patchVerses[at]
+    // After paint, or the row is measured before the day has laid out.
+    requestAnimationFrame(() => {
+      document.getElementById(patchVerseId(it.slug, it.ch, it.v))?.scrollIntoView({ block: 'center' })
+    })
+  }, [seekDay, patch, patchVerses, dayResumeAt])
+
+  /** Index into `patchVerses` of the verse being spoken, so pausing knows where it
+   *  got to. A ref, not state: it changes once per verse and nothing renders from it. */
+  const patchAt = useRef(0)
+  /** Where a paused day resumes, or null when it is not paused. Distinct from
+   *  `dayResumeAt()`, which is about what has been *read* — you can pause a re-read of
+   *  a day you already finished, and it should resume where you stopped it. */
+  const [patchPaused, setPatchPaused] = useState<number | null>(null)
+
+  /** Speak the day from `from` to its end. The day's list is the whole run, so this is
+   *  never continuous: rolling on would read past the day the reader asked for. */
+  const speakDay = useCallback(
+    (from: number) => {
+      const items = patchVerses.slice(from)
+      if (!items.length) return
+      setPatchPaused(null)
+      patchAt.current = from
+      speakList(
+        pos.lang,
+        items,
+        false,
+        (at) => {
+          patchAt.current = from + at
+          const it = items[at]
+          markVerse(it.slug, it.ch, it.v, it.count)
+        },
+        () => {
+          patchAt.current = 0
+        },
+      )
+    },
+    [patchVerses, pos.lang, speakList, markVerse],
+  )
+
+  /** Pause: stop the voice but remember the verse, so the same button starts it again
+   *  there. Not `speechSynthesis.pause()`, which wedges on several engines and is why
+   *  `stopSpeaking` has to lift a pause before it can cancel — this run is sequential
+   *  per verse, so resuming at the top of the verse you were in is both reliable and
+   *  the right place to come back to in scripture. */
+  const pauseDay = useCallback(() => {
+    setPatchPaused(patchAt.current)
+    stopAudio()
+  }, [stopAudio])
+
   // Play from the planner: the chapters are still being fetched when the button is
-  // pressed, so the request is held until there is something to speak. Not continuous,
-  // because the day's list is the whole run and rolling on would read past it.
+  // pressed, so the request is held until there is something to speak.
   const [playPatch, setPlayPatch] = useState(false)
   useEffect(() => {
     if (!playPatch || !patchVerses.length) return
     setPlayPatch(false)
-    speakList(pos.lang, patchVerses, false, (at) => {
-      const it = patchVerses[at]
-      markVerse(it.slug, it.ch, it.v, it.count)
-    })
-  }, [playPatch, patchVerses, pos.lang, speakList, markVerse])
+    speakDay(dayResumeAt())
+  }, [playPatch, patchVerses.length, speakDay, dayResumeAt])
 
   // Tick a verse off once it has been on screen long enough to have been read.
   useEffect(() => {
@@ -1330,6 +1473,7 @@ export default function App() {
         [patch !== null, () => setPatch(null)],
         [sel !== null, () => clearSelection()],
         [barAt !== null, () => setBarAt(null)],
+        [patchBarAt !== null, () => setPatchBarAt(null)],
       ]
       const top = layers.find(([open]) => open)
       if (top) {
@@ -1352,7 +1496,9 @@ export default function App() {
   // used to stay open under the backdrop and be waiting there, still pointing at a
   // verse the reader has since left, when the sheet closed.
   useEffect(() => {
-    if (anySheetOpen) setBarAt(null)
+    if (!anySheetOpen) return
+    setBarAt(null)
+    setPatchBarAt(null)
   }, [anySheetOpen])
   useEffect(() => {
     if (!anySheetOpen) return
@@ -1778,7 +1924,10 @@ export default function App() {
         // Tapping the page away from a verse puts the action bar away. The verse rows
         // and the bar itself both stop this from reaching here.
         onClick={(e) => {
-          if (!(e.target as HTMLElement).closest('.verse')) setBarAt(null)
+          if (!(e.target as HTMLElement).closest('.verse')) {
+            setBarAt(null)
+            setPatchBarAt(null)
+          }
         }}
       >
         {!patch && (
@@ -1886,16 +2035,95 @@ export default function App() {
                               badge, so it gets the line above the numbers instead. */}
                           <p className="patchchapno"><span className="fchap" dir="ltr">{c.ch}</span></p>
                           <ol className="verses">
-                            {c.verses.map((v) => (
-                              <li key={v.v} id={patchVerseId(c.slug, c.ch, v.v)} className={`verse pverse ${spoken(v.v)}`}>
-                                {/* The day carries no per-verse action in either mode; the
-                                    number is the same label the reader draws. */}
+                            {c.verses.map((v) => {
+                              const pref = vref(c.slug, c.ch, v.v)
+                              const pann = store[pref]
+                              return (
+                              <li
+                                key={v.v}
+                                id={patchVerseId(c.slug, c.ch, v.v)}
+                                className={`verse pverse ${spoken(v.v)}`}
+                                onClick={(e) => {
+                                  if ((e.target as HTMLElement).closest('button')) return
+                                  if (!window.getSelection()?.isCollapsed) return
+                                  setPatchBarAt((prev) =>
+                                    prev && prev.slug === c.slug && prev.ch === c.ch && prev.v === v.v
+                                      ? null
+                                      : { slug: c.slug, ch: c.ch, v: v.v },
+                                  )
+                                }}
+                              >
                                 <span className="vn">{v.v}</span>
+                                {/* The same two marks the reader draws, for the same
+                                    reason: a note saved in a day is a note, and it has to
+                                    be visible from the day it was written in. */}
+                                {pann?.bookmarked && (
+                                  <span className="mk bm" title={t('bookmark')}>
+                                    <Icon name="bookmarked" size={12} />
+                                  </span>
+                                )}
+                                {pann?.note && (
+                                  <button className="mk note" title={t('note')} onClick={() => setNoteRef(pref)}>
+                                    <Icon name="note" size={12} />
+                                  </button>
+                                )}
                                 <span className="vt">
                                   <VerseText text={v.text} lang={pos.lang} showFurigana={prefs.furigana} highlights={v.hl} />
                                 </span>
+                                {/* The reader's bar, not a reduced one. Everything in it
+                                    is keyed by a verse reference, which a day has as
+                                    surely as a chapter does — what the day had to supply
+                                    was the *book*, since `pos` here follows whatever is
+                                    scrolled to rather than what was tapped. The one cell
+                                    that differs is the play: a day's is the rest of the
+                                    day, not this verse and then silence. */}
+                                {patchBarAt?.slug === c.slug && patchBarAt.ch === c.ch && patchBarAt.v === v.v && (
+                                  <div lang={BY_ID[prefs.ui].htmlLang} dir={BY_ID[prefs.ui].dir}>
+                                    <VerseBar
+                                      t={t}
+                                      hasHL={!!pann?.highlights?.some((h) => h.lang === pos.lang)}
+                                      bookmarked={!!pann?.bookmarked}
+                                      canListen={canTTS && !noVoice.has(pos.lang)}
+                                      listenLabel={t('plan_read_from_here')}
+                                      onColour={(col) => {
+                                        clearHighlightsIn(pref, pos.lang, 0, Number.MAX_SAFE_INTEGER)
+                                        addHighlight(pref, {
+                                          lang: pos.lang,
+                                          start: 0,
+                                          end: Number.MAX_SAFE_INTEGER,
+                                          color: col,
+                                          text: plainText(v.text, pos.lang),
+                                        })
+                                      }}
+                                      onClearHL={() => clearHighlightsIn(pref, pos.lang, 0, Number.MAX_SAFE_INTEGER)}
+                                      onBookmark={() => toggleBookmark(pref)}
+                                      onNote={() => { setNoteRef(pref); setPatchBarAt(null) }}
+                                      onListen={() => {
+                                        const at = patchVerses.findIndex(
+                                          (x) => x.slug === c.slug && x.ch === c.ch && x.v === v.v,
+                                        )
+                                        setPatchBarAt(null)
+                                        if (at >= 0) speakDay(at)
+                                      }}
+                                      onStudy={() => { openDayVerse(c.slug, c.ch, v.v, v.text); setPatchBarAt(null) }}
+                                      onCopyText={() => {
+                                        copyVerseText(pos.lang, c.slug, c.ch, v.v, v.text)
+                                        setPatchBarAt(null)
+                                      }}
+                                      onCopyLink={() => {
+                                        copyVerseLink(pos.lang, c.slug, c.ch, v.v)
+                                        setPatchBarAt(null)
+                                      }}
+                                      onInvite={() => {
+                                        setInviteFor({ slug: c.slug, ch: c.ch, v: v.v })
+                                        setPatchBarAt(null)
+                                      }}
+                                    />
+                                  </div>
+                                )}
                               </li>
-                            ))}
+                              )
+                            })}
                           </ol>
                         </>
                       )}
@@ -2111,14 +2339,14 @@ export default function App() {
                               onClearHL={() => clearHighlightsIn(ref, l, 0, Number.MAX_SAFE_INTEGER)}
                               onBookmark={() => toggleBookmark(ref)}
                               onNote={() => { setNoteRef(ref); setBarAt(null) }}
-                              onListen={() => { playOne(l, pos.chapter, v.v); setBarAt(null) }}
+                              onListen={() => { playOne(l, pos.chapter, v.v, () => offerReadOn(l, pos.chapter, v.v)); setBarAt(null) }}
                               onStudy={() => { openVerseAt(l, pos.chapter, v.v); setBarAt(null) }}
                               onCopyText={() => {
-                                if (text) copyVerseText(l, pos.chapter, v.v, text)
+                                if (text) copyVerseText(l, pos.slug, pos.chapter, v.v, text)
                                 setBarAt(null)
                               }}
-                              onCopyLink={() => { copyVerseLink(l, v.v); setBarAt(null) }}
-                              onInvite={() => { setInviteFor(v.v); setBarAt(null) }}
+                              onCopyLink={() => { copyVerseLink(l, pos.slug, pos.chapter, v.v); setBarAt(null) }}
+                              onInvite={() => { setInviteFor({ slug: pos.slug, ch: pos.chapter, v: v.v }); setBarAt(null) }}
                             />
                           )}
                         </li>
@@ -2353,10 +2581,12 @@ export default function App() {
         onCopyText={() =>
           verseSheet &&
           verseSheet.text[verseSheet.lang] &&
-          copyVerseText(verseSheet.lang, verseSheet.ch, verseSheet.v, verseSheet.text[verseSheet.lang]!)
+          copyVerseText(verseSheet.lang, verseSheet.slug, verseSheet.ch, verseSheet.v, verseSheet.text[verseSheet.lang]!)
         }
-        onCopyLink={() => verseSheet && copyVerseLink(verseSheet.lang, verseSheet.v)}
-        onCopyInvite={() => verseSheet && setInviteFor(verseSheet.v)}
+        onCopyLink={() => verseSheet && copyVerseLink(verseSheet.lang, verseSheet.slug, verseSheet.ch, verseSheet.v)}
+        onCopyInvite={() =>
+          verseSheet && setInviteFor({ slug: verseSheet.slug, ch: verseSheet.ch, v: verseSheet.v })
+        }
         canSpeak={canSpeak}
         onSpeakWord={speakWord}
         onSpeakVerse={speakSheetVerse}
@@ -2376,8 +2606,12 @@ export default function App() {
         open={inviteFor !== null}
         t={t}
         initial={prefs.columns}
-        refLabel={`${title} ${pos.chapter}${inviteFor ? `:${inviteFor}` : ''}`}
-        onCopy={(cols) => copyInvite(cols, inviteFor || undefined)}
+        refLabel={
+          inviteFor
+            ? `${bookName(index.find((b) => b.slug === inviteFor.slug), prefs.ui)} ${inviteFor.ch}${inviteFor.v ? `:${inviteFor.v}` : ''}`
+            : ''
+        }
+        onCopy={(cols) => inviteFor && copyInvite(cols, inviteFor)}
         onClose={() => setInviteFor(null)}
       />
 
@@ -2431,10 +2665,31 @@ export default function App() {
         />
       )}
 
-      {flow && playingLang && (
-        <button className="audiofab" onClick={stopAudio} title={t('stop_audio')} aria-label={t('stop_audio')}>
-          <Icon name="stop" size={22} />
+      {/* The audio control of last resort, for the two surfaces that render no column
+          head to put one in. Flowing mode gets a stop, because the run there is a
+          chapter and the chapter pill is one scroll away. A plan day gets a transport:
+          the run *is* the day, there is no other control anywhere for it, and once the
+          planner was dismissed the only way back to the audio was to reopen it. */}
+      {/* Never over a sheet. The button is fixed at z-index 78 and a sheet's backdrop
+          is 70, so while a day was open it floated above the note editor and sat on
+          its Save — the one control the reader had come there to press. A sheet is
+          modal; nothing of the page behind it should still be reachable. */}
+      {anySheetOpen ? null : patch && canTTS ? (
+        <button
+          className="audiofab"
+          onClick={() => (playingLang ? pauseDay() : speakDay(patchPaused ?? dayResumeAt()))}
+          title={playingLang ? t('pause_audio') : t('plan_play_day')}
+          aria-label={playingLang ? t('pause_audio') : t('plan_play_day')}
+        >
+          <Icon name={playingLang ? 'pause' : 'play'} size={22} />
         </button>
+      ) : (
+        flow &&
+        playingLang && (
+          <button className="audiofab" onClick={stopAudio} title={t('stop_audio')} aria-label={t('stop_audio')}>
+            <Icon name="stop" size={22} />
+          </button>
+        )
       )}
 
       {toast && (

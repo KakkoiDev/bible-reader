@@ -79,6 +79,17 @@ Every attribution is reproduced verbatim in the app under **Texts & licences**.
   verse toggle as ordinary reading, with no separate preference of its own. While a day
   is open the book and chapter selectors follow the chapter on screen, and the header
   button is marked, so a day is never mistaken for ordinary browsing.
+- **A day can be put down and picked up.** Reopening one lands on the first verse not
+  yet read, with the last few you did read still above it, rather than at the day's
+  beginning — the tick is stored per verse, so where you stopped was always known. The
+  same point starts the audio. A day carries its own transport in the corner: it reads
+  the day aloud, and pressing it again pauses, remembering the verse so the next press
+  carries on from there rather than starting the day over. Its verses carry the
+  reader's own action bar — highlight, note, bookmark, share and Study all work on the
+  passage you are actually reading, and are stored under the verse's own reference, so
+  a note written in a day is the same note the reader shows afterwards. The one cell
+  that differs is the play: a day's reads on from that verse to the end of the day,
+  not the verse alone. `scripts/verify23.mjs` is the gate.
 - **UI language** switches the chrome and displayed book names across all eleven
   languages, including right-to-left layout for Arabic and Hebrew.
 - **Add your own version.** Settings → Languages & versions → *Add a version…* reads
@@ -131,9 +142,13 @@ Every attribution is reproduced verbatim in the app under **Texts & licences**.
   press decides how much: the play button in a chapter's column head reads **the
   chapter**, from its first verse, and *Listen* in a verse's action bar reads **that
   verse** and stops. "Stop at chapter end" governs only the first of those — a single
-  verse is a single verse either way. `scripts/verify22.mjs` is the gate. It holds a screen
-  wake lock while playing so an idle phone doesn't cut it off, and if you leave the
-  app it offers to pick up from the verse it reached.
+  verse is a single verse either way. Getting from one verse to a run is an offer
+  rather than a control: once a single verse has finished, a seven-second **Read on**
+  carries on from the *next* one — suppressed at the end of a chapter, where there
+  would be nothing to read. It costs no permanent place in the interface and appears
+  at the only moment it means anything. `scripts/verify22.mjs` is the gate.
+  It holds a screen wake lock while playing so an idle phone doesn't cut it off, and
+  if you leave the app it offers to pick up from the verse it reached.
 - **Links:** a verse link opens that verse; if it names an edition the recipient has
   hidden, it opens in their first visible one and says so. An **invite link** also
   carries the sender's edition set, and always asks before changing anything.
@@ -706,12 +721,19 @@ npx vite preview --port 4188 --strictPort
 node scripts/verify22.mjs   # how much gets read aloud, and from where
 ```
 
+```bash
+npx vite preview --port 4189 --strictPort
+node scripts/verify23.mjs   # a plan day you can put down and pick up
+```
+
 `verify22.mjs` stubs `speechSynthesis` the way `verify14` does and reads back the
 list of utterances handed over, because how much was read is invisible to a
 screenshot and inaudible to a headless browser. The list's length is how much, and
-its first entry is from where. It covers both controls: the column head's button
-reads all 36 verses of John 3 from verse 1, and *Listen* in a verse bar reads exactly
-one utterance and does not run into John 4 even with "Stop at chapter end" off.
+its first entry is from where. It covers both controls and the offer: the column
+head's button reads all 36 verses of John 3 from verse 1; *Listen* in a verse bar
+reads exactly one utterance and does not run into John 4 even with "Stop at chapter
+end" off; and the offer raised after a single verse reads 20 starting at 3:17, not at
+16 again, and is not raised at all on the chapter's last verse.
 
 One check in it clicks through the DOM rather than through Playwright, and the
 comment says why: `locator.click()` scrolls its target into view first, and the
@@ -719,6 +741,25 @@ column head sits at the top of the chapter — so clicking it the ordinary way s
 the page back and undoes the scrolled-past-the-start condition being tested. Against
 the old code, clicked through the DOM it reads 11 utterances from verse 26; clicked
 through Playwright it reads all 36 and the check proves nothing.
+
+`verify23.mjs` is the fourth planner suite and the only one about staying in a day
+rather than getting into one. It seeds John a chapter a day with the first twenty
+verses already ticked, then checks the three things a reader loses a day's place to:
+that reopening lands the first unread verse in the middle of the window rather than
+scrolling to nothing, that the day's transport pauses and resumes at the verse it
+stopped in instead of starting over, and that tapping a verse reads from there to the
+end of the day and no further. It also covers the bar those verses now carry: that a
+note written in a day is stored under the verse's own reference and shows in the
+ordinary reader, that highlight and bookmark write the same keys, and that Copy link
+names the verse's own book rather than whichever one the day happens to be scrolled
+to. Every one of its checks was run against the build before the change and fails
+there — the transport one by timing out, because the control did not exist.
+
+One of its checks measures rather than asserts: each label in the bar is compared
+against an unclipped probe of the same text. `scrollWidth` cannot do this. A
+`text-overflow` label shrinks to fit its text, so its scrollWidth equals its
+clientWidth whether or not the text was cut, and that comparison reported every label
+as fine while one of them was visibly losing two characters to a tenth of a pixel.
 
 `verify21.mjs` is the third planner suite and the only one that presses the buttons:
 `verify15` proves the arithmetic without a browser and `verify16` seeds plans through

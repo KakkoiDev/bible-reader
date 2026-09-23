@@ -1058,11 +1058,18 @@ html.modal-open { overflow: hidden; }
 .mini input[type='file'] { display: none; }
 
 /* ---------- toast ---------- */
+/* Centred by auto margins inside a full-width inset, not by `left: 50%` plus a
+   translate. The translate looks the same but is not: a fixed box with `width: auto`
+   and `left: 50%` gets only the half of the viewport to the right of that edge as its
+   available width, so the text wrapped at ~195px on a 390pt screen and the max-width
+   below could never be reached. "Audio stopped when the app went to the background."
+   was four lines in a pill. */
 .toast {
   position: fixed;
-  left: 50%;
+  inset-inline: 16px;
+  margin-inline: auto;
+  width: fit-content;
   bottom: calc(env(safe-area-inset-bottom) + 22px);
-  transform: translateX(-50%);
   background: var(--fg);
   color: var(--bg);
   font-family: var(--f-ui);
@@ -1640,7 +1647,7 @@ html.modal-open { overflow: hidden; }
 }
 
 /* ---------- toast with an undo action ---------- */
-.toast { display: inline-flex; align-items: center; gap: 12px; max-width: min(520px, calc(100vw - 32px)); }
+.toast { display: flex; align-items: center; gap: 12px; max-width: min(520px, calc(100vw - 32px)); }
 .toastact {
   font-family: var(--f-ui);
   font-size: 13px;
