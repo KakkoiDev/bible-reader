@@ -101,6 +101,8 @@ interface Prefs {
   swipe: boolean
   flow: boolean
   stopAtChapterEnd: boolean
+  /** Whether playback pulls the page along with the verse being read. */
+  follow: boolean
   columns: Lang[]
 }
 type Paragraphs = Record<string, Record<string, number[]>>
@@ -148,6 +150,7 @@ const loadPrefs = (): Prefs => {
     swipe: false,
     flow: false,
     stopAtChapterEnd: false,
+    follow: true,
     columns: DEFAULT_COLUMNS,
   }
   try {
@@ -737,10 +740,20 @@ export default function App() {
    * reference is how you rejoin. A ref rather than state — it is read inside a speech
    * callback and nothing renders from it.
    */
-  const follow = useRef(true)
+  const [following, setFollowing] = useState(prefs.follow)
+  const follow = useRef(prefs.follow)
+  const setFollow = useCallback((on: boolean) => {
+    follow.current = on
+    setFollowing(on)
+  }, [])
+  // The setting is the default for a run, not a lock on it: changing it while nothing
+  // is playing should be what the next run does.
+  useEffect(() => {
+    if (!playingLang) setFollow(prefs.follow)
+  }, [prefs.follow, playingLang, setFollow])
   useEffect(() => {
     const release = () => {
-      follow.current = false
+      if (follow.current) setFollow(false)
     }
     // Intent, not `scroll`: a scroll event cannot say whether it was the reader or the
     // glide this very code just asked for, and guessing by timestamp is a race.
@@ -770,7 +783,7 @@ export default function App() {
     (spec: RunSpec, from = 0) => {
       const items = spec.items.slice(from)
       if (!items.length) return
-      follow.current = true // a new run gets the page back
+      setFollow(prefs.follow) // a new run starts at whatever the setting says
       atRef.current = from
       setActive({ ...spec, at: from, paused: false })
       speakList(
@@ -789,7 +802,7 @@ export default function App() {
         () => setActive(null),
       )
     },
-    [speakList, markVerse],
+    [speakList, markVerse, setFollow, prefs.follow],
   )
 
   /** The chapter, from its first verse.
@@ -1530,20 +1543,23 @@ export default function App() {
   }, [playPatch, dayRun, startRun, dayResumeAt])
 
   /**
-   * What the transport shows and can move.
+   * What the transport shows and can move: whatever is playing or paused, and nothing
+   * else.
    *
-   * A plan day has one before anything plays, because the day *is* the run: its
-   * transport is on screen from the moment the day opens, ready. The reader has one
-   * only while something is playing — there is no standing run in a chapter you are
-   * reading in silence, and the verse bar's play cell says *Listen* there instead.
+   * A plan day used to keep a standing run here so its transport was on screen from
+   * the moment the day opened. That made the bar's stop a button that visibly did
+   * nothing — it silenced the voice and the bar stayed exactly as it was, because the
+   * day still had a run to show. Every surface now carries its own *start* control in
+   * its own furniture instead (the column head, flowing mode's progress row, a day's
+   * summary line), and the transport is only ever the thing that is running.
    */
-  const run: Run | null = active ?? (dayRun ? { ...dayRun, at: dayResumeAt(), paused: false } : null)
-  // A day that has not started yet still has a playhead — where it left off — and the
-  // ref is what prev and next read, so it has to know about it before the first press.
-  const standingAt = active ? null : (run?.at ?? null)
-  useEffect(() => {
-    if (standingAt !== null) atRef.current = standingAt
-  }, [standingAt])
+  const run: Run | null = active
+  /**
+   * What the verse bar's play cell would move, which is not the same question: a day
+   * has a run to start at a chosen verse whether or not one is playing, and starting
+   * it there is the only way to hear a day from somewhere other than its beginning.
+   */
+  const seekable: RunSpec | null = active ?? dayRun
 
   /** Pause: stop the voice but keep the run, so the same button starts it again where
    *  it stopped. Not `speechSynthesis.pause()`, which wedges on several engines and is
@@ -1562,10 +1578,10 @@ export default function App() {
    *  to hear that verse, not to watch a number change. */
   const seekRun = useCallback(
     (to: number) => {
-      if (!run) return
-      startRun(run, Math.max(0, Math.min(run.items.length - 1, to)))
+      if (!seekable) return
+      startRun(seekable, Math.max(0, Math.min(seekable.items.length - 1, to)))
     },
-    [run, startRun],
+    [seekable, startRun],
   )
   /** Prev and next, which are relative and so go through the ref. */
   const seekBy = useCallback((delta: number) => seekRun(atRef.current + delta), [seekRun])
@@ -1575,10 +1591,11 @@ export default function App() {
     if (!run) return
     const it = run.items[run.at]
     if (!it) return
-    follow.current = true
+    // Asking to be taken to the verse is asking to be kept with it.
+    setFollow(true)
     const id = it.slug ? patchVerseId(it.slug, it.ch, it.v) : verseElId(it.ch, it.v, run.lang)
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-  }, [run, verseElId])
+  }, [run, verseElId, setFollow])
 
   // Tick a verse off once it has been on screen long enough to have been read.
   useEffect(() => {
@@ -2186,7 +2203,22 @@ export default function App() {
 
         {patch ? (
           <div className="patch" lang={BY_ID[pos.lang].htmlLang} dir={BY_ID[pos.lang].dir}>
+            {/* The day's start control, in the day's own summary line — the same place
+                flowing mode keeps its play, and for the same reason: a day renders no
+                column head, and the transport is only ever the thing that is running,
+                so something has to be able to begin it. Picks up where the day left
+                off rather than at its first verse. */}
             <p className="patchsum" lang={BY_ID[prefs.ui].htmlLang} dir={BY_ID[prefs.ui].dir}>
+              {dayRun && (
+                <button
+                  className="flowplay patchplay"
+                  title={t('plan_play_day')}
+                  aria-label={t('plan_play_day')}
+                  onClick={() => startRun(dayRun, dayResumeAt())}
+                >
+                  <Icon name="play" size={15} />
+                </button>
+              )}
               {formatRefs(patch, index, prefs.ui)}
             </p>
             {patchBooks.map((g, gi) => (
@@ -2671,6 +2703,7 @@ export default function App() {
         swipe={prefs.swipe}
         flow={prefs.flow}
         stopAtChapterEnd={prefs.stopAtChapterEnd}
+        follow={prefs.follow}
         columns={prefs.columns}
         ttsOn={canTTS}
         noVoice={noVoice}
@@ -2686,6 +2719,7 @@ export default function App() {
         onSwipe={(v) => setPref({ swipe: v })}
         onFlow={(v) => setPref({ flow: v })}
         onStopAtChapterEnd={(v) => setPref({ stopAtChapterEnd: v })}
+        onFollow={(v) => setPref({ follow: v })}
         onExport={exportAnnotations}
         onExportPlans={exportPlans}
         onExportAnki={exportAnki}
@@ -2896,6 +2930,8 @@ export default function App() {
           total={run.items.length}
           playing={!!playingLang}
           playLabel={run.playLabel}
+          following={following}
+          onFollow={setFollow}
           onJump={jumpToSpeaking}
           onPrev={() => seekBy(-1)}
           onNext={() => seekBy(1)}

@@ -60,9 +60,21 @@ Playback follows the spoken verse until the reader scrolls by hand, then lets go
 used to drag the page back every verse, which made looking anything up a fight. The
 reference is a button, and that is how you rejoin.
 
-A **plan day** keeps its own shape within that: the run is the day rather than a
-chapter, so the transport is on screen from the moment the day opens, ready. A day
-reopened lands on the first verse not yet read, with the last ones read still above it. Its verses carry the same
+**A default belongs in settings; the exception belongs to hand.** Following is the one
+thing about playback a reader changes their mind on mid-chapter, so it has both: a
+setting, and a toggle in the bar that shows its state. A mode that switches itself and
+says nothing is the behaviour it replaced.
+
+**The bar is whatever is running, and nothing else.** Every surface keeps its own
+*start* control in its own furniture — the column head, flowing mode's progress row, a
+plan day's summary line. A day used to park a standing transport instead, which made
+the bar's stop a button that silenced the voice and visibly did nothing, because the
+day still had a run to show. A control that swallows a press is broken however
+correct the state underneath it is.
+
+A **plan day** otherwise keeps its own shape: the run is the day rather than a chapter,
+and a day reopened lands on the first verse not yet read, with the last ones read still
+above it. Its verses carry the same
 six-cell bar as the reader's, because everything in that bar is keyed by a verse
 reference and a day has one as surely as a chapter does. Only the play cell differs:
 a day's reads on from that verse to the end of the day.

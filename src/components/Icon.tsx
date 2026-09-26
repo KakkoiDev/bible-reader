@@ -69,6 +69,16 @@ const ICONS = {
   link: { d: <><path d="M10.5 13.5a4 4 0 0 0 5.7 0l2.6-2.6a4 4 0 0 0-5.7-5.7L11.8 6.5" /><path d="M13.5 10.5a4 4 0 0 0-5.7 0l-2.6 2.6a4 4 0 0 0 5.7 5.7l1.3-1.3" /></>, sw: 1.7 },
   invite: { d: <><circle cx="9" cy="8.5" r="3.5" /><path d="M3 19.5a6 6 0 0 1 12 0" /><path d="M17 6.5v6M20 9.5h-6" /></>, sw: 1.7 },
   play: { d: <><path d="M8 5v14l11-7z" /></>, fill: true },
+  /* Keep the page with the verse being read: a mark sighted on a line of text. */
+  follow: {
+    d: (
+      <>
+        <circle cx="12" cy="12" r="3.4" />
+        <path d="M12 3.5v3.3M12 17.2v3.3M3.5 12h3.3M17.2 12h3.3" />
+      </>
+    ),
+    sw: 1.7,
+  },
   pause: { d: <><rect x="6" y="5" width="4" height="14" rx="1" /><rect x="14" y="5" width="4" height="14" rx="1" /></>, fill: true },
   /* The 39th. The document's Listening header is described as carrying "pause,
      time remaining and stop", but its icon set ships only play and pause. This

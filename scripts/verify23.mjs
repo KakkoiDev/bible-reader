@@ -146,7 +146,7 @@ console.log('\nA day with nothing read still opens at the top')
 console.log('\nPlaying a part-read day starts where it was left')
 {
   const { ctx, page } = await openPlanDay({ progress: PART_READ })
-  await page.locator('.nowbtn.play').click()
+  await page.locator('.patchplay').click()
   const spoken = await settled(page)
   check('51 verses less the 20 read is 31', spoken.length === 31, `${spoken.length} utterance(s)`)
   check('starting at John 1:21', /^And they asked him/.test(spoken[0]), spoken[0]?.slice(0, 44))
@@ -156,9 +156,14 @@ console.log('\nPlaying a part-read day starts where it was left')
 console.log('\nThe day has a transport, and pause resumes where it stopped')
 {
   const { ctx, page } = await openPlanDay()
-  check('the button is there before anything plays', (await page.locator('.nowplay').count()) === 1)
-  check('and it offers to read the day', (await page.locator('.nowbtn.play').getAttribute('title')) === 'Read the day aloud')
-  await page.locator('.nowbtn.play').click()
+  // The day's *start* is in its own summary line, as flowing mode's is in its progress
+  // row. The transport is only ever the thing that is running: a day used to park one
+  // here before anything played, which made the bar's stop a button that silenced the
+  // voice and then visibly did nothing, because the day still had a run to show.
+  check('no transport before anything plays', (await page.locator('.nowplay').count()) === 0)
+  check('but the day has a play of its own', (await page.locator('.patchplay').count()) === 1)
+  await page.locator('.patchplay').click()
+  await page.locator('.nowplay').waitFor({ state: 'visible' })
   // Let a few verses go by, then pause mid-run.
   await page.waitForFunction(() => window.__spoken.length >= 4, null, { timeout: 8000 })
   check('it turns into a pause', (await page.locator('.nowbtn.play').getAttribute('title')) === 'Pause')
@@ -168,6 +173,7 @@ console.log('\nThe day has a transport, and pause resumes where it stopped')
   await page.waitForTimeout(600)
   check('pausing really stops the voice', (await page.evaluate(() => window.__spoken.length)) === atPause, `${atPause}`)
   check('and the button offers to start again', (await page.locator('.nowbtn.play').getAttribute('title')) === 'Read the day aloud')
+  check('the bar is still there, holding the place', (await page.locator('.nowplay').count()) === 1)
   await page.evaluate(() => { window.__spoken.length = 0; window.__last = 0 })
   await page.locator('.nowbtn.play').click()
   const after = await settled(page)
@@ -289,10 +295,27 @@ console.log('\nAny verse of the day can start the reading')
   await ctx.close()
 }
 
+// Stop is stop: the bar goes, and the day's own play is how it comes back.
+console.log('\nStopping a day puts the bar away')
+{
+  const { ctx, page } = await openPlanDay()
+  await page.locator('.patchplay').click()
+  await page.locator('.nowplay').waitFor({ state: 'visible' })
+  await page.waitForFunction(() => window.__spoken.length >= 2, null, { timeout: 10000 })
+  await page.locator('.nowbtn[title="Stop audio"]').click()
+  await page.waitForTimeout(700)
+  check('the bar goes', (await page.locator('.nowplay').count()) === 0)
+  const at = await page.evaluate(() => window.__spoken.length)
+  await page.waitForTimeout(700)
+  check('and the voice stays stopped', (await page.evaluate(() => window.__spoken.length)) === at, `${at}`)
+  check('the day can be started again', (await page.locator('.patchplay').count()) === 1)
+  await ctx.close()
+}
+
 console.log('\nThe day is still the whole run')
 {
   const { ctx, page } = await openPlanDay()
-  await page.locator('.nowbtn.play').click()
+  await page.locator('.patchplay').click()
   const spoken = await settled(page)
   check('all 51 verses of John 1', spoken.length === 51, `${spoken.length} utterance(s)`)
   check('and it did not roll on into John 2', !spoken.some((s) => /there was a marriage in Cana/i.test(s)))

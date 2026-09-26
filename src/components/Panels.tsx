@@ -107,6 +107,7 @@ export interface SettingsProps {
   swipe: boolean
   flow: boolean
   stopAtChapterEnd: boolean
+  follow: boolean
   columns: Lang[]
   ttsOn: boolean
   /** Editions this device has no installed voice for. */
@@ -122,6 +123,7 @@ export interface SettingsProps {
   onSwipe: (v: boolean) => void
   onFlow: (v: boolean) => void
   onStopAtChapterEnd: (v: boolean) => void
+  onFollow: (v: boolean) => void
   onColumns: (c: Lang[]) => void
   onExport: () => void
   onExportPlans: () => void
@@ -168,6 +170,7 @@ export function Settings({
   swipe,
   flow,
   stopAtChapterEnd,
+  follow,
   columns,
   ttsOn,
   noVoice,
@@ -182,6 +185,7 @@ export function Settings({
   onSwipe,
   onFlow,
   onStopAtChapterEnd,
+  onFollow,
   onColumns,
   onExport,
   onExportPlans,
@@ -291,6 +295,15 @@ export function Settings({
             <label className="srow">
               <span>{t('stop_chapter_end')}</span>
               <input type="checkbox" checked={stopAtChapterEnd} onChange={(e) => onStopAtChapterEnd(e.target.checked)} />
+            </label>
+            {/* The default. The bar carries a toggle for changing your mind mid-chapter,
+                which is the case this setting is not for. */}
+            <label className="srow">
+              <span>
+                {t('follow_setting')}
+                <small className="shint">{t('follow_hint')}</small>
+              </span>
+              <input type="checkbox" checked={follow} onChange={(e) => onFollow(e.target.checked)} />
             </label>
             <div className="srow">
               <span>{t('voice')}</span>

@@ -158,7 +158,15 @@ Every attribution is reproduced verbatim in the app under **Texts & licences**.
   **Listen** (this verse, then silence) when there is not. `scripts/verify24.mjs` is
   the gate. Anything that genuinely ends playback takes the bar with it — navigating,
   a back press, stopping from the column head, speaking a concordance word over a
-  chapter — and a run that rolls into the next chapter carries the bar onto it.
+  chapter — and a run that rolls into the next chapter carries the bar onto it. The
+  bar *is* whatever is running, so every surface keeps its own way to start one: the
+  column head in the parallel reader, the progress row in flowing mode, the summary
+  line in a plan day.
+- **Following** is the page keeping up with the verse being read. Settings holds the
+  default; the bar holds a toggle, because it is the one thing about playback a reader
+  changes their mind on mid-chapter. Scrolling by hand turns it off — visibly, on that
+  toggle — and one tap turns it back on. Tapping the reference does both: it goes to
+  the verse and resumes following.
   It holds a screen wake lock while playing so an idle phone doesn't cut it off, and
   if you leave the app it offers to pick up from the verse it reached.
 - **Links:** a verse link opens that verse; if it names an edition the recipient has
@@ -752,10 +760,12 @@ brings the verse back. It also pins the thing that made rapid taps useless befor
 playhead was moved into a ref: three presses of *next* inside one frame move three
 verses, not one.
 
-It also gates two things that are easy to lose: every control in the bar is a 44px
+It also gates three things that are easy to lose: every control in the bar is a 44px
 target (the app's token; `DESIGN.md`'s one departure is pills and chips at 32-36, which
-these are not), and a flowing-mode deep link opens the chapter it names rather than the
-book's first one.
+these are not); a flowing-mode deep link opens the chapter it names rather than the
+book's first one; and following starts from the setting, turns itself off on a
+hand-driven scroll, and comes back on a tap of the toggle *without* the toggle itself
+moving the page — that is the reference's job, and the two stay distinct.
 
 Its verse length is a parameter. The sections that press a button in the middle of a
 run use a long one — with a short verse the run moves on between reading the position

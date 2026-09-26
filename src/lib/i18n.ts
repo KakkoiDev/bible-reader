@@ -132,6 +132,12 @@ const en = {
   audio_at: '{n} of {total}',
   audio_prev: 'Previous verse',
   audio_next: 'Next verse',
+  /** Whether the page is pulled along with the verse being read. A setting for the
+   *  default and a toggle in the bar for the exception; scrolling turns it off. */
+  follow_on: 'Follow the reading',
+  follow_off: 'Stop following',
+  follow_setting: 'Follow the reading',
+  follow_hint: 'The page keeps up with the verse being read. Scrolling turns this off until you switch it back on.',
   /** The verse bar's play cell when there is a run to move: it puts the playhead on
    *  this verse. Without one the cell is *Listen* and reads the verse alone.
    *
@@ -335,7 +341,9 @@ const ja: Dict = {
   stop_audio: '音声を停止',
   pause_audio: '一時停止', plan_play_day: '今日の分を読み上げる', play_from_here: 'ここから',
   now_playing: '再生中', audio_jump: '読み上げ中の節へ移動', audio_at: '{total}件中{n}件目',
-  audio_prev: '前の節', audio_next: '次の節', install_app: 'アプリをインストール', source_code: 'ソースコード',
+  audio_prev: '前の節', audio_next: '次の節',
+  follow_on: '読み上げに追従', follow_off: '追従を止める', follow_setting: '読み上げに追従',
+  follow_hint: '読み上げ中の節に合わせてページが動きます。スクロールすると解除され、再度オンにするまで動きません。', install_app: 'アプリをインストール', source_code: 'ソースコード',
   licences: '底本と著作権', licences_intro: '本アプリは以下の版を収録しています。帰属および利用条件は原文のまま掲載し、翻訳していません。',
   group_reading: '表示', group_languages: '言語と訳', group_audio: '音声', group_data: 'ノートとデータ',
   coverage_nt_only: 'この版は新約聖書のみを収録しています。', coverage_ot_only: 'この版は旧約聖書のみを収録しています。', coverage_chapter_absent: 'この章はこの版の底本に収録されていません。', gap_absent: 'この版にはありません', gap_versification: 'この版では番号の付け方が異なります', flow_absent_run: 'この版の底本には{ref}が収録されていません。', end_of: '{ref} 終わり', continue_reading: '続きを読む',
@@ -434,7 +442,9 @@ const fr: Dict = {
   stop_audio: "Arrêter l'audio",
   pause_audio: 'Pause', plan_play_day: 'Lire le jour à voix haute', play_from_here: 'Lire ici',
   now_playing: 'Lecture en cours', audio_jump: 'Aller au verset lu', audio_at: '{n} sur {total}',
-  audio_prev: 'Verset précédent', audio_next: 'Verset suivant', install_app: "Installer l'application", source_code: 'Code source',
+  audio_prev: 'Verset précédent', audio_next: 'Verset suivant',
+  follow_on: 'Suivre la lecture', follow_off: 'Ne plus suivre', follow_setting: 'Suivre la lecture',
+  follow_hint: 'La page suit le verset lu. Faire défiler la désactive jusqu’à ce que vous la réactiviez.', install_app: "Installer l'application", source_code: 'Code source',
   licences: 'Textes et licences', licences_intro: "Cette application reproduit les éditions suivantes. Les mentions d'attribution et de licence sont citées telles quelles et ne sont pas traduites.",
   group_reading: 'Lecture', group_languages: 'Langues et versions', group_audio: 'Audio', group_data: 'Notes et données',
   coverage_nt_only: 'Cette édition ne contient que le Nouveau Testament.', coverage_ot_only: 'Cette édition ne contient que l’Ancien Testament.', coverage_chapter_absent: 'Ce chapitre est absent de la source dont provient cette édition.', gap_absent: 'absent de cette édition', gap_versification: 'numérotation différente ici', flow_absent_run: 'La source dont provient cette édition ne contient pas {ref}.', end_of: 'Fin de {ref}', continue_reading: 'Continuer',

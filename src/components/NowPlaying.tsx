@@ -17,7 +17,12 @@ import { Icon } from './Icon'
  *
  * The hairline is not draggable and is not meant to be. Three pixels is not a drag
  * target, and making it one would turn the one cue in the bar into a widget. The
- * seek surface is the text itself: tap a verse, press *From here*.
+ * seek surface is the text itself: tap a verse, press *Read on*.
+ *
+ * Following has a toggle here as well as a setting, because it is the one thing about
+ * playback a reader changes their mind on mid-chapter: the default belongs in
+ * settings, the exception belongs to hand. Scrolling turns it off, and the toggle is
+ * how it comes back — the same state, shown rather than guessed at.
  */
 export function NowPlaying({
   t,
@@ -27,6 +32,8 @@ export function NowPlaying({
   total,
   playing,
   playLabel,
+  following,
+  onFollow,
   onJump,
   onPrev,
   onNext,
@@ -46,6 +53,9 @@ export function NowPlaying({
   /** What the play button promises when stopped — a day reads the day, a paused run
    *  resumes. */
   playLabel: string
+  /** Whether the page is being pulled along with the verse being read. */
+  following: boolean
+  onFollow: (on: boolean) => void
   onJump: () => void
   onPrev: () => void
   onNext: () => void
@@ -79,6 +89,15 @@ export function NowPlaying({
           <small>{t('audio_at', { n: String(at), total: String(total) })}</small>
         </button>
         <div className="nowbtns">
+          <button
+            className={`nowbtn ${following ? 'on' : ''}`}
+            onClick={() => onFollow(!following)}
+            aria-pressed={following}
+            title={following ? t('follow_off') : t('follow_on')}
+            aria-label={following ? t('follow_off') : t('follow_on')}
+          >
+            <Icon name="follow" size={18} />
+          </button>
           <button className="nowbtn" onClick={onPrev} title={t('audio_prev')} aria-label={t('audio_prev')}>
             <Icon name="prev" size={20} />
           </button>

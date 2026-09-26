@@ -218,6 +218,54 @@ console.log('\nPause keeps the place; stop puts the bar away')
 
 // The half of "where is the audio" that a progress bar cannot answer: playback used to
 // drag the page back every verse, so looking anything up meant fighting it.
+// Following is a setting for the default and a toggle for changing your mind. It used
+// to be neither: it switched itself off on a scroll, silently, and the only way back
+// was the reference.
+console.log('\nFollowing is a setting, and the bar shows it')
+{
+  const { ctx, page } = await open('#/john/3/en', { follow: false }, 4000)
+  await page.locator('.colplay').first().click()
+  await page.locator('.nowplay').waitFor({ state: 'visible' })
+  check('a run honours the setting it starts under',
+    (await page.locator('.nowbtn[aria-pressed]').getAttribute('aria-pressed')) === 'false')
+  await spokenAtLeast(page, 1)
+  await page.waitForTimeout(400)
+  const y0 = await page.evaluate(() => window.scrollY)
+  await page.locator('.nowbtn[title="Next verse"]').click()
+  await page.waitForTimeout(600)
+  check('and does not pull the page', Math.abs((await page.evaluate(() => window.scrollY)) - y0) < 40,
+    `${Math.round(y0)} -> ${Math.round(await page.evaluate(() => window.scrollY))}`)
+  await ctx.close()
+}
+
+console.log('\nThe toggle turns it back on without a jump to the verse')
+{
+  const { ctx, page } = await open('#/john/3/en', {}, 700)
+  await page.locator('.colplay').first().click()
+  await page.locator('.nowplay').waitFor({ state: 'visible' })
+  await spokenAtLeast(page, 2)
+  check('it starts on', (await page.locator('.nowbtn[aria-pressed]').getAttribute('aria-pressed')) === 'true')
+  await page.mouse.wheel(0, 6000)
+  await page.waitForTimeout(400)
+  check('scrolling turns it off, visibly',
+    (await page.locator('.nowbtn[aria-pressed]').getAttribute('aria-pressed')) === 'false')
+  const parked = await page.evaluate(() => window.scrollY)
+  await page.locator('.nowbtn[aria-pressed="false"]').click()
+  await page.waitForTimeout(200)
+  check('one tap turns it back on',
+    (await page.locator('.nowbtn[aria-pressed]').getAttribute('aria-pressed')) === 'true')
+  // The toggle resumes following; it does not itself yank the page. That is the
+  // reference's job, so the two controls stay distinct.
+  check('without moving the page by itself', Math.abs((await page.evaluate(() => window.scrollY)) - parked) < 40,
+    `${Math.round(parked)} -> ${Math.round(await page.evaluate(() => window.scrollY))}`)
+  await spokenAtLeast(page, 6)
+  await page.waitForTimeout(900)
+  check('and the page is moving with the voice again',
+    Math.abs((await page.evaluate(() => window.scrollY)) - parked) > 40,
+    `${Math.round(parked)} -> ${Math.round(await page.evaluate(() => window.scrollY))}`)
+  await ctx.close()
+}
+
 console.log('\nPlayback lets go of the page once the reader scrolls')
 {
   const { ctx, page } = await open()

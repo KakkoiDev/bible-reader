@@ -1055,7 +1055,10 @@ html.audio-open .patch { padding-bottom: calc(env(safe-area-inset-bottom) + 108p
   white-space: nowrap;
 }
 .nowref small { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.nowbtns { display: flex; align-items: center; gap: 2px; flex: none; }
+/* A line of explanation under a settings label, for a control whose behaviour is not
+   guessable from its name. */
+.shint { display: block; margin-top: 2px; font-size: 11px; font-weight: 400; line-height: 1.35; color: var(--muted); }
+.nowbtns { display: flex; align-items: center; gap: 0; flex: none; }
 .nowbtn {
   display: inline-flex;
   align-items: center;
@@ -1070,6 +1073,11 @@ html.audio-open .patch { padding-bottom: calc(env(safe-area-inset-bottom) + 108p
   cursor: pointer;
 }
 .nowbtn:hover { background: var(--accent-bg); color: var(--accent); }
+/* Following is a state worth seeing at a glance: it turns itself off when the reader
+   scrolls, and a toggle that changed silently would be the old behaviour with extra
+   steps. Off is the muted one, because off is the exception. */
+.nowbtn[aria-pressed='false'] { color: var(--muted); }
+.nowbtn.on { color: var(--accent); background: var(--accent-bg); }
 /* Play is the one that carries the accent: it is what the bar is for. */
 .nowbtn.play { color: #fff; background: var(--accent); }
 .nowbtn.play:hover { color: #fff; background: var(--accent); filter: brightness(1.08); }
@@ -1848,7 +1856,10 @@ html.audio-open .patch { padding-bottom: calc(env(safe-area-inset-bottom) + 108p
 
 /* ---------- the patchwork reader ---------- */
 .patch { max-width: 720px; margin: 0 auto; }
-.patchsum { margin: 0 0 22px; font-family: var(--f-ui); font-size: 13px; color: var(--muted); }
+.patchsum { display: flex; align-items: center; gap: 8px; margin: 0 0 22px; font-family: var(--f-ui); font-size: 13px; color: var(--muted); }
+/* The day's play sits in its summary line, as flowing mode's does in the progress row.
+   Pulled left by its own padding so the line still starts where the text does. */
+.flowplay.patchplay { margin: 0 0 0 -10px; flex: none; }
 /* Faint but present. The day reads as one passage, so this must not cut it in two the
    way a book title page would; it only has to answer "which book is this". */
 .patchbook {
