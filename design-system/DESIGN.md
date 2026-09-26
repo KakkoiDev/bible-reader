@@ -60,6 +60,13 @@ Playback follows the spoken verse until the reader scrolls by hand, then lets go
 used to drag the page back every verse, which made looking anything up a fight. The
 reference is a button, and that is how you rejoin.
 
+The row is three groups, not six icons: what is playing, then the transport, then —
+across a rule — the two that are about the bar rather than about the sound. Pause and
+close both silence the voice, so with nothing between them the close read as a seventh
+transport button instead of as the end of the run. It is named for the half that tells
+them apart: pause holds the place, *Stop and close* ends the run and takes the bar
+with it.
+
 **A default belongs in settings; the exception belongs to hand.** Following is the one
 thing about playback a reader changes their mind on mid-chapter, so it has both: a
 setting, and a toggle in the bar that shows its state. A mode that switches itself and

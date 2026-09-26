@@ -1024,7 +1024,10 @@ html.audio-open .patch { padding-bottom: calc(env(safe-area-inset-bottom) + 108p
    one idea in this app and not two. It sits on the bar's top edge, over the border. */
 .nowtrack { height: 3px; background: var(--line); overflow: hidden; }
 .nowfill { display: block; block-size: 100%; background: var(--accent); transition: inline-size 180ms linear; }
-.nowrow { display: flex; align-items: center; gap: 8px; padding: 6px 12px 8px; }
+/* Held to the reader's own measure. Left to span the window the reference grew to a
+   thousand pixels of mostly empty label and put the controls a screen away from the
+   text they belong to. */
+.nowrow { display: flex; align-items: center; gap: 8px; padding: 6px 12px 8px; max-width: 1200px; margin-inline: auto; }
 /* Reference and position in one control, because the answer to "where is the audio"
    is both the name of the verse and the way back to it. */
 .nowref {
@@ -1059,6 +1062,14 @@ html.audio-open .patch { padding-bottom: calc(env(safe-area-inset-bottom) + 108p
    guessable from its name. */
 .shint { display: block; margin-top: 2px; font-size: 11px; font-weight: 400; line-height: 1.35; color: var(--muted); }
 .nowbtns { display: flex; align-items: center; gap: 0; flex: none; }
+/* The two that are about the bar rather than about the sound, set off by a rule. Pause
+   and close both silence the voice; without this the close read as one more transport
+   button instead of as the end of the run. */
+.nowmeta {
+  margin-inline-start: 6px;
+  padding-inline-start: 6px;
+  border-inline-start: 1px solid var(--line);
+}
 .nowbtn {
   display: inline-flex;
   align-items: center;

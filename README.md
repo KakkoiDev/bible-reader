@@ -161,7 +161,9 @@ Every attribution is reproduced verbatim in the app under **Texts & licences**.
   chapter — and a run that rolls into the next chapter carries the bar onto it. The
   bar *is* whatever is running, so every surface keeps its own way to start one: the
   column head in the parallel reader, the progress row in flowing mode, the summary
-  line in a plan day.
+  line in a plan day. Its controls read as three groups rather than one line of icons:
+  what is playing, the transport, and — across a rule — the two about the bar itself.
+  Pause holds your place; **Stop and close** ends the run and takes the bar away.
 - **Following** is the page keeping up with the verse being read. Settings holds the
   default; the bar holds a toggle, because it is the one thing about playback a reader
   changes their mind on mid-chapter. Scrolling by hand turns it off — visibly, on that
