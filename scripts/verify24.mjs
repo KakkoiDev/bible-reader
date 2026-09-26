@@ -77,7 +77,7 @@ async function open(hash = '#/john/3/en', prefs = {}, ms = 250) {
 }
 
 const ref = (page) => page.locator('.nowlabel').innerText()
-const pos = (page) => page.locator('.nowref small').innerText()
+const pos = (page) => page.locator('.nowat').innerText()
 /** Wait until the run has spoken at least `n` verses. */
 const spokenAtLeast = (page, n) => page.waitForFunction((k) => window.__spoken.length >= k, n, { timeout: 15000 })
 
@@ -120,10 +120,14 @@ console.log('\nEvery control in the bar is a 44px target')
     [...document.querySelectorAll('.nowplay button')]
       .map((el) => {
         const r = el.getBoundingClientRect()
-        return { label: el.getAttribute('aria-label') ?? el.textContent.trim(), w: Math.round(r.width), h: Math.round(r.height) }
+        // The auto-scroll control is a pill, which principle 2 allows at 32-36; it sits
+        // on the quiet line beside 11px text and a 44 slab there would outweigh the
+        // reference above it. Everything else is a plain control and owes the full 44.
+        const floor = el.classList.contains('nowtoggle') ? 32 : 44
+        return { label: el.getAttribute('aria-label') ?? el.textContent.trim(), w: Math.round(r.width), h: Math.round(r.height), floor }
       })
-      .filter((b) => b.w < 44 || b.h < 44))
-  check('none is under it', small.length === 0, small.map((b) => `${b.label} ${b.w}x${b.h}`).join('; '))
+      .filter((b) => b.w < b.floor || b.h < b.floor))
+  check('none is under it', small.length === 0, small.map((b) => `${b.label} ${b.w}x${b.h} < ${b.floor}`).join('; '))
   await ctx.close()
 }
 
@@ -207,12 +211,21 @@ console.log('\nPause keeps the place; stop puts the bar away')
   check('pausing really stops the voice', (await page.evaluate(() => window.__spoken.length)) === stopped, `${stopped}`)
   check('the bar stays, holding the place', (await pos(page)) === at, `${at} -> ${await pos(page)}`)
   check('and the button offers to resume', (await page.locator('.nowbtn.play').getAttribute('title')) === 'Play chapter')
+  // The bar has no close of its own. A close beside pause did what pause already did,
+  // differing only in whether the place was kept — which nothing on screen could say.
+  check('the transport is three buttons, with no close among them',
+    (await page.locator('.nowbtns button').count()) === 3,
+    (await page.locator('.nowbtns button').allInnerTexts()).join('|') || `${await page.locator('.nowbtns button').count()}`)
+  // The control that started the run ends it, and reads the run rather than the sound:
+  // paused is still a run, so this is a stop even now.
+  check('the chapter head offers to stop', (await page.locator('.colplay').first().getAttribute('title')) === 'Stop reading aloud',
+    await page.locator('.colplay').first().getAttribute('title'))
   await page.locator('.nowbtn.play').click()
   await page.waitForTimeout(400)
   check('resuming picks up where it stopped', (await pos(page)) === at, `${at} -> ${await pos(page)}`)
-  await page.locator('.nowbtn[title="Stop and close"]').click()
+  await page.locator('.colplay').first().click()
   await page.waitForTimeout(300)
-  check('stop puts the bar away', (await page.locator('.nowplay').count()) === 0)
+  check('and pressing it puts the bar away', (await page.locator('.nowplay').count()) === 0)
   await ctx.close()
 }
 
@@ -227,7 +240,7 @@ console.log('\nFollowing is a setting, and the bar shows it')
   await page.locator('.colplay').first().click()
   await page.locator('.nowplay').waitFor({ state: 'visible' })
   check('a run honours the setting it starts under',
-    (await page.locator('.nowbtn[aria-pressed]').getAttribute('aria-pressed')) === 'false')
+    (await page.locator('.nowtoggle').getAttribute('aria-pressed')) === 'false')
   await spokenAtLeast(page, 1)
   await page.waitForTimeout(400)
   const y0 = await page.evaluate(() => window.scrollY)
@@ -244,16 +257,16 @@ console.log('\nThe toggle turns it back on without a jump to the verse')
   await page.locator('.colplay').first().click()
   await page.locator('.nowplay').waitFor({ state: 'visible' })
   await spokenAtLeast(page, 2)
-  check('it starts on', (await page.locator('.nowbtn[aria-pressed]').getAttribute('aria-pressed')) === 'true')
+  check('it starts on', (await page.locator('.nowtoggle').getAttribute('aria-pressed')) === 'true')
   await page.mouse.wheel(0, 6000)
   await page.waitForTimeout(400)
   check('scrolling turns it off, visibly',
-    (await page.locator('.nowbtn[aria-pressed]').getAttribute('aria-pressed')) === 'false')
+    (await page.locator('.nowtoggle').getAttribute('aria-pressed')) === 'false')
   const parked = await page.evaluate(() => window.scrollY)
-  await page.locator('.nowbtn[aria-pressed="false"]').click()
+  await page.locator('.nowtoggle').click()
   await page.waitForTimeout(200)
   check('one tap turns it back on',
-    (await page.locator('.nowbtn[aria-pressed]').getAttribute('aria-pressed')) === 'true')
+    (await page.locator('.nowtoggle').getAttribute('aria-pressed')) === 'true')
   // The toggle resumes following; it does not itself yank the page. That is the
   // reference's job, so the two controls stay distinct.
   check('without moving the page by itself', Math.abs((await page.evaluate(() => window.scrollY)) - parked) < 40,
@@ -323,9 +336,12 @@ console.log('\nIt is the same bar in flowing mode')
   await page.waitForTimeout(150)
   check('and it reports the same way', /^John 1:\d+$/.test(await ref(page)), await ref(page))
   check('over the chapter it is reading', /of 51$/.test(await pos(page)), await pos(page))
-  await page.locator('.nowbtn[title="Stop and close"]').click()
+  check('and its own play is now a stop',
+    (await page.locator('.flowplay').getAttribute('title')) === 'Stop reading aloud',
+    await page.locator('.flowplay').getAttribute('title'))
+  await page.locator('.flowplay').click()
   await page.waitForTimeout(300)
-  check('and stop clears it here too', (await page.locator('.nowplay').count()) === 0)
+  check('which clears the bar here too', (await page.locator('.nowplay').count()) === 0)
   await ctx.close()
 }
 

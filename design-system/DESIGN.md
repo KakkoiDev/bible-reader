@@ -60,17 +60,27 @@ Playback follows the spoken verse until the reader scrolls by hand, then lets go
 used to drag the page back every verse, which made looking anything up a fight. The
 reference is a button, and that is how you rejoin.
 
-The row is three groups, not six icons: what is playing, then the transport, then —
-across a rule — the two that are about the bar rather than about the sound. Pause and
-close both silence the voice, so with nothing between them the close read as a seventh
-transport button instead of as the end of the run. It is named for the half that tells
-them apart: pause holds the place, *Stop and close* ends the run and takes the bar
-with it.
+**A control that duplicates another with an invisible difference is one control too
+many.** The bar had a close beside its pause; both silenced the voice and they differed
+only in whether the place was kept, which nothing on screen could say. It is gone.
+Ending a run belongs to the control that started it — the chapter head, flowing mode's
+progress row, a day's summary line — each of which reads the *run* rather than the
+sound, so it is still a stop while the run sits paused.
 
-**A default belongs in settings; the exception belongs to hand.** Following is the one
-thing about playback a reader changes their mind on mid-chapter, so it has both: a
-setting, and a toggle in the bar that shows its state. A mode that switches itself and
-says nothing is the behaviour it replaced.
+The bar is two rows, because five things do not fit one at 390pt and stay legible:
+beside the toggle, the reference collapsed to "1 T…" on a book like 1 Thessalonians.
+What is playing and how to move through it on top; how far in, and whether the page
+keeps up, underneath.
+
+**A default belongs in settings; the exception belongs to hand.** Auto-scroll is the
+one thing about playback a reader changes their mind on mid-chapter, so it has both: a
+setting, and a toggle in the bar.
+
+**A mode that switches itself has to say so in words.** That toggle is the only control
+in the bar that changes without being pressed — scrolling turns it off — so it wears
+its name and its state, `Auto-scroll ON` / `OFF`, not a tinted glyph. A tint is a thing
+you have to already know, and the reader who most needs to read it is the one who did
+not know the mode existed.
 
 **The bar is whatever is running, and nothing else.** Every surface keeps its own
 *start* control in its own furniture — the column head, flowing mode's progress row, a

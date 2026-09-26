@@ -161,14 +161,17 @@ Every attribution is reproduced verbatim in the app under **Texts & licences**.
   chapter — and a run that rolls into the next chapter carries the bar onto it. The
   bar *is* whatever is running, so every surface keeps its own way to start one: the
   column head in the parallel reader, the progress row in flowing mode, the summary
-  line in a plan day. Its controls read as three groups rather than one line of icons:
-  what is playing, the transport, and — across a rule — the two about the bar itself.
-  Pause holds your place; **Stop and close** ends the run and takes the bar away.
-- **Following** is the page keeping up with the verse being read. Settings holds the
-  default; the bar holds a toggle, because it is the one thing about playback a reader
-  changes their mind on mid-chapter. Scrolling by hand turns it off — visibly, on that
-  toggle — and one tap turns it back on. Tapping the reference does both: it goes to
-  the verse and resumes following.
+  line in a plan day. **Those same controls end it**: each shows a stop while its run
+  exists, playing or paused, and pressing it takes the bar with it. The bar itself
+  carries no close — one sitting beside pause did what pause already did, differing
+  only in whether the place was kept, which nothing on screen could say.
+- **Auto-scroll** is the page keeping up with the verse being read. Settings holds the
+  default; the audio bar holds a labelled toggle reading `Auto-scroll ON` / `OFF`,
+  because it is the one thing about playback a reader changes their mind on
+  mid-chapter — and the one control in the bar that changes itself, so it says its
+  state in a word rather than a tint. Scrolling by hand turns it off; the toggle turns
+  it back on. Tapping the reference does both: it goes to the verse and resumes
+  following.
   It holds a screen wake lock while playing so an idle phone doesn't cut it off, and
   if you leave the app it offers to pick up from the verse it reached.
 - **Links:** a verse link opens that verse; if it names an edition the recipient has
@@ -765,7 +768,7 @@ verses, not one.
 It also gates three things that are easy to lose: every control in the bar is a 44px
 target (the app's token; `DESIGN.md`'s one departure is pills and chips at 32-36, which
 these are not); a flowing-mode deep link opens the chapter it names rather than the
-book's first one; and following starts from the setting, turns itself off on a
+book's first one; and auto-scroll starts from the setting, turns itself off on a
 hand-driven scroll, and comes back on a tap of the toggle *without* the toggle itself
 moving the page — that is the reference's job, and the two stay distinct.
 

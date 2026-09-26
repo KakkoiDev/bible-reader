@@ -302,7 +302,12 @@ console.log('\nStopping a day puts the bar away')
   await page.locator('.patchplay').click()
   await page.locator('.nowplay').waitFor({ state: 'visible' })
   await page.waitForFunction(() => window.__spoken.length >= 2, null, { timeout: 10000 })
-  await page.locator('.nowbtn[title="Stop and close"]').click()
+  // A day's stop is its own play, which reads the run rather than the sound: the bar
+  // has no close of its own, because one beside pause did what pause already did.
+  check('the day play is now a stop',
+    (await page.locator('.patchplay').getAttribute('title')) === 'Stop reading aloud',
+    await page.locator('.patchplay').getAttribute('title'))
+  await page.locator('.patchplay').click()
   await page.waitForTimeout(700)
   check('the bar goes', (await page.locator('.nowplay').count()) === 0)
   const at = await page.evaluate(() => window.__spoken.length)

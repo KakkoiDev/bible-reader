@@ -2211,12 +2211,12 @@ export default function App() {
             <p className="patchsum" lang={BY_ID[prefs.ui].htmlLang} dir={BY_ID[prefs.ui].dir}>
               {dayRun && (
                 <button
-                  className="flowplay patchplay"
-                  title={t('plan_play_day')}
-                  aria-label={t('plan_play_day')}
-                  onClick={() => startRun(dayRun, dayResumeAt())}
+                  className={`flowplay patchplay ${active ? 'on' : ''}`}
+                  title={active ? t('audio_end') : t('plan_play_day')}
+                  aria-label={active ? t('audio_end') : t('plan_play_day')}
+                  onClick={() => (active ? stopAudio() : startRun(dayRun, dayResumeAt()))}
                 >
-                  <Icon name="play" size={15} />
+                  <Icon name={active ? 'stop' : 'play'} size={15} />
                 </button>
               )}
               {formatRefs(patch, index, prefs.ui)}
@@ -2375,12 +2375,12 @@ export default function App() {
                 there rather than putting a second floating thing on the screen. */}
             {canTTS && !noVoice.has(pos.lang) && (
               <button
-                className={`flowplay ${playingLang === pos.lang ? 'on' : ''}`}
-                title={playingLang === pos.lang ? t('stop') : `${t('play_chapter')}: ${BY_ID[pos.lang].label}`}
-                aria-label={playingLang === pos.lang ? t('stop') : `${t('play_chapter')}: ${BY_ID[pos.lang].label}`}
-                onClick={() => (playingLang === pos.lang ? stopAudio() : playChapter(pos.lang))}
+                className={`flowplay ${active ? 'on' : ''}`}
+                title={active ? t('audio_end') : `${t('play_chapter')}: ${BY_ID[pos.lang].label}`}
+                aria-label={active ? t('audio_end') : `${t('play_chapter')}: ${BY_ID[pos.lang].label}`}
+                onClick={() => (active ? stopAudio() : playChapter(pos.lang))}
               >
-                <Icon name={playingLang === pos.lang ? 'pause' : 'play'} size={15} />
+                <Icon name={active ? 'stop' : 'play'} size={15} />
               </button>
             )}
             {chapterCount > 1 && (
@@ -2459,11 +2459,15 @@ export default function App() {
                       {wide && <span>{m.label} · {m.edition}</span>}
                       {playable && (
                         <button
-                          className={`colplay ${playingLang === l ? 'on' : ''}`}
-                          title={playingLang === l ? t('stop') : `${t('play_chapter')}: ${m.label}`}
-                          onClick={() => (playingLang === l ? stopAudio() : playChapter(l))}
+                          /* Reads the *run*, not whether sound is coming out. Paused is
+                             still a run, and with the transport's close gone this is
+                             the control that ends one — a play button here while the
+                             bar sat below saying paused would have no way to. */
+                          className={`colplay ${active?.lang === l ? 'on' : ''}`}
+                          title={active?.lang === l ? t('audio_end') : `${t('play_chapter')}: ${m.label}`}
+                          onClick={() => (active?.lang === l ? stopAudio() : playChapter(l))}
                         >
-                          <Icon name={playingLang === l ? 'stop' : 'play'} size={13} /> {m.edition}
+                          <Icon name={active?.lang === l ? 'stop' : 'play'} size={13} /> {m.edition}
                         </button>
                       )}
                     </div>
@@ -2936,7 +2940,6 @@ export default function App() {
           onPrev={() => seekBy(-1)}
           onNext={() => seekBy(1)}
           onPlayPause={() => (playingLang ? pauseRun() : startRun(run, run.at))}
-          onStop={stopAudio}
         />
       )}
 

@@ -24,11 +24,16 @@ import { Icon } from './Icon'
  * settings, the exception belongs to hand. Scrolling turns it off, and the toggle is
  * how it comes back — the same state, shown rather than guessed at.
  *
- * Three groups, because the row holds three different kinds of thing and an even line
- * of six icons said so about none of them. Pause and close both silence the voice, and
- * with nothing between them the second read as a seventh transport button rather than
- * as the end of the run: what is playing, then the transport, then — across a rule —
- * the two that are about the bar itself rather than about the sound.
+ * There is no close. It sat beside pause doing something pause already did — silencing
+ * the voice — differing only in whether the place was kept, which nothing on screen
+ * could say. Ending a run belongs to the control that started it: the chapter head, the
+ * progress row in flowing mode, a day's summary line. Each shows a stop while its run
+ * exists, playing or paused, and pressing it takes the bar with it.
+ *
+ * So the row is two kinds of thing: what is playing and how to move through it, then —
+ * across a rule — whether the page keeps up. That last one is a toggle with a word on
+ * it, not a glyph: a reader who has just been dropped by a mode they did not know they
+ * were in needs to read the way back, not infer it from a tinted circle.
  */
 export function NowPlaying({
   t,
@@ -44,7 +49,6 @@ export function NowPlaying({
   onPrev,
   onNext,
   onPlayPause,
-  onStop,
 }: {
   t: T
   /** The interface language, which is what the bar is written in whatever edition is
@@ -66,7 +70,6 @@ export function NowPlaying({
   onPrev: () => void
   onNext: () => void
   onPlayPause: () => void
-  onStop: () => void
 }) {
   return (
     <div
@@ -88,11 +91,13 @@ export function NowPlaying({
       >
         <span className="nowfill" style={{ inlineSize: `${(at / total) * 100}%` }} />
       </div>
+      {/* Two rows, because five things do not fit one at 390pt and legibly: with the
+          toggle beside them the reference collapsed to "1 T…" on a book like
+          1 Thessalonians. What is playing and how to move through it on top; how far
+          in, and whether the page keeps up, underneath. */}
       <div className="nowrow">
-        {/* Both facts in one control: which verse, and where that is in the run. */}
         <button className="nowref" onClick={onJump} title={t('audio_jump')} aria-label={t('audio_jump')}>
           <span className="nowlabel">{label}</span>
-          <small>{t('audio_at', { n: String(at), total: String(total) })}</small>
         </button>
         <div className="nowbtns">
           <button className="nowbtn" onClick={onPrev} title={t('audio_prev')} aria-label={t('audio_prev')}>
@@ -110,20 +115,24 @@ export function NowPlaying({
             <Icon name="next" size={20} />
           </button>
         </div>
-        <div className="nowbtns nowmeta">
+      </div>
+      <div className="nowrow2">
+        <small className="nowat">{t('audio_at', { n: String(at), total: String(total) })}</small>
+        <div className="nowmeta">
+          {/* Labelled, and the label is the reader's word for it rather than the
+              codebase's. The state is said twice over — the word ON or OFF, and the
+              fill — because scrolling switches this without being asked to, and a
+              reader who did not know the mode existed has to be able to read what
+              just happened. */}
           <button
-            className={`nowbtn ${following ? 'on' : ''}`}
+            className={`nowtoggle ${following ? 'on' : ''}`}
             onClick={() => onFollow(!following)}
             aria-pressed={following}
             title={following ? t('follow_off') : t('follow_on')}
-            aria-label={following ? t('follow_off') : t('follow_on')}
           >
-            <Icon name="follow" size={18} />
-          </button>
-          {/* Named for what tells it apart from pause. Pause holds the place; this
-              ends the run and takes the bar with it. */}
-          <button className="nowbtn" onClick={onStop} title={t('audio_end')} aria-label={t('audio_end')}>
-            <Icon name="close" size={19} />
+            <Icon name="follow" size={15} />
+            <span className="nowtogname">{t('autoscroll')}</span>
+            <span className="nowtogstate">{t(following ? 'on_short' : 'off_short')}</span>
           </button>
         </div>
       </div>

@@ -691,7 +691,7 @@ html.modal-open { overflow: hidden; }
 /* Room at the foot of the page for the transport, which is fixed to the window and
    would otherwise sit permanently over the last verse of a chapter. */
 html.audio-open .reader,
-html.audio-open .patch { padding-bottom: calc(env(safe-area-inset-bottom) + 108px); }
+html.audio-open .patch { padding-bottom: calc(env(safe-area-inset-bottom) + 132px); }
 .sheet-backdrop { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.4); z-index: 70; display: flex; }
 /* A flex column with exactly one scroller in it. That is what makes the head and
    the footer pinned by construction rather than by `position: sticky`, and it is
@@ -1027,19 +1027,21 @@ html.audio-open .patch { padding-bottom: calc(env(safe-area-inset-bottom) + 108p
 /* Held to the reader's own measure. Left to span the window the reference grew to a
    thousand pixels of mostly empty label and put the controls a screen away from the
    text they belong to. */
-.nowrow { display: flex; align-items: center; gap: 8px; padding: 6px 12px 8px; max-width: 1200px; margin-inline: auto; }
+.nowrow, .nowrow2 { display: flex; align-items: center; gap: 8px; max-width: 1200px; margin-inline: auto; }
+.nowrow { padding: 5px 12px 4px; }
+/* How far in, and whether the page keeps up. Both are glanced at rather than aimed for,
+   so they take the quieter line. */
+.nowrow2 { padding: 0 12px 6px; }
+.nowat { flex: 1; min-width: 0; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
 /* Reference and position in one control, because the answer to "where is the audio"
    is both the name of the verse and the way back to it. */
 .nowref {
   flex: 1;
   min-width: 0;
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 1px;
-  padding: 6px 4px;
+  align-items: center;
+  padding: 0 4px;
   min-height: var(--touch);
-  justify-content: center;
   font: inherit;
   text-align: start;
   background: none;
@@ -1057,19 +1059,50 @@ html.audio-open .patch { padding-bottom: calc(env(safe-area-inset-bottom) + 108p
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.nowref small { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
 /* A line of explanation under a settings label, for a control whose behaviour is not
    guessable from its name. */
 .shint { display: block; margin-top: 2px; font-size: 11px; font-weight: 400; line-height: 1.35; color: var(--muted); }
 .nowbtns { display: flex; align-items: center; gap: 0; flex: none; }
-/* The two that are about the bar rather than about the sound, set off by a rule. Pause
-   and close both silence the voice; without this the close read as one more transport
-   button instead of as the end of the run. */
-.nowmeta {
-  margin-inline-start: 6px;
-  padding-inline-start: 6px;
-  border-inline-start: 1px solid var(--line);
+/* Whether the page keeps up. No rule any more: the two rows already separate it from
+   what is playing, and a vertical hairline on the lower row only split the position
+   from the toggle, which are not two different kinds of thing. */
+.nowmeta { flex: none; }
+/* A labelled toggle, not a glyph: this switches itself off when the reader scrolls, so
+   a reader who did not know the mode existed has to be able to read the way back. The
+   state is written as well as filled — ON and OFF, because a tint alone is a thing you
+   have to already know. */
+.nowtoggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  /* 36, the size DESIGN.md's principle 2 allows a pill: it sits on the quiet line
+     beside 11px text, and a 44 slab there would outweigh the reference above it. */
+  min-height: 34px;
+  padding: 0 11px;
+  font-family: var(--f-ui);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--muted);
+  background: none;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-pill);
+  cursor: pointer;
+  white-space: nowrap;
 }
+.nowtoggle.on { color: var(--accent); border-color: var(--accent); background: var(--accent-bg); }
+.nowtogname { font-weight: 600; }
+/* The state reads louder than the name: the name never changes and the state does. */
+.nowtogstate {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 1px 5px;
+  border-radius: 999px;
+  color: var(--bg);
+  background: var(--muted);
+}
+.nowtoggle.on .nowtogstate { background: var(--accent); }
 .nowbtn {
   display: inline-flex;
   align-items: center;
@@ -1087,7 +1120,6 @@ html.audio-open .patch { padding-bottom: calc(env(safe-area-inset-bottom) + 108p
 /* Following is a state worth seeing at a glance: it turns itself off when the reader
    scrolls, and a toggle that changed silently would be the old behaviour with extra
    steps. Off is the muted one, because off is the exception. */
-.nowbtn[aria-pressed='false'] { color: var(--muted); }
 .nowbtn.on { color: var(--accent); background: var(--accent-bg); }
 /* Play is the one that carries the accent: it is what the bar is for. */
 .nowbtn.play { color: #fff; background: var(--accent); }
